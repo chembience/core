@@ -1,0 +1,69 @@
+
+x-common-environment: &common-env
+  APP_HOME: ${APP_HOME}
+  CHEMBIENCE_UID: ${CHEMBIENCE_UID:-1000}
+  CHEMBIENCE_GID: ${CHEMBIENCE_GID:-1000}
+  DJANGO_VIRTUAL_HOSTNAME: ${DJANGO_VIRTUAL_HOSTNAME:-localhost}
+  DJANGO_CONNECTION_PORT: ${DJANGO_CONNECTION_PORT:-8000}
+  DJANGO_SUPERUSER_PASSWORD: ${DJANGO_SUPERUSER_PASSWORD}
+  DJANGO_SUPERUSER_USERNAME: ${DJANGO_SUPERUSER_USERNAME}
+  DJANGO_SUPERUSER_EMAIL: ${DJANGO_SUPERUSER_EMAIL}
+  POSTGRES_USER: chembience
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+  POSTGRES_NAME: ${POSTGRES_NAME:-chembience}
+  POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+  POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+
+services:
+  django:
+    image: chembience/rdkit-django:${CHEMBIENCE_VERSION}
+    build:
+      context: django/
+      args:
+        build_tag: ${CHEMBIENCE_VERSION}
+    environment:
+      <<: *common-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${DJANGO_CONNECTION_PORT}:8000"
+    volumes:
+      - ${APP_HOME}:/home/app
+    networks:
+      - app-network
+    working_dir: "/home/app/"
+    entrypoint: [ "/docker-entrypoint.sh" ]
+    command: ["gunicorn", "appsite.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "8"]
+
+  postgres:
+    image: chembience/rdkit-postgres:${CHEMBIENCE_VERSION}
+    build:
+      context: postgres/
+      args:
+        build_tag: ${CHEMBIENCE_VERSION}
+    volumes:
+      - ${APP_HOME}/postgres:/home/postgres
+    environment:
+      <<: *common-env
+    ports:
+      - "5432:5432"
+    networks:
+      - app-network
+    working_dir: "/home/postgres/"
+    entrypoint: [ "/docker-entrypoint.sh" ]
+    command: [ "gosu", "app", "postgres", "-D", "/home/postgres/postgres_data" ]
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U chembience" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres-db-volume:
+
+networks:
+  app-network:
+    name: app-backend
+  chembience-network:
+    name: chembience-network

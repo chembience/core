@@ -1,0 +1,8 @@
+gunicorn
+sqlparse
+django>=5
+djangorestframework
+django-extensions
+psycopg2
+
+

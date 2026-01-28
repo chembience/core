@@ -1,0 +1,36 @@
+#!/bin/bash
+set -euo pipefail
+
+# Create .env once from template; don't overwrite local settings
+if [ ! -f .env ]; then
+  cp env .env
+  echo "Created .env from template (env)."
+fi
+
+# Match container UID/GID to current user (WSL2/macOS/Linux)
+export CHEMBIENCE_UID="${CHEMBIENCE_UID:-$(id -u)}"
+export CHEMBIENCE_GID="${CHEMBIENCE_GID:-$(id -g)}"
+
+# Pass through common build flags, e.g. ./build --no-cache
+BUILD_FLAGS=()
+for arg in "$@"; do
+  case "$arg" in
+    --no-cache|--pull|--progress=*)
+      BUILD_FLAGS+=("$arg")
+      ;;
+    *)
+      echo "Unknown argument: $arg"
+      echo "Supported: --no-cache, --pull, --progress=plain"
+      exit 2
+      ;;
+  esac
+done
+
+cleanup() { docker compose down --volumes; }
+trap cleanup EXIT
+
+# Build base image first, then images that depend on it
+docker compose build "${BUILD_FLAGS[@]}" rdkit
+docker compose build "${BUILD_FLAGS[@]}" postgres django
+
+docker compose up --abort-on-container-exit
