@@ -52,7 +52,6 @@ atlassian-ide-plugin.xml
 *$py.class
 
 # Distribution / packaging
-.Python build/
 develop-eggs/
 dist/
 downloads/
@@ -64,7 +63,6 @@ parts/
 sdist/
 var/
 wheels/
-*.whl
 *.egg-info/
 .installed.cfg
 *.egg
@@ -81,7 +79,6 @@ htmlcov/
 .coverage
 .coverage.*
 .cache
-.pytest_cache/
 nosetests.xml
 coverage.xml
 *.cover
@@ -91,10 +88,7 @@ coverage.xml
 .ipynb_checkpoints
 
 # pyenv
-.python-version
 
-# celery
-celerybeat-schedule.*
 
 # SageMath parsed files
 *.sage.py
@@ -114,32 +108,7 @@ venv.bak/
 # mypy
 .mypy_cache/
 
-# Sublime Text #
-*.tmlanguage.cache
-*.tmPreferences.cache
-*.stTheme.cache
-*.sublime-workspace
-*.sublime-project
 
-# sftp configuration file
-sftp-config.json
 
-# Package control specific files Package
-Control.last-run
-Control.ca-list
-Control.ca-bundle
-Control.system-ca-bundle
-GitHub.sublime-settings
 
-# Visual Studio Code #
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
-.history
 
-# Some other stuff
-tmp/*
-.project/*
-*~
