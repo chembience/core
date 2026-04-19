@@ -8,18 +8,28 @@ CHEMBIENCE_GID="${CHEMBIENCE_GID:-1000}"
 # - Prefer an existing "app" group
 # - Else, if the requested GID already exists, reuse that group name
 # - Else, create "app" with the requested GID
-if getent group app >/dev/null 2>&1; then
-    APP_GROUP="app"
-elif getent group "${CHEMBIENCE_GID}" >/dev/null 2>&1; then
-    APP_GROUP="$(getent group "${CHEMBIENCE_GID}" | cut -d: -f1)"
+if ! getent group app >/dev/null 2>&1; then
+    if getent group "${CHEMBIENCE_GID}" >/dev/null 2>&1; then
+        # Group with this GID already exists, rename it to app or just use it?
+        # Actually, if we want the user 'app' to have this GID, we should just use the existing group name.
+        APP_GROUP="$(getent group "${CHEMBIENCE_GID}" | cut -d: -f1)"
+        echo "✅ Group with GID $CHEMBIENCE_GID already exists: $APP_GROUP"
+    else
+        echo "➕ Creating group 'app' with GID $CHEMBIENCE_GID..."
+        groupadd -g "${CHEMBIENCE_GID}" app
+        APP_GROUP="app"
+    fi
 else
-    groupadd -g "${CHEMBIENCE_GID}" app
     APP_GROUP="app"
+    echo "✅ Group 'app' already exists."
 fi
 
 # Create user if missing (bind it to the chosen group)
 if ! id "app" >/dev/null 2>&1; then
+    echo "➕ Creating user 'app' with UID $CHEMBIENCE_UID and group $APP_GROUP..."
     useradd --shell /bin/bash -u "${CHEMBIENCE_UID}" -g "${APP_GROUP}" -o -c "" -M app
+else
+    echo "✅ User 'app' already exists."
 fi
 
 # Safety check: don't try gosu if user still doesn't exist

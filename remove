@@ -1,0 +1,64 @@
+#!/bin/bash
+
+# Load environment variables from .env file
+if [ -f .env ]; then
+  set -o allexport
+  source .env
+  set +o allexport
+else
+  echo ".env file not found!"
+  exit 1
+fi
+
+# Function to remove the application directory
+remove_apps() {
+  if [ -d "$APP_HOME" ]; then
+    echo "🗑️ Removing $APP_HOME using Docker..."
+    docker run --rm -v "$(dirname "$APP_HOME")":/cleanup alpine rm -rf "/cleanup/$(basename "$APP_HOME")"
+  else
+    echo "ℹ️ $APP_HOME does not exist or is not a directory."
+  fi
+}
+
+# Function to remove the images
+remove_images() {
+  # Check if CHEMBIENCE_VERSION is set in the .env file
+  if [ -z "$CHEMBIENCE_VERSION" ]; then
+    echo "⚠️ CHEMBIENCE_VERSION is not set in the .env file. Skipping image removal."
+    return
+  fi
+
+  # Fixed name pattern
+  NAME_PATTERN="^chembience/"
+  
+  # Find matching images (TAG_PATTERN seems to be CHEMBIENCE_VERSION based on context or just all with chembience/ prefix)
+  # In remove-chembience-images, TAG_PATTERN was used but not defined in the file itself. 
+  # Looking at the previous script, it likely intended to use CHEMBIENCE_VERSION.
+  
+  IMAGES=$(docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' | grep -E "$NAME_PATTERN")
+
+  if [ -z "$IMAGES" ]; then
+    echo "ℹ️ No matching images found for pattern '$NAME_PATTERN'"
+    return
+  fi
+
+  echo "🗑️ Removing matching images:"
+  echo "$IMAGES"
+
+  # Remove each matched image
+  echo "$IMAGES" | awk '{print $2}' | xargs -r docker rmi -f
+}
+
+# Check for arguments
+case "$1" in
+  "apps")
+    remove_apps
+    ;;
+  "images")
+    remove_images
+    ;;
+  *)
+    remove_images
+    remove_apps
+    ;;
+esac

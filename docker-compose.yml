@@ -31,16 +31,21 @@ services:
     networks:
       - app-network
     entrypoint: [ "/docker-entrypoint.sh" ]
+    tty: true
     command: [ "python" ]
 
   django:
     image: chembience/rdkit-django:${CHEMBIENCE_VERSION}
     build:
-      context: django/
+      context: .
+      dockerfile: django/Dockerfile
       args:
         build_tag: ${CHEMBIENCE_VERSION}
     environment:
       <<: *common-env
+    depends_on:
+      postgres:
+        condition: service_healthy
     ports:
       - "${DJANGO_CONNECTION_PORT}:8000"
     volumes:
@@ -49,11 +54,13 @@ services:
       - app-network
     working_dir: "/home/app/"
     entrypoint: [ "/docker-entrypoint.sh" ]
+    command: ["gunicorn", "appsite.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "8"]
 
   postgres:
     image: chembience/rdkit-postgres:${CHEMBIENCE_VERSION}
     build:
-      context: postgres/
+      context: .
+      dockerfile: postgres/Dockerfile
       args:
         build_tag: ${CHEMBIENCE_VERSION}
     volumes:
@@ -66,6 +73,12 @@ services:
       - app-network
     working_dir: "/home/postgres/"
     entrypoint: [ "/docker-entrypoint.sh" ]
+    command: [ "gosu", "app", "postgres", "-D", "/home/postgres/postgres_data" ]
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U chembience" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
 volumes:
   postgres-db-volume:

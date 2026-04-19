@@ -3,9 +3,14 @@ set -euo pipefail
 
 # Create .env once from template; don't overwrite local settings
 if [ ! -f .env ]; then
-  cp env .env
-  echo "Created .env from template (env)."
+  cp .env.example .env
+  echo "Created .env from template (.env.example)."
 fi
+
+# Load environment variables from .env
+set -o allexport
+source .env
+set +o allexport
 
 # Match container UID/GID to current user (WSL2/macOS/Linux)
 export CHEMBIENCE_UID="${CHEMBIENCE_UID:-$(id -u)}"
@@ -26,8 +31,22 @@ for arg in "$@"; do
   esac
 done
 
-cleanup() { docker compose down --volumes; }
+cleanup() {
+  echo "🧹 Cleaning up containers..."
+  docker compose down --volumes
+}
 trap cleanup EXIT
+
+# Expand APP_HOME if it starts with ~
+if [[ "$APP_HOME" == "~"* ]]; then
+  APP_HOME="${APP_HOME/#\~/$HOME}"
+fi
+
+# Ensure APP_HOME exists locally so Docker doesn't create it as root
+mkdir -p "$APP_HOME"
+export APP_HOME=$(cd "$APP_HOME" && pwd)
+
+echo "📂 Using APP_HOME: $APP_HOME"
 
 # Build base image first, then images that depend on it
 docker compose build "${BUILD_FLAGS[@]}" rdkit

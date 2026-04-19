@@ -13,11 +13,10 @@ RUN mkdir -p /home/postgres /opt/python
 RUN mkdir -p /home/postgres/postgres_data && \
     chown -R ${CHEMBIENCE_UID}:${CHEMBIENCE_GID} /home/postgres
 
-ENV PATH=/opt/conda/bin:$PATH
 
-COPY docker-entrypoint.sh /
-COPY pg_hba.conf /
-COPY postgresql.conf /
+COPY postgres/docker-entrypoint.sh /
+COPY postgres/pg_hba.conf /
+COPY postgres/postgresql.conf /
 
 RUN conda config --system --remove-key channels || true && \
     conda config --system --add channels conda-forge && \
@@ -29,4 +28,6 @@ RUN conda config --system --remove-key channels || true && \
     find /opt/conda/ -follow -type f -name '*.a' -delete && \
     find /opt/conda/ -follow -type f -name '*.pyc' -delete && \
     find /opt/conda/ -follow -type f -name '*.js.map' -delete
+
+ENV PATH=/opt/conda/envs/chembience/bin:/opt/conda/bin:$PATH
 

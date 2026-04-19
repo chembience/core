@@ -18,9 +18,8 @@ services:
   django:
     image: chembience/rdkit-django:${CHEMBIENCE_VERSION}
     build:
-      context: django/
-      args:
-        build_tag: ${CHEMBIENCE_VERSION}
+      context: .
+      dockerfile: Dockerfile
     environment:
       <<: *common-env
     depends_on:
@@ -39,9 +38,8 @@ services:
   postgres:
     image: chembience/rdkit-postgres:${CHEMBIENCE_VERSION}
     build:
-      context: postgres/
-      args:
-        build_tag: ${CHEMBIENCE_VERSION}
+      context: .
+      dockerfile: Dockerfile
     volumes:
       - ${APP_HOME}/postgres:/home/postgres
     environment:
@@ -55,9 +53,9 @@ services:
     command: [ "gosu", "app", "postgres", "-D", "/home/postgres/postgres_data" ]
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U chembience" ]
-      interval: 5s
+      interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
 
 volumes:
   postgres-db-volume:

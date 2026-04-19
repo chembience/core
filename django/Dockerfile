@@ -10,11 +10,12 @@ ENV PYTHONUNBUFFERED=1
 
 RUN mkdir -p /home/template /opt/django
 
-COPY docker-entrypoint.sh /
-COPY docker-compose.yml /
-COPY env /
-COPY requirements.txt /opt/django
-COPY template/* /home/template
+COPY django/docker-entrypoint.sh /
+COPY django/docker-compose.yml /
+COPY .env.example /
+COPY django/Dockerfile /
+COPY django/requirements.txt /opt/django
+COPY django/template/* /home/template
 
 ENV PATH=/opt/conda/bin:$PATH
 
