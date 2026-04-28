@@ -11,19 +11,17 @@ ENV PYTHONUNBUFFERED=1
 RUN mkdir -p /home/template /opt/django
 
 COPY django/docker-entrypoint.sh /
-COPY django/docker-compose.yml /
-COPY .env.example /
-COPY django/Dockerfile /
+COPY django/docker-compose.yml /django/docker-compose.yml
+COPY django/Dockerfile /django/Dockerfile
 COPY django/requirements.txt /opt/django
-COPY django/template/* /home/template
+COPY django/template/ /home/template/
 
-ENV PATH=/opt/conda/bin:$PATH
+ENV PATH=/opt/conda/envs/chembience/bin:/opt/conda/bin:$PATH
 
-RUN /bin/bash -c "source activate chembience" && \
-    CONDA_PY=$conda_py conda install --yes --file /opt/django/requirements.txt && \
+RUN conda install -n chembience --yes --file /opt/django/requirements.txt && \
     conda clean -afy && \
     find /opt/conda/ -follow -type f -name '*.a' -delete && \
     find /opt/conda/ -follow -type f -name '*.pyc' -delete && \
     find /opt/conda/ -follow -type f -name '*.js.map' -delete
 
-WORKDIR /home/app
+WORKDIR /home/app/appsite
