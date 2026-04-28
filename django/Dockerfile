@@ -11,6 +11,7 @@ ENV PYTHONUNBUFFERED=1
 RUN mkdir -p /home/template /opt/django
 
 COPY django/docker-entrypoint.sh /
+COPY .gitignore /
 COPY django/docker-compose.yml /django/docker-compose.yml
 COPY django/Dockerfile /django/Dockerfile
 COPY django/requirements.txt /opt/django
