@@ -1,0 +1,39 @@
+#!/bin/bash
+
+# Load environment variables from .env file
+if [ -f .env ]; then
+  set -o allexport
+  source .env
+  set +o allexport
+else
+  echo ".env file not found!"
+  exit 1
+fi
+
+# Set defaults if not defined in .env
+POSTGRES_USER=${POSTGRES_USER:-chembience}
+POSTGRES_NAME=${POSTGRES_NAME:-chembience}
+POSTGRES_HOST=${POSTGRES_HOST:-postgres}
+
+# Identify the project name to find the correct container
+# docker-compose by default uses the directory name as project prefix
+PROJECT_NAME=$(basename "$(pwd)")
+
+# Check if the container is running
+CONTAINER_ID=$(docker ps -q -f "name=${PROJECT_NAME}-postgres-1" -f "status=running")
+
+if [ -z "$CONTAINER_ID" ]; then
+    # Fallback to just "postgres" if project-specific name not found
+    CONTAINER_ID=$(docker ps -q -f "name=postgres" -f "status=running")
+fi
+
+if [ -z "$CONTAINER_ID" ]; then
+    echo "❌ Error: PostgreSQL container is not running."
+    echo "Please start the services with 'docker-compose up -d' first."
+    exit 1
+fi
+
+echo "Connecting to database '$POSTGRES_NAME' as user '$POSTGRES_USER'..."
+
+# Execute psql inside the container
+docker exec -it -e PGPASSWORD="$POSTGRES_PASSWORD" "$CONTAINER_ID" psql -U "$POSTGRES_USER" -d "$POSTGRES_NAME" "$@"
