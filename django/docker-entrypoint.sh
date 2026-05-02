@@ -37,17 +37,155 @@ id app >/dev/null 2>&1
 
 # Initialize /home/app if it's empty or missing appsite/manage.py
 if [ ! -f "/home/app/appsite/manage.py" ]; then
-    echo "🚀 Initializing /home/app/appsite from template..."
-    # Ensure /home/app exists
-    mkdir -p /home/app
+    echo "🚀 Initializing /home/app/appsite using django-admin..."
+    # Ensure /home/app/appsite exists
+    mkdir -p /home/app/appsite
+    cd /home/app/appsite
+
+    # Initialize Django project
+    django-admin startproject appsite .
+
+    # Initialize 'simple' app
+    python manage.py startapp simple
+
+    echo "⚙️ Configuring Django settings..."
+    # Update settings.py
+    # 1. Add 'simple.apps.SimpleConfig' to INSTALLED_APPS
+    # 2. Configure DATABASES for PostgreSQL
+    # 3. Add shared path to sys.path
+    # 4. Set other settings like ALLOWED_HOSTS, SECRET_KEY, DEBUG, etc.
     
-    # If the template exists, copy it
-    if [ -d "/home/template/appsite" ]; then
-        mkdir -p /home/app/appsite
-        cp -RT /home/template/appsite /home/app/appsite
-    else
-        echo "⚠️  Template /home/template/appsite not found!"
-    fi
+    cat <<EOF > appsite/settings.py
+"""
+Django settings for appsite project.
+"""
+from pathlib import Path
+import os
+import sys
+
+sys.path.append('/share')
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-default-change-me-in-production')
+DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
+ALLOWED_HOSTS = os.environ.get('DJANGO_VIRTUAL_HOSTNAME', 'localhost').split(",")
+
+INSTALLED_APPS = [
+    'simple.apps.SimpleConfig',
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+]
+
+MIDDLEWARE = [
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
+ROOT_URLCONF = 'appsite.urls'
+
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
+]
+
+WSGI_APPLICATION = 'appsite.wsgi.application'
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.environ['POSTGRES_NAME'],
+        'USER':  os.environ['POSTGRES_USER'],
+        'PASSWORD': os.environ['POSTGRES_PASSWORD'],
+        'HOST': os.environ['POSTGRES_HOST'],
+        'PORT': os.environ['POSTGRES_PORT']
+    }
+}
+
+AUTH_PASSWORD_VALIDATORS = [
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
+]
+
+LANGUAGE_CODE = 'en-us'
+TIME_ZONE = 'UTC'
+USE_I18N = True
+USE_L10N = True
+USE_TZ = True
+
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / "static"
+MEDIA_ROOT = BASE_DIR / "media"
+MEDIA_URL = "/media/"
+
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+EOF
+
+    echo "⚙️ Configuring appsite/urls.py..."
+    cat <<EOF > appsite/urls.py
+from django.contrib import admin
+from django.urls import path, include
+
+urlpatterns = [
+    path('simple/', include('simple.urls')),
+    path('admin/', admin.site.urls),
+]
+EOF
+
+    echo "⚙️ Configuring simple app..."
+    cat <<EOF > simple/urls.py
+from django.urls import path
+from . import views
+
+urlpatterns = [
+    path('resolver/<str:smiles>', views.resolver),
+]
+EOF
+
+    cat <<EOF > simple/views.py
+from django.http import HttpResponse
+from rdkit import Chem
+
+def resolver(request, smiles):
+    mol = Chem.MolFromSmiles(smiles)
+    if mol:
+        return HttpResponse(Chem.MolToInchi(mol))
+    else:
+        return HttpResponse("Invalid SMILES", status=400)
+EOF
+
+    cat <<EOF > simple/models.py
+from django.db import models
+
+class Simple(models.Model):
+    text = models.CharField(max_length=200)
+    pub_date = models.DateTimeField('date published')
+EOF
+
+    # Go back to /
+    cd /
 
     # Initialize /home/app with docker-compose and Dockerfile
     echo "📄 Copying Docker configuration to /home/app..."

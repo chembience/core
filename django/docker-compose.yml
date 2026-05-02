@@ -34,6 +34,12 @@ services:
     working_dir: "/home/app/appsite/"
     entrypoint: [ "/docker-entrypoint.sh" ]
     command: ["python", "-m", "gunicorn", "appsite.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "8"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/simple/resolver/CCO"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   postgres:
     image: chembience/rdkit-postgres:${CHEMBIENCE_VERSION}

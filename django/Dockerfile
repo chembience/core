@@ -8,7 +8,7 @@ LABEL maintainer="markus.sitzmann@gmail.com"
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-RUN mkdir -p /home/template /opt/django
+RUN mkdir -p /opt/django
 
 COPY django/docker-entrypoint.sh /
 COPY .gitignore /
@@ -16,7 +16,6 @@ COPY django/docker-compose.yml /django/docker-compose.yml
 COPY django/Dockerfile /django/Dockerfile
 COPY psql /django/psql
 COPY django/requirements.txt /opt/django
-COPY django/template/ /home/template/
 
 ENV PATH=/opt/conda/envs/chembience/bin:/opt/conda/bin:$PATH
 
