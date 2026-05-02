@@ -14,6 +14,7 @@ COPY django/docker-entrypoint.sh /
 COPY .gitignore /
 COPY django/docker-compose.yml /django/docker-compose.yml
 COPY django/Dockerfile /django/Dockerfile
+COPY psql /django/psql
 COPY django/requirements.txt /opt/django
 COPY django/template/ /home/template/
 

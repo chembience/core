@@ -53,6 +53,7 @@ if [ ! -f "/home/app/appsite/manage.py" ]; then
     echo "📄 Copying Docker configuration to /home/app..."
     [ -f "/django/docker-compose.yml" ] && cp "/django/docker-compose.yml" "/home/app/docker-compose.yml"
     [ -f "/django/Dockerfile" ] && cp "/django/Dockerfile" "/home/app/Dockerfile"
+    [ -f "/django/psql" ] && cp "/django/psql" "/home/app/psql" && chmod +x "/home/app/psql"
     [ -f "/.gitignore" ] && cp "/.gitignore" "/home/app/.gitignore"
 
     # Create .env file in /home/app
@@ -100,6 +101,7 @@ if [ ! -f "/home/app/appsite/manage.py" ]; then
         echo "- \`postgres/\`: PostgreSQL data and configuration (initialized on first start)."
         echo "- \`docker-compose.yml\`: Defines the services (django, postgres)."
         echo "- \`Dockerfile\`: Used for building the django service."
+        echo "- \`psql\`: Helper script to access the database."
         echo "- \`.env\`: Environment variables for the application."
         echo ""
         echo "## Maintenance"
