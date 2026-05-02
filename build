@@ -18,14 +18,18 @@ export CHEMBIENCE_GID="${CHEMBIENCE_GID:-$(id -g)}"
 
 # Pass through common build flags, e.g. ./build --no-cache
 BUILD_FLAGS=()
+QUIT_AFTER_SETUP=true
 for arg in "$@"; do
   case "$arg" in
     --no-cache|--pull|--progress=*)
       BUILD_FLAGS+=("$arg")
       ;;
+    --no-quit)
+      QUIT_AFTER_SETUP=false
+      ;;
     *)
       echo "Unknown argument: $arg"
-      echo "Supported: --no-cache, --pull, --progress=plain"
+      echo "Supported: --no-cache, --pull, --progress=plain, --no-quit"
       exit 2
       ;;
   esac
@@ -33,7 +37,12 @@ done
 
 cleanup() {
   echo "🧹 Cleaning up containers..."
-  docker compose down --volumes
+  if [ "$QUIT_AFTER_SETUP" = true ]; then
+    # Keep volumes if we just did a setup
+    docker compose down
+  else
+    docker compose down --volumes
+  fi
 }
 trap cleanup EXIT
 
@@ -52,4 +61,10 @@ echo "📂 Using APP_HOME: $APP_HOME"
 docker compose build "${BUILD_FLAGS[@]}" rdkit
 docker compose build "${BUILD_FLAGS[@]}" postgres django
 
-docker compose up --abort-on-container-exit
+if [ "$QUIT_AFTER_SETUP" = true ]; then
+  echo "🚀 Starting containers in setup mode (will quit once healthy)..."
+  docker compose up --wait
+  echo "✅ Everything is setup. Exiting..."
+else
+  docker compose up --abort-on-container-exit
+fi

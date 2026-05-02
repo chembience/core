@@ -13,7 +13,8 @@ RUN apt-get --allow-releaseinfo-change update && \
     apt-get -y --no-install-recommends install \
       gosu \
       postgresql-client \
-      telnet && \
+      telnet \
+      curl && \
     rm -rf /var/lib/apt/lists/*
 
 RUN mkdir -p /home/app /opt/python
