@@ -192,6 +192,8 @@ EOF
     [ -f "/django/docker-compose.yml" ] && cp "/django/docker-compose.yml" "/home/app/docker-compose.yml"
     [ -f "/django/Dockerfile" ] && cp "/django/Dockerfile" "/home/app/Dockerfile"
     [ -f "/django/psql" ] && cp "/django/psql" "/home/app/psql" && chmod +x "/home/app/psql"
+    [ -f "/django/django-init" ] && cp "/django/django-init" "/home/app/django-init" && chmod +x "/home/app/django-init"
+    [ -f "/django/django-manage-py" ] && cp "/django/django-manage-py" "/home/app/django-manage-py" && chmod +x "/home/app/django-manage-py"
     [ -f "/.gitignore" ] && cp "/.gitignore" "/home/app/.gitignore"
 
     # Create .env file in /home/app
@@ -239,6 +241,8 @@ EOF
         echo "- \`postgres/\`: PostgreSQL data and configuration (initialized on first start)."
         echo "- \`docker-compose.yml\`: Defines the services (django, postgres)."
         echo "- \`Dockerfile\`: Used for building the django service."
+        echo "- \`django-init\`: Script to initialize Django (migrations, superuser)."
+        echo "- \`django-manage-py\`: Wrapper for Django manage.py."
         echo "- \`psql\`: Helper script to access the database."
         echo "- \`.env\`: Environment variables for the application."
         echo ""

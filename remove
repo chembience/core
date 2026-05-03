@@ -13,6 +13,10 @@ fi
 # Function to remove the application directory
 remove_apps() {
   if [ -d "$APP_HOME" ]; then
+    if [ -f "$APP_HOME/docker-compose.yml" ]; then
+      echo "🛑 Stopping and removing containers in $APP_HOME..."
+      (cd "$APP_HOME" && docker compose down)
+    fi
     echo "🗑️ Removing $APP_HOME using Docker..."
     docker run --rm -v "$(dirname "$APP_HOME")":/cleanup alpine rm -rf "/cleanup/$(basename "$APP_HOME")"
   else
