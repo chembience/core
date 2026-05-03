@@ -4,5 +4,6 @@ django>=5
 djangorestframework
 django-extensions
 psycopg2
+whitenoise
 
 

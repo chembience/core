@@ -83,6 +83,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -147,11 +148,24 @@ EOF
     cat <<EOF > appsite/urls.py
 from django.contrib import admin
 from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
     path('simple/', include('simple.urls')),
     path('admin/', admin.site.urls),
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+else:
+    # Fallback for serving media files via Gunicorn if no Nginx is used
+    from django.views.static import serve
+    from django.urls import re_path
+    urlpatterns += [
+        re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
+    ]
 EOF
 
     echo "⚙️ Configuring simple app..."
@@ -186,6 +200,10 @@ EOF
 
     # Go back to /
     cd /
+
+    echo "⚙️ Running collectstatic..."
+    # We need settings.py to be there for collectstatic
+    PYTHONPATH=/home/app/appsite python /home/app/appsite/manage.py collectstatic --noinput
 
     # Initialize /home/app with docker-compose and Dockerfile
     echo "📄 Copying Docker configuration to /home/app..."
