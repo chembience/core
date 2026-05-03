@@ -16,10 +16,12 @@ x-common-environment: &common-env
 
 services:
   django:
-    image: chembience/rdkit-django:${CHEMBIENCE_VERSION}
+    image: chembience/rdkit-django-app:${CHEMBIENCE_IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        build_tag: ${CHEMBIENCE_VERSION:-latest}
     environment:
       <<: *common-env
     depends_on:
@@ -42,10 +44,7 @@ services:
       start_period: 20s
 
   postgres:
-    image: chembience/rdkit-postgres:${CHEMBIENCE_VERSION}
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: chembience/rdkit-postgres:${CHEMBIENCE_VERSION:-latest}
     volumes:
       - ./postgres:/home/postgres
     environment:

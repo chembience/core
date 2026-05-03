@@ -15,7 +15,8 @@ COPY django/django-init /django/django-init
 COPY django/django-manage-py /django/django-manage-py
 COPY .gitignore /
 COPY django/docker-compose.yml /django/docker-compose.yml
-COPY django/Dockerfile /django/Dockerfile
+COPY django/Dockerfile.app /django/Dockerfile
+COPY django/requirements-app.txt /django/requirements.txt
 COPY psql /django/psql
 COPY django/requirements.txt /opt/django
 
