@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# This script passes any arguments to the manage.py script 
+# of the Django instance running inside the Django container.
+
+docker compose exec --user app django python manage.py "$@"

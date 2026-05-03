@@ -1,0 +1,8 @@
+#!/bin/bash
+
+# This script initializes the Django application by running migrations
+# and creating a superuser if it doesn't exist.
+
+./django-manage-py makemigrations
+./django-manage-py migrate
+./django-manage-py createsuperuser --noinput || true
