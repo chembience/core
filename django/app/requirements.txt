@@ -1,0 +1,2 @@
+# Add additional packages for your app here
+# gunicorn, django, etc. are already in the base image
