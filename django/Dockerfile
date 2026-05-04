@@ -1,5 +1,5 @@
 ARG build_tag=latest
-FROM chembience/rdkit:$build_tag
+FROM chembience/core-rdkit:$build_tag
 ARG conda_py
 
 LABEL maintainer="markus.sitzmann@gmail.com"
@@ -15,8 +15,8 @@ COPY django/django-init /django/django-init
 COPY django/django-manage-py /django/django-manage-py
 COPY .gitignore /
 COPY django/docker-compose.yml /django/docker-compose.yml
-COPY django/Dockerfile.app /django/Dockerfile
-COPY django/requirements-app.txt /django/requirements.txt
+COPY django/app/Dockerfile /django/Dockerfile
+COPY django/app/requirements.txt /django/requirements.txt
 COPY psql /django/psql
 COPY django/requirements.txt /opt/django
 
