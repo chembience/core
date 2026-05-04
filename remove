@@ -11,8 +11,12 @@ else
 fi
 
 # Determine what to do
+SKIP_CORE=false
 if [[ "$1" == "--images" ]] || [[ "$1" == "-i" ]]; then
   ACTION="cleanup_all"
+elif [[ "$1" == "--no-core-images" ]] || [[ "$1" == "-c" ]]; then
+  ACTION="cleanup_all"
+  SKIP_CORE=true
 else
   APP_NAME="${1:-app}"
   ACTION="app_removal"
@@ -49,12 +53,25 @@ cleanup_all_chembience() {
     echo "$STOPPED_CONTAINERS" | xargs -r docker rm
   fi
 
-  echo "🗑️ Removing all Chembience-related images..."
-  IMAGES=$(docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' | grep '^chembience/' | awk '{print $2}')
+  if [ "$SKIP_CORE" = true ]; then
+    echo "🗑️ Removing Chembience app images (sparing core images)..."
+    # Exclude: core-rdkit, core-rdkit-postgres, and core-django-app
+    # Note: we use grep -v to exclude the core images
+    IMAGES=$(docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' | \
+      grep '^chembience/' | \
+      grep -v 'chembience/core-rdkit:' | \
+      grep -v 'chembience/core-rdkit-postgres:' | \
+      grep -v 'chembience/core-django-app:' | \
+      awk '{print $2}')
+  else
+    echo "🗑️ Removing all Chembience-related images..."
+    IMAGES=$(docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' | grep '^chembience/' | awk '{print $2}')
+  fi
+
   if [ -n "$IMAGES" ]; then
     echo "$IMAGES" | xargs -r docker rmi -f
   else
-    echo "ℹ️ No Chembience images found."
+    echo "ℹ️ No matching Chembience images found."
   fi
 }
 
