@@ -66,7 +66,7 @@ services:
       start_period: 20s
 
   postgres:
-    image: chembience/core-rdkit-postgres${APP_NAME_BLOCK}:${CHEMBIENCE_VERSION}
+    image: chembience/core-rdkit-postgres:${CHEMBIENCE_VERSION}
     build:
       context: .
       dockerfile: postgres/Dockerfile

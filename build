@@ -84,9 +84,9 @@ export APP_HOME=$(cd "$APP_HOME" && pwd)
 
 echo "📂 Using APP_HOME: $APP_HOME for target: $TARGET (type: $TYPE)"
 
-# Build base image first, then images that depend on it
-docker compose build "${BUILD_FLAGS[@]}" rdkit
-APP_NAME_BLOCK="$APP_NAME_BLOCK" docker compose build "${BUILD_FLAGS[@]}" postgres "$TYPE"
+# Build base images first, then images that depend on them
+docker compose build "${BUILD_FLAGS[@]}" rdkit postgres
+APP_NAME_BLOCK="$APP_NAME_BLOCK" docker compose build "${BUILD_FLAGS[@]}" "$TYPE"
 
 if [ "$QUIT_AFTER_SETUP" = true ]; then
   echo "🚀 Starting containers in setup mode (will quit once healthy)..."

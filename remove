@@ -112,7 +112,9 @@ remove_app_images() {
   # Fixed name pattern
   NAME_PATTERN="^chembience/"
   
-  # Find matching images
+  # Find matching images (excluding generic base images)
+  # Patterns: ^chembience/ (all our images) AND APP_NAME_BLOCK (app specific suffix)
+  # This ensures we don't delete generic images like chembience/core-rdkit or chembience/core-rdkit-postgres
   IMAGES=$(docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' | grep -E -e "$NAME_PATTERN" | grep -E -e "$APP_NAME_BLOCK")
 
   if [ -z "$IMAGES" ]; then
