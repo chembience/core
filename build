@@ -16,32 +16,52 @@ set +o allexport
 export CHEMBIENCE_UID="${CHEMBIENCE_UID:-$(id -u)}"
 export CHEMBIENCE_GID="${CHEMBIENCE_GID:-$(id -g)}"
 
-# Pass through common build flags, e.g. ./build --no-cache
+# Positional arguments and flags
 BUILD_FLAGS=()
 QUIT_AFTER_SETUP=true
-for arg in "$@"; do
-  case "$arg" in
+POSITIONAL_ARGS=()
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
     --no-cache|--pull|--progress=*)
-      BUILD_FLAGS+=("$arg")
+      BUILD_FLAGS+=("$1")
+      shift
       ;;
     --no-quit)
       QUIT_AFTER_SETUP=false
+      shift
       ;;
-    *)
-      echo "Unknown argument: $arg"
+    -*)
+      echo "Unknown argument: $1"
       echo "Supported: --no-cache, --pull, --progress=plain, --no-quit"
       exit 2
       ;;
+    *)
+      POSITIONAL_ARGS+=("$1")
+      shift
+      ;;
   esac
 done
+
+TYPE="${POSITIONAL_ARGS[0]:-django}"
+TARGET="${POSITIONAL_ARGS[1]:-app}"
+
+if [ "$TYPE" != "django" ]; then
+  echo "Error: Only 'django' type is currently supported."
+  exit 1
+fi
+
+export APP_NAME="$TARGET"
+export APP_NAME_BLOCK="-$TARGET"
+export APP_HOME="~/$TARGET"
 
 cleanup() {
   echo "🧹 Cleaning up containers..."
   if [ "$QUIT_AFTER_SETUP" = true ]; then
     # Keep volumes if we just did a setup
-    docker compose down
+    APP_NAME_BLOCK="$APP_NAME_BLOCK" docker compose down
   else
-    docker compose down --volumes
+    APP_NAME_BLOCK="$APP_NAME_BLOCK" docker compose down --volumes
   fi
 }
 trap cleanup EXIT
@@ -51,20 +71,27 @@ if [[ "$APP_HOME" == "~"* ]]; then
   APP_HOME="${APP_HOME/#\~/$HOME}"
 fi
 
+# Check if target directory already exists
+if [ -d "$APP_HOME" ]; then
+  echo "❌ Error: Target directory '$APP_HOME' already exists."
+  echo "Please use a different target name or remove the existing directory first."
+  exit 1
+fi
+
 # Ensure APP_HOME exists locally so Docker doesn't create it as root
 mkdir -p "$APP_HOME"
 export APP_HOME=$(cd "$APP_HOME" && pwd)
 
-echo "📂 Using APP_HOME: $APP_HOME"
+echo "📂 Using APP_HOME: $APP_HOME for target: $TARGET (type: $TYPE)"
 
 # Build base image first, then images that depend on it
 docker compose build "${BUILD_FLAGS[@]}" rdkit
-docker compose build "${BUILD_FLAGS[@]}" postgres django
+APP_NAME_BLOCK="$APP_NAME_BLOCK" docker compose build "${BUILD_FLAGS[@]}" postgres "$TYPE"
 
 if [ "$QUIT_AFTER_SETUP" = true ]; then
   echo "🚀 Starting containers in setup mode (will quit once healthy)..."
-  docker compose up --wait
+  APP_NAME_BLOCK="$APP_NAME_BLOCK" docker compose up --wait
   echo "✅ Everything is setup. Exiting..."
 else
-  docker compose up --abort-on-container-exit
+  APP_NAME_BLOCK="$APP_NAME_BLOCK" docker compose up --abort-on-container-exit
 fi

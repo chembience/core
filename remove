@@ -10,22 +10,99 @@ else
   exit 1
 fi
 
+# Determine what to do
+if [[ "$1" == "--images" ]] || [[ "$1" == "-i" ]]; then
+  ACTION="cleanup_all"
+else
+  APP_NAME="${1:-app}"
+  ACTION="app_removal"
+fi
+
+export APP_HOME="${HOME}/${APP_NAME}"
+export APP_NAME_BLOCK="-${APP_NAME}"
+
+# Function to check if any chembience-related containers are running
+check_running_chembience() {
+  # Look for containers using chembience images or having chembience in the name
+  RUNNING=$(docker ps --format '{{.Image}}' | grep '^chembience/')
+  if [ -n "$RUNNING" ]; then
+    return 0 # Running containers found
+  else
+    return 1 # No running containers found
+  fi
+}
+
+# Function to remove all chembience containers and images
+cleanup_all_chembience() {
+  echo "🔍 Checking for running Chembience apps..."
+  if check_running_chembience; then
+    echo "❌ Error: Chembience-related containers are currently running."
+    echo "Please stop all Chembience applications before removing images."
+    docker ps --filter "ancestor=chembience" --format "table {{.ID}}\t{{.Image}}\t{{.Status}}\t{{.Names}}" | grep 'chembience'
+    exit 1
+  fi
+
+  echo "🗑️ Removing all Chembience-related containers (stopped)..."
+  # Remove stopped containers that have 'chembience' in their name or image
+  STOPPED_CONTAINERS=$(docker ps -a --format '{{.ID}} {{.Image}}' | grep 'chembience' | awk '{print $1}')
+  if [ -n "$STOPPED_CONTAINERS" ]; then
+    echo "$STOPPED_CONTAINERS" | xargs -r docker rm
+  fi
+
+  echo "🗑️ Removing all Chembience-related images..."
+  IMAGES=$(docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' | grep '^chembience/' | awk '{print $2}')
+  if [ -n "$IMAGES" ]; then
+    echo "$IMAGES" | xargs -r docker rmi -f
+  else
+    echo "ℹ️ No Chembience images found."
+  fi
+}
+
+# Function to check if it looks like a chembience app
+is_chembience_app() {
+  if [ ! -d "$APP_HOME" ]; then
+    return 1
+  fi
+  # Check for specific files that define a chembience app
+  if [ -f "$APP_HOME/docker-compose.yml" ] && [ -f "$APP_HOME/.env" ]; then
+    return 0
+  else
+    return 1
+  fi
+}
+
 # Function to remove the application directory
 remove_apps() {
   if [ -d "$APP_HOME" ]; then
+    if ! is_chembience_app; then
+      echo "❌ Error: $APP_HOME does not look like a chembience app (missing docker-compose.yml or .env)."
+      echo "Aborting removal of $APP_HOME."
+      return 1
+    fi
+
+    echo "⚠️  WARNING: You are about to delete the following directory and all its contents:"
+    echo "   - $APP_HOME"
+    echo "   - $APP_HOME/postgres (Database data)"
+    read -p "Are you sure you want to proceed? (y/N): " confirm
+    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+      echo "Aborted."
+      return 1
+    fi
+
     if [ -f "$APP_HOME/docker-compose.yml" ]; then
       echo "🛑 Stopping and removing containers in $APP_HOME..."
-      (cd "$APP_HOME" && docker compose down)
+      (cd "$APP_HOME" && APP_NAME_BLOCK="$APP_NAME_BLOCK" docker compose down)
     fi
     echo "🗑️ Removing $APP_HOME using Docker..."
     docker run --rm -v "$(dirname "$APP_HOME")":/cleanup alpine rm -rf "/cleanup/$(basename "$APP_HOME")"
   else
     echo "ℹ️ $APP_HOME does not exist or is not a directory."
+    return 1
   fi
 }
 
-# Function to remove the images
-remove_images() {
+# Function to remove the images for a specific app
+remove_app_images() {
   # Check if CHEMBIENCE_VERSION is set in the .env file
   if [ -z "$CHEMBIENCE_VERSION" ]; then
     echo "⚠️ CHEMBIENCE_VERSION is not set in the .env file. Skipping image removal."
@@ -35,18 +112,15 @@ remove_images() {
   # Fixed name pattern
   NAME_PATTERN="^chembience/"
   
-  # Find matching images (TAG_PATTERN seems to be CHEMBIENCE_VERSION based on context or just all with chembience/ prefix)
-  # In remove-chembience-images, TAG_PATTERN was used but not defined in the file itself. 
-  # Looking at the previous script, it likely intended to use CHEMBIENCE_VERSION.
-  
-  IMAGES=$(docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' | grep -E "$NAME_PATTERN")
+  # Find matching images
+  IMAGES=$(docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' | grep -E -e "$NAME_PATTERN" | grep -E -e "$APP_NAME_BLOCK")
 
   if [ -z "$IMAGES" ]; then
-    echo "ℹ️ No matching images found for pattern '$NAME_PATTERN'"
+    echo "ℹ️ No matching images found for app '$APP_NAME' (pattern '$NAME_PATTERN' and '$APP_NAME_BLOCK')"
     return
   fi
 
-  echo "🗑️ Removing matching images:"
+  echo "🗑️ Removing matching images for app '$APP_NAME':"
   echo "$IMAGES"
 
   # Remove each matched image
@@ -54,15 +128,13 @@ remove_images() {
 }
 
 # Check for arguments
-case "$1" in
-  "apps")
-    remove_apps
+case "$ACTION" in
+  "cleanup_all")
+    cleanup_all_chembience
     ;;
-  "images")
-    remove_images
-    ;;
-  *)
-    remove_images
-    remove_apps
+  "app_removal")
+    if remove_apps; then
+      remove_app_images
+    fi
     ;;
 esac
