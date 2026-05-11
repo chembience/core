@@ -1,0 +1,2 @@
+# Add additional conda packages for your rdkit app here
+psycopg2

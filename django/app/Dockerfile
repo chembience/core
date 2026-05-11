@@ -1,6 +1,6 @@
 ARG build_tag=latest
 ARG app_name_block
-FROM chembience/core-django${app_name_block}:${build_tag}
+FROM chembience/core-django:${build_tag}
 
 LABEL maintainer="markus.sitzmann@gmail.com"
 

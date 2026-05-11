@@ -18,7 +18,7 @@ x-common-environment: &common-env
 services:
 
   rdkit:
-    image: chembience/core-rdkit:${CHEMBIENCE_VERSION}
+    image: chembience/core-rdkit:${CHEMBIENCE_VERSION:-latest}
     build:
       context: .
       dockerfile: rdkit/Dockerfile

@@ -1,0 +1,22 @@
+#!/bin/bash
+
+# This script opens a live Python shell inside the running rdkit container.
+
+PROJECT_NAME=$(basename "$(pwd)")
+
+# Check if the container is running
+CONTAINER_ID=$(docker ps -q -f "name=${PROJECT_NAME}-rdkit-1" -f "status=running")
+
+if [ -z "$CONTAINER_ID" ]; then
+    # Fallback to just "rdkit" if project-specific name not found
+    CONTAINER_ID=$(docker ps -q -f "name=rdkit" -f "status=running")
+fi
+
+if [ -z "$CONTAINER_ID" ]; then
+    echo "❌ Error: rdkit container is not running."
+    echo "Please start the services with 'docker compose up -d' first."
+    exit 1
+fi
+
+# Execute python inside the container
+docker exec -it --user app "$CONTAINER_ID" python "$@"
