@@ -55,13 +55,13 @@ cleanup_all_chembience() {
 
   if [ "$SKIP_CORE" = true ]; then
     echo "🗑️ Removing Chembience app images (sparing core images)..."
-    # Exclude: core-rdkit, core-rdkit-postgres, and core-django-app
+    # Exclude: core-rdkit, core-rdkit-postgres, and core-django
     # Note: we use grep -v to exclude the core images
     IMAGES=$(docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' | \
       grep '^chembience/' | \
       grep -v 'chembience/core-rdkit:' | \
       grep -v 'chembience/core-rdkit-postgres:' | \
-      grep -v 'chembience/core-django-app:' | \
+      grep -v 'chembience/core-django:' | \
       awk '{print $2}')
   else
     echo "🗑️ Removing all Chembience-related images..."

@@ -20,12 +20,15 @@ services:
   rdkit:
     image: chembience/core-rdkit:${CHEMBIENCE_VERSION}
     build:
-      context: rdkit/
+      context: .
+      dockerfile: rdkit/Dockerfile
       args:
         conda_package: 'condaforge/miniforge3'
         conda_tag: 'latest'
         conda_py: '3.12'
         rdkit_version: '2025.09.3'
+        apt_mirror: ${APT_MIRROR:-}
+        conda_mirror: ${CONDA_MIRROR:-}
     environment:
       <<: *common-env
     working_dir: "/home/app"
@@ -35,6 +38,28 @@ services:
     tty: true
     command: [ "python" ]
 
+  rdkit-app:
+    image: chembience/core-rdkit${APP_NAME_BLOCK}:${CHEMBIENCE_VERSION}
+    build:
+      context: rdkit/app
+      dockerfile: Dockerfile
+      args:
+        build_tag: ${CHEMBIENCE_VERSION}
+        app_name_block: ${APP_NAME_BLOCK:-}
+    environment:
+      <<: *common-env
+      APP_NAME_BLOCK: ${APP_NAME_BLOCK:--app}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ${APP_HOME}:/home/app
+    networks:
+      - app-network
+    working_dir: "/home/app"
+    entrypoint: [ "/docker-entrypoint.sh" ]
+    command: ["tail", "-f", "/dev/null"]
+
   django:
     image: chembience/core-django${APP_NAME_BLOCK}:${CHEMBIENCE_VERSION}
     build:
@@ -42,7 +67,8 @@ services:
       dockerfile: django/Dockerfile
       args:
         build_tag: ${CHEMBIENCE_VERSION}
-        app_name_block: ${APP_NAME_BLOCK:--app}
+        app_name_block: ${APP_NAME_BLOCK:-}
+        conda_mirror: ${CONDA_MIRROR:-}
     environment:
       <<: *common-env
       APP_NAME_BLOCK: ${APP_NAME_BLOCK:--app}
@@ -72,6 +98,8 @@ services:
       dockerfile: postgres/Dockerfile
       args:
         build_tag: ${CHEMBIENCE_VERSION}
+        apt_mirror: ${APT_MIRROR:-}
+        conda_mirror: ${CONDA_MIRROR:-}
     volumes:
       - ${APP_HOME}/postgres:/home/postgres
     environment:

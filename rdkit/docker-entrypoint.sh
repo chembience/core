@@ -37,5 +37,39 @@ id app >/dev/null 2>&1
 
 export PYTHONPATH=/home/app:/share:$PYTHONPATH
 
+# Initialize app context if missing or if it looks like a django app
+if [ ! -f "/home/app/.rdkit-init" ] || [ -d "/home/app/appsite" ]; then
+    # ONLY initialize if we are NOT in a django container.
+    # We can check for existence of /django (copied in django/Dockerfile)
+    if [ -d "/django" ]; then
+        echo "✅ Django container detected, skipping rdkit initialization."
+    else
+        echo "🚀 Initializing /home/app for rdkit app..."
+        cp /opt/rdkit/run /home/app/run
+        cp /opt/rdkit/shell /home/app/shell
+        cp /opt/rdkit/psql /home/app/psql
+        cp /opt/rdkit/docker-compose.yml /home/app/docker-compose.yml
+        cp /opt/rdkit/Dockerfile /home/app/Dockerfile
+        
+        if [ ! -f "/home/app/.env" ]; then
+            cp /opt/rdkit/.env.example /home/app/.env
+        fi
+
+        chmod +x /home/app/run /home/app/shell /home/app/psql
+        
+        # Clean up django-specific files if they exist
+        rm -rf /home/app/appsite /home/app/django-init /home/app/django-manage-py
+        
+        touch /home/app/.rdkit-init
+    fi
+fi
+
+if [ ! -f "/home/app/requirements.txt" ]; then
+    cp /opt/rdkit/app-requirements.txt /home/app/requirements.txt
+fi
+
+# Ensure all files in /home/app are owned by the app user
+chown -R "app:${APP_GROUP}" /home/app
+
 exec gosu app "$@"
 

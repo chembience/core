@@ -22,7 +22,7 @@ services:
       dockerfile: Dockerfile
       args:
         build_tag: ${CHEMBIENCE_VERSION:-latest}
-        app_name_block: ${APP_NAME_BLOCK:--app}
+        app_name_block: ${APP_NAME_BLOCK:-}
     environment:
       <<: *common-env
       APP_NAME_BLOCK: ${APP_NAME_BLOCK:--app}

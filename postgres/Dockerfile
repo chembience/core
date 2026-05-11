@@ -2,10 +2,17 @@ ARG conda_package=condaforge/miniforge3
 ARG conda_tag=latest
 FROM $conda_package:$conda_tag
 ARG conda_py
+ARG apt_mirror
+ARG conda_mirror
 
 LABEL maintainer="markussitzmann@gmail.com "
 
-RUN apt-get --allow-releaseinfo-change update && \
+RUN if [ -n "${apt_mirror}" ]; then \
+        sed -i "s|http://archive.ubuntu.com/ubuntu/|${apt_mirror}|g" /etc/apt/sources.list && \
+        sed -i "s|http://security.ubuntu.com/ubuntu/|${apt_mirror}|g" /etc/apt/sources.list; \
+    fi && \
+    printf 'Acquire::Retries "3";\n' > /etc/apt/apt.conf.d/80-retries && \
+    apt-get --allow-releaseinfo-change update && \
     apt-get -y --no-install-recommends install gosu joe postgresql-client
 
 RUN mkdir -p /home/postgres /opt/python
@@ -18,7 +25,11 @@ COPY postgres/docker-entrypoint.sh /
 COPY postgres/pg_hba.conf /
 COPY postgres/postgresql.conf /
 
-RUN conda config --system --remove-key channels || true && \
+RUN conda config --system --set remote_read_timeout_secs 600.0 && \
+    if [ -n "${conda_mirror}" ]; then \
+        conda config --system --set channel_alias "${conda_mirror}"; \
+    fi && \
+    conda config --system --remove-key channels || true && \
     conda config --system --add channels conda-forge && \
     conda config --system --set channel_priority strict && \
     conda config --system --set show_channel_urls yes && \

@@ -46,8 +46,8 @@ done
 TYPE="${POSITIONAL_ARGS[0]:-django}"
 TARGET="${POSITIONAL_ARGS[1]:-app}"
 
-if [ "$TYPE" != "django" ]; then
-  echo "Error: Only 'django' type is currently supported."
+if [ "$TYPE" != "django" ] && [ "$TYPE" != "rdkit" ]; then
+  echo "Error: Only 'django' and 'rdkit' types are currently supported."
   exit 1
 fi
 
@@ -85,13 +85,26 @@ export APP_HOME=$(cd "$APP_HOME" && pwd)
 echo "📂 Using APP_HOME: $APP_HOME for target: $TARGET (type: $TYPE)"
 
 # Build base images first, then images that depend on them
-docker compose build "${BUILD_FLAGS[@]}" rdkit postgres
-APP_NAME_BLOCK="$APP_NAME_BLOCK" docker compose build "${BUILD_FLAGS[@]}" "$TYPE"
+if [ "$TYPE" = "rdkit" ]; then
+    docker compose build "${BUILD_FLAGS[@]}" rdkit postgres
+    APP_NAME_BLOCK="$APP_NAME_BLOCK" docker compose build "${BUILD_FLAGS[@]}" rdkit-app
+else
+    docker compose build "${BUILD_FLAGS[@]}" rdkit postgres
+    APP_NAME_BLOCK="$APP_NAME_BLOCK" docker compose build "${BUILD_FLAGS[@]}" django
+fi
 
 if [ "$QUIT_AFTER_SETUP" = true ]; then
   echo "🚀 Starting containers in setup mode (will quit once healthy)..."
-  APP_NAME_BLOCK="$APP_NAME_BLOCK" docker compose up --wait
+  if [ "$TYPE" = "rdkit" ]; then
+    APP_NAME_BLOCK="$APP_NAME_BLOCK" docker compose up --wait rdkit-app postgres
+  else
+    APP_NAME_BLOCK="$APP_NAME_BLOCK" docker compose up --wait django postgres
+  fi
   echo "✅ Everything is setup. Exiting..."
 else
-  APP_NAME_BLOCK="$APP_NAME_BLOCK" docker compose up --abort-on-container-exit
+  if [ "$TYPE" = "rdkit" ]; then
+    APP_NAME_BLOCK="$APP_NAME_BLOCK" docker compose up --abort-on-container-exit rdkit-app postgres
+  else
+    APP_NAME_BLOCK="$APP_NAME_BLOCK" docker compose up --abort-on-container-exit django postgres
+  fi
 fi

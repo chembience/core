@@ -215,6 +215,9 @@ EOF
     [ -f "/django/django-manage-py" ] && cp "/django/django-manage-py" "/home/app/django-manage-py" && chmod +x "/home/app/django-manage-py"
     [ -f "/.gitignore" ] && cp "/.gitignore" "/home/app/.gitignore"
 
+    # Clean up rdkit-specific files if they exist
+    rm -f /home/app/run /home/app/shell /home/app/.rdkit-init
+
     # Create .env file in /home/app
     echo "📝 Creating .env file in /home/app..."
     {
