@@ -1,5 +1,5 @@
 ARG build_tag=latest
-ARG app_name_block
+ARG app_name
 FROM chembience/core-rdkit:${build_tag}
 
 LABEL maintainer="markus.sitzmann@gmail.com"

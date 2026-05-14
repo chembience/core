@@ -11,17 +11,18 @@ x-common-environment: &common-env
 
 services:
   rdkit:
-    image: chembience/core-rdkit${APP_NAME_BLOCK}:${CHEMBIENCE_IMAGE_TAG:-latest}
+    image: chembience/core-rdkit${APP_NAME}:${CHEMBIENCE_IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: Dockerfile
       args:
         build_tag: ${CHEMBIENCE_VERSION:-latest}
         apt_mirror: ${APT_MIRROR:-}
+        conda_py: ${CONDA_PY:-3.14}
         conda_mirror: ${CONDA_MIRROR:-}
     environment:
       <<: *common-env
-      APP_NAME_BLOCK: ${APP_NAME_BLOCK:--app}
+      APP_NAME: ${APP_NAME:--app}
     depends_on:
       postgres:
         condition: service_healthy

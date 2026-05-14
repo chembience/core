@@ -25,8 +25,8 @@ services:
       args:
         conda_package: 'condaforge/miniforge3'
         conda_tag: 'latest'
-        conda_py: '3.12'
-        rdkit_version: '2025.09.3'
+        conda_py: ${CONDA_PY:-3.14}
+        rdkit_version: ${RDKIT_VERSION:-2026.03.2}
         apt_mirror: ${APT_MIRROR:-}
         conda_mirror: ${CONDA_MIRROR:-}
     environment:
@@ -39,16 +39,16 @@ services:
     command: [ "python" ]
 
   rdkit-app:
-    image: chembience/core-rdkit${APP_NAME_BLOCK}:${CHEMBIENCE_VERSION}
+    image: chembience/core-rdkit${APP_NAME}:${CHEMBIENCE_VERSION}
     build:
       context: rdkit/app
       dockerfile: Dockerfile
       args:
         build_tag: ${CHEMBIENCE_VERSION}
-        app_name_block: ${APP_NAME_BLOCK:-}
+        app_name: ${APP_NAME:-}
     environment:
       <<: *common-env
-      APP_NAME_BLOCK: ${APP_NAME_BLOCK:--app}
+      APP_NAME: ${APP_NAME:--app}
     depends_on:
       postgres:
         condition: service_healthy
@@ -67,11 +67,12 @@ services:
       dockerfile: django/Dockerfile
       args:
         build_tag: ${CHEMBIENCE_VERSION}
-        app_name_block: ${APP_NAME_BLOCK:-}
+        app_name: ${APP_NAME:-}
+        conda_py: ${CONDA_PY:-3.14}
         conda_mirror: ${CONDA_MIRROR:-}
     environment:
       <<: *common-env
-      APP_NAME_BLOCK: ${APP_NAME_BLOCK:--app}
+      APP_NAME: ${APP_NAME:--app}
     depends_on:
       postgres:
         condition: service_healthy
@@ -99,6 +100,7 @@ services:
       args:
         build_tag: ${CHEMBIENCE_VERSION}
         apt_mirror: ${APT_MIRROR:-}
+        conda_py: ${CONDA_PY:-3.14}
         conda_mirror: ${CONDA_MIRROR:-}
     volumes:
       - ${APP_HOME}/postgres:/home/postgres

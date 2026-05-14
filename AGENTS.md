@@ -17,6 +17,7 @@ Chembience is a specialized platform for chemical informatics. It uses Django fo
 - `core/rdkit/requirements.txt`: Python dependencies for the RDKit service.
 
 ## Interaction Guidelines
+- **Line Endings**: All files MUST use Linux line endings (`LF`). Windows line endings (`CRLF`) can cause issues in Docker containers and shell scripts.
 - When modifying Django code, ensure migrations are handled.
 - Docker is the primary execution environment. Assume commands should be run via `docker compose exec`.
 - Respect the Cheminformatics domain: data often involves SMILES strings, InChI, and complex molecular representations.

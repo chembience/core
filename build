@@ -51,17 +51,17 @@ if [ "$TYPE" != "django" ] && [ "$TYPE" != "rdkit" ]; then
   exit 1
 fi
 
-export APP_NAME="$TARGET"
-export APP_NAME_BLOCK="-$TARGET"
+export APP_ID="$TARGET"
+export APP_NAME="-$TARGET"
 export APP_HOME="~/$TARGET"
 
 cleanup() {
   echo "🧹 Cleaning up containers..."
   if [ "$QUIT_AFTER_SETUP" = true ]; then
     # Keep volumes if we just did a setup
-    APP_NAME_BLOCK="$APP_NAME_BLOCK" docker compose down
+    APP_NAME="$APP_NAME" docker compose down
   else
-    APP_NAME_BLOCK="$APP_NAME_BLOCK" docker compose down --volumes
+    APP_NAME="$APP_NAME" docker compose down --volumes
   fi
 }
 trap cleanup EXIT
@@ -87,24 +87,24 @@ echo "📂 Using APP_HOME: $APP_HOME for target: $TARGET (type: $TYPE)"
 # Build base images first, then images that depend on them
 if [ "$TYPE" = "rdkit" ]; then
     docker compose build "${BUILD_FLAGS[@]}" rdkit postgres
-    APP_NAME_BLOCK="$APP_NAME_BLOCK" docker compose build "${BUILD_FLAGS[@]}" rdkit-app
+    APP_NAME="$APP_NAME" docker compose build "${BUILD_FLAGS[@]}" rdkit-app
 else
     docker compose build "${BUILD_FLAGS[@]}" rdkit postgres
-    APP_NAME_BLOCK="$APP_NAME_BLOCK" docker compose build "${BUILD_FLAGS[@]}" django
+    APP_NAME="$APP_NAME" docker compose build "${BUILD_FLAGS[@]}" django
 fi
 
 if [ "$QUIT_AFTER_SETUP" = true ]; then
   echo "🚀 Starting containers in setup mode (will quit once healthy)..."
   if [ "$TYPE" = "rdkit" ]; then
-    APP_NAME_BLOCK="$APP_NAME_BLOCK" docker compose up --wait rdkit-app postgres
+    APP_NAME="$APP_NAME" docker compose up --wait rdkit-app postgres
   else
-    APP_NAME_BLOCK="$APP_NAME_BLOCK" docker compose up --wait django postgres
+    APP_NAME="$APP_NAME" docker compose up --wait django postgres
   fi
   echo "✅ Everything is setup. Exiting..."
 else
   if [ "$TYPE" = "rdkit" ]; then
-    APP_NAME_BLOCK="$APP_NAME_BLOCK" docker compose up --abort-on-container-exit rdkit-app postgres
+    APP_NAME="$APP_NAME" docker compose up --abort-on-container-exit rdkit-app postgres
   else
-    APP_NAME_BLOCK="$APP_NAME_BLOCK" docker compose up --abort-on-container-exit django postgres
+    APP_NAME="$APP_NAME" docker compose up --abort-on-container-exit django postgres
   fi
 fi

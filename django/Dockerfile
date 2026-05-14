@@ -2,7 +2,7 @@ ARG build_tag=latest
 FROM chembience/core-rdkit:$build_tag
 ARG conda_py
 ARG conda_mirror
-ARG app_name_block
+ARG app_name
 
 LABEL maintainer="markus.sitzmann@gmail.com"
 

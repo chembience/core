@@ -18,12 +18,12 @@ elif [[ "$1" == "--no-core-images" ]] || [[ "$1" == "-c" ]]; then
   ACTION="cleanup_all"
   SKIP_CORE=true
 else
-  APP_NAME="${1:-app}"
+  APP_ID="${1:-app}"
   ACTION="app_removal"
 fi
 
-export APP_HOME="${HOME}/${APP_NAME}"
-export APP_NAME_BLOCK="-${APP_NAME}"
+export APP_HOME="${HOME}/${APP_ID}"
+export APP_NAME="-${APP_ID}"
 
 # Function to check if any chembience-related containers are running
 check_running_chembience() {
@@ -108,7 +108,7 @@ remove_apps() {
 
     if [ -f "$APP_HOME/docker-compose.yml" ]; then
       echo "🛑 Stopping and removing containers in $APP_HOME..."
-      (cd "$APP_HOME" && APP_NAME_BLOCK="$APP_NAME_BLOCK" docker compose down)
+      (cd "$APP_HOME" && APP_NAME="$APP_NAME" docker compose down)
     fi
     echo "🗑️ Removing $APP_HOME using Docker..."
     docker run --rm -v "$(dirname "$APP_HOME")":/cleanup alpine rm -rf "/cleanup/$(basename "$APP_HOME")"
@@ -130,16 +130,16 @@ remove_app_images() {
   NAME_PATTERN="^chembience/"
   
   # Find matching images (excluding generic base images)
-  # Patterns: ^chembience/ (all our images) AND APP_NAME_BLOCK (app specific suffix)
+  # Patterns: ^chembience/ (all our images) AND APP_NAME (app specific suffix)
   # This ensures we don't delete generic images like chembience/core-rdkit or chembience/core-rdkit-postgres
-  IMAGES=$(docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' | grep -E -e "$NAME_PATTERN" | grep -E -e "$APP_NAME_BLOCK")
+  IMAGES=$(docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' | grep -E -e "$NAME_PATTERN" | grep -E -e "$APP_NAME")
 
   if [ -z "$IMAGES" ]; then
-    echo "ℹ️ No matching images found for app '$APP_NAME' (pattern '$NAME_PATTERN' and '$APP_NAME_BLOCK')"
+    echo "ℹ️ No matching images found for app '$APP_ID' (pattern '$NAME_PATTERN' and '$APP_NAME')"
     return
   fi
 
-  echo "🗑️ Removing matching images for app '$APP_NAME':"
+  echo "🗑️ Removing matching images for app '$APP_ID':"
   echo "$IMAGES"
 
   # Remove each matched image
