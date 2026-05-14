@@ -1,0 +1,23 @@
+# Chembience Core
+
+> Fully reworked version of Chembience: a platform for cheminformatics and chemical data management.
+
+## Project Structure
+
+- `core/django`: Django web application service.
+- `core/rdkit`: RDKit informatics service.
+- `core/postgres`: PostgreSQL database service with cheminformatics extensions.
+
+## Key Technologies
+
+- Python 3.12
+- Django
+- RDKit
+- Docker & Docker Compose
+- PostgreSQL
+
+## Documentation
+
+- [AGENTS.md](AGENTS.md): Detailed project structure and agent-specific instructions.
+- [CLAUDE.md](CLAUDE.md): Development guide, build commands, and testing procedures.
+- [README.md](README.md): General project overview.

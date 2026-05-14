@@ -61,7 +61,7 @@ services:
     command: ["tail", "-f", "/dev/null"]
 
   django:
-    image: chembience/core-django${APP_NAME_BLOCK}:${CHEMBIENCE_VERSION}
+    image: chembience/core-django:${CHEMBIENCE_VERSION}
     build:
       context: .
       dockerfile: django/Dockerfile
