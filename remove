@@ -48,11 +48,16 @@ if [ -z "${ACTION:-}" ]; then
 fi
 
 if [ -n "$CUSTOM_DIR" ]; then
-  export APP_HOME="$CUSTOM_DIR"
+  export APP_HOME="$CUSTOM_DIR/${APP_ID:-app}"
 else
-  export APP_HOME="${HOME}/${APP_ID:-app}"
+  export APP_HOME="~/${APP_ID:-app}"
 fi
 export APP_NAME="-${APP_ID:-app}"
+
+# Expand APP_HOME if it starts with ~
+if [[ "$APP_HOME" == "~"* ]]; then
+  APP_HOME="${APP_HOME/#\~/$HOME}"
+fi
 
 # Function to check if any chembience-related containers are running
 check_running_chembience() {
