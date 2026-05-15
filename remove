@@ -12,18 +12,47 @@ fi
 
 # Determine what to do
 SKIP_CORE=false
-if [[ "$1" == "--images" ]] || [[ "$1" == "-i" ]]; then
-  ACTION="cleanup_all"
-elif [[ "$1" == "--no-core-images" ]] || [[ "$1" == "-c" ]]; then
-  ACTION="cleanup_all"
-  SKIP_CORE=true
-else
-  APP_ID="${1:-app}"
+CUSTOM_DIR=""
+POSITIONAL_ARGS=()
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --images|-i)
+      ACTION="cleanup_all"
+      shift
+      ;;
+    --no-core-images|-c)
+      ACTION="cleanup_all"
+      SKIP_CORE=true
+      shift
+      ;;
+    --dir|-d)
+      CUSTOM_DIR="$2"
+      shift 2
+      ;;
+    -*)
+      echo "Unknown argument: $1"
+      echo "Supported: --images, -i, --no-core-images, -c, --dir, -d"
+      exit 2
+      ;;
+    *)
+      POSITIONAL_ARGS+=("$1")
+      shift
+      ;;
+  esac
+done
+
+if [ -z "${ACTION:-}" ]; then
+  APP_ID="${POSITIONAL_ARGS[0]:-app}"
   ACTION="app_removal"
 fi
 
-export APP_HOME="${HOME}/${APP_ID}"
-export APP_NAME="-${APP_ID}"
+if [ -n "$CUSTOM_DIR" ]; then
+  export APP_HOME="$CUSTOM_DIR"
+else
+  export APP_HOME="${HOME}/${APP_ID:-app}"
+fi
+export APP_NAME="-${APP_ID:-app}"
 
 # Function to check if any chembience-related containers are running
 check_running_chembience() {

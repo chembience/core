@@ -31,9 +31,13 @@ while [[ $# -gt 0 ]]; do
       QUIT_AFTER_SETUP=false
       shift
       ;;
+    --dir|-d)
+      CUSTOM_DIR="$2"
+      shift 2
+      ;;
     -*)
       echo "Unknown argument: $1"
-      echo "Supported: --no-cache, --pull, --progress=plain, --no-quit"
+      echo "Supported: --no-cache, --pull, --progress=plain, --no-quit, --dir, -d"
       exit 2
       ;;
     *)
@@ -53,7 +57,11 @@ fi
 
 export APP_ID="$TARGET"
 export APP_NAME="-$TARGET"
-export APP_HOME="~/$TARGET"
+if [ -n "${CUSTOM_DIR:-}" ]; then
+  export APP_HOME="$CUSTOM_DIR"
+else
+  export APP_HOME="~/$TARGET"
+fi
 
 cleanup() {
   echo "🧹 Cleaning up containers..."
