@@ -12,6 +12,15 @@ set -o allexport
 source .env
 set +o allexport
 
+# Check if POSTGRES_PORT is already in use
+PORT_TO_CHECK="${POSTGRES_PORT:-5433}"
+PORT_BUSY=false
+if netstat -tuln | grep -q ":$PORT_TO_CHECK "; then
+  echo "⚠️ Warning: Port $PORT_TO_CHECK is already in use."
+  echo "The build will continue, but starting containers might fail if they can't bind to this port."
+  PORT_BUSY=true
+fi
+
 # Match container UID/GID to current user (WSL2/macOS/Linux)
 export CHEMBIENCE_UID="${CHEMBIENCE_UID:-$(id -u)}"
 export CHEMBIENCE_GID="${CHEMBIENCE_GID:-$(id -g)}"
@@ -103,16 +112,34 @@ fi
 
 if [ "$QUIT_AFTER_SETUP" = true ]; then
   echo "🚀 Starting containers in setup mode (will quit once healthy)..."
-  if [ "$TYPE" = "rdkit" ]; then
-    APP_NAME="$APP_NAME" docker compose up --wait rdkit-app postgres
+  if [ "$PORT_BUSY" = true ]; then
+    # Fail-safe mode: try to start, but don't exit if it fails
+    if [ "$TYPE" = "rdkit" ]; then
+      APP_NAME="$APP_NAME" docker compose up --wait rdkit-app postgres || echo "⚠️ Warning: Failed to start containers (likely due to port conflict)."
+    else
+      APP_NAME="$APP_NAME" docker compose up --wait django postgres || echo "⚠️ Warning: Failed to start containers (likely due to port conflict)."
+    fi
   else
-    APP_NAME="$APP_NAME" docker compose up --wait django postgres
+    if [ "$TYPE" = "rdkit" ]; then
+      APP_NAME="$APP_NAME" docker compose up --wait rdkit-app postgres
+    else
+      APP_NAME="$APP_NAME" docker compose up --wait django postgres
+    fi
   fi
   echo "✅ Everything is setup. Exiting..."
 else
-  if [ "$TYPE" = "rdkit" ]; then
-    APP_NAME="$APP_NAME" docker compose up --abort-on-container-exit rdkit-app postgres
+  if [ "$PORT_BUSY" = true ]; then
+    # Fail-safe mode: try to start, but don't exit if it fails
+    if [ "$TYPE" = "rdkit" ]; then
+      APP_NAME="$APP_NAME" docker compose up --abort-on-container-exit rdkit-app postgres || echo "⚠️ Warning: Failed to start containers."
+    else
+      APP_NAME="$APP_NAME" docker compose up --abort-on-container-exit django postgres || echo "⚠️ Warning: Failed to start containers."
+    fi
   else
-    APP_NAME="$APP_NAME" docker compose up --abort-on-container-exit django postgres
+    if [ "$TYPE" = "rdkit" ]; then
+      APP_NAME="$APP_NAME" docker compose up --abort-on-container-exit rdkit-app postgres
+    else
+      APP_NAME="$APP_NAME" docker compose up --abort-on-container-exit django postgres
+    fi
   fi
 fi

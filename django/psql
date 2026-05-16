@@ -1,0 +1,20 @@
+#!/bin/bash
+
+# This script opens a psql shell to the database 
+# of the Django instance running inside the postgres container.
+
+# Load environment variables from .env if it exists
+if [ -f .env ]; then
+  set -o allexport
+  source .env
+  set +o allexport
+fi
+
+# Set defaults if not defined in .env
+POSTGRES_USER=${POSTGRES_USER:-chembience}
+POSTGRES_NAME=${POSTGRES_NAME:-chembience}
+POSTGRES_PORT=${POSTGRES_PORT:-5433}
+
+echo "Connecting to database '$POSTGRES_NAME' as user '$POSTGRES_USER'..."
+
+docker compose exec -e PGPASSWORD="$POSTGRES_PASSWORD" postgres psql -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d "$POSTGRES_NAME" "$@"
