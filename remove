@@ -12,17 +12,18 @@ fi
 
 # Determine what to do
 SKIP_CORE=false
+CLEANUP_IMAGES=false
 CUSTOM_DIR=""
 POSITIONAL_ARGS=()
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --images|-i)
-      ACTION="cleanup_all"
+      CLEANUP_IMAGES=true
       shift
       ;;
     --no-core-images|-c)
-      ACTION="cleanup_all"
+      CLEANUP_IMAGES=true
       SKIP_CORE=true
       shift
       ;;
@@ -42,10 +43,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [ -z "${ACTION:-}" ]; then
-  APP_ID="${POSITIONAL_ARGS[0]:-app}"
-  ACTION="app_removal"
-fi
+APP_ID="${POSITIONAL_ARGS[0]:-}"
 
 if [ -n "$CUSTOM_DIR" ]; then
   export APP_HOME="$CUSTOM_DIR/${APP_ID:-app}"
@@ -180,14 +178,29 @@ remove_app_images() {
   echo "$IMAGES" | awk '{print $2}' | xargs -r docker rmi -f
 }
 
-# Check for arguments
-case "$ACTION" in
-  "cleanup_all")
-    cleanup_all_chembience
-    ;;
-  "app_removal")
+# Execution sequence
+# 1. App removal (if app name provided)
+if [ -n "$APP_ID" ]; then
+  if remove_apps; then
+    remove_app_images
+  fi
+elif [ "$CLEANUP_IMAGES" = false ]; then
+    # Default behavior if no app name and no -i: try to remove default 'app'
+    APP_ID="app"
+    export APP_NAME="-app"
+    # Re-evaluate APP_HOME for default 'app'
+    if [ -n "$CUSTOM_DIR" ]; then
+      export APP_HOME="$CUSTOM_DIR/app"
+    else
+      export APP_HOME="$HOME/app"
+    fi
+
     if remove_apps; then
       remove_app_images
     fi
-    ;;
-esac
+fi
+
+# 2. Global image cleanup (if -i or -c provided)
+if [ "$CLEANUP_IMAGES" = true ]; then
+  cleanup_all_chembience
+fi

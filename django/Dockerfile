@@ -20,7 +20,13 @@ COPY django/docker-compose.yml /django/docker-compose.yml
 COPY django/app/Dockerfile /django/Dockerfile
 COPY django/app/requirements.txt /django/requirements.txt
 COPY psql /django/psql
+COPY django/prod /django/prod
 COPY django/requirements.txt /opt/django
+
+# Copy application code if it exists locally during build
+# When running 'prod' script, this will copy the current directory (app context) into the image
+COPY . /home/app/
+RUN chown -R 1000:1000 /home/app
 
 ENV PATH=/opt/conda/envs/chembience/bin:/opt/conda/bin:$PATH
 

@@ -213,6 +213,7 @@ EOF
     [ -f "/django/psql" ] && cp "/django/psql" "/home/app/psql" && chmod +x "/home/app/psql"
     [ -f "/django/django-init" ] && cp "/django/django-init" "/home/app/django-init" && chmod +x "/home/app/django-init"
     [ -f "/django/django-manage-py" ] && cp "/django/django-manage-py" "/home/app/django-manage-py" && chmod +x "/home/app/django-manage-py"
+    [ -f "/django/prod" ] && cp "/django/prod" "/home/app/prod" && chmod +x "/home/app/prod"
     [ -f "/.gitignore" ] && cp "/.gitignore" "/home/app/.gitignore"
 
     # Clean up rdkit-specific files if they exist
@@ -231,7 +232,7 @@ EOF
         echo "CHEMBIENCE_UID=${CHEMBIENCE_UID}"
         echo "CHEMBIENCE_GID=${CHEMBIENCE_GID}"
         echo "DJANGO_VIRTUAL_HOSTNAME=${DJANGO_VIRTUAL_HOSTNAME}"
-        echo "DJANGO_CONNECTION_PORT=${DJANGO_CONNECTION_PORT}"
+        echo "DJANGO_CONNECTION_PORT=${DJANGO_CONNECTION_PORT:-8001}"
         echo "DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:-$(openssl rand -base64 32 2>/dev/null || echo 'django-insecure-default-change-me-in-production')}"
         echo "DJANGO_DEBUG=${DJANGO_DEBUG:-True}"
         echo "DJANGO_SUPERUSER_USERNAME=${DJANGO_SUPERUSER_USERNAME}"
@@ -241,7 +242,7 @@ EOF
         echo "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}"
         echo "POSTGRES_NAME=${POSTGRES_NAME}"
         echo "POSTGRES_HOST=${POSTGRES_HOST}"
-        echo "POSTGRES_PORT=${POSTGRES_PORT}"
+        echo "POSTGRES_PORT=${POSTGRES_PORT:-5433}"
     } > /home/app/.env
 
     # Create a README.md in /home/app

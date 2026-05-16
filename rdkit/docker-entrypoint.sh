@@ -67,7 +67,7 @@ if [ ! -f "/home/app/.rdkit-init" ] || [ -d "/home/app/appsite" ]; then
             echo "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}"
             echo "POSTGRES_NAME=${POSTGRES_NAME:-chembience}"
             echo "POSTGRES_HOST=${POSTGRES_HOST:-postgres}"
-            echo "POSTGRES_PORT=${POSTGRES_PORT:-5432}"
+            echo "POSTGRES_PORT=${POSTGRES_PORT:-5433}"
         } > /home/app/.env
 
         chmod +x /home/app/run /home/app/shell /home/app/psql

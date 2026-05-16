@@ -14,6 +14,7 @@ fi
 POSTGRES_USER=${POSTGRES_USER:-chembience}
 POSTGRES_NAME=${POSTGRES_NAME:-chembience}
 POSTGRES_HOST=${POSTGRES_HOST:-postgres}
+POSTGRES_PORT=${POSTGRES_PORT:-5433}
 
 # Identify the project name to find the correct container
 # docker-compose by default uses the directory name as project prefix
@@ -33,7 +34,7 @@ if [ -z "$CONTAINER_ID" ]; then
     exit 1
 fi
 
-echo "Connecting to database '$POSTGRES_NAME' as user '$POSTGRES_USER'..."
+echo "Connecting to database '$POSTGRES_NAME' on port '$POSTGRES_PORT' as user '$POSTGRES_USER'..."
 
 # Execute psql inside the container
-docker exec -it -e PGPASSWORD="$POSTGRES_PASSWORD" "$CONTAINER_ID" psql -U "$POSTGRES_USER" -d "$POSTGRES_NAME" "$@"
+docker exec -it -e PGPASSWORD="$POSTGRES_PASSWORD" "$CONTAINER_ID" psql -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d "$POSTGRES_NAME" "$@"

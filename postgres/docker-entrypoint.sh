@@ -51,24 +51,24 @@ if [ ! -d "/home/postgres/postgres_data" ]; then
     fi
 
     echo "🚀 Starting temporary server to configure initial DB..."
-    gosu app pg_ctl -D "/home/postgres/postgres_data" -o "-c listen_addresses='localhost'" -w start
+    gosu app pg_ctl -D "/home/postgres/postgres_data" -o "-c listen_addresses='localhost' -p 5433" -w start
 
     echo "USER $POSTGRES_USER"
     echo "NAME $POSTGRES_NAME"
 
     echo "📦 Creating user/database..."
-    gosu app psql --dbname=postgres <<-EOSQL
+    gosu app psql -p 5433 --dbname=postgres <<-EOSQL
         CREATE USER $POSTGRES_USER WITH PASSWORD '$POSTGRES_PASSWORD';
         CREATE DATABASE $POSTGRES_NAME OWNER $POSTGRES_USER;
 EOSQL
 
     echo "📦 Initializing RDKit extension..."
-    gosu app psql --dbname=$POSTGRES_NAME <<-EOSQL
+    gosu app psql -p 5433 --dbname=$POSTGRES_NAME <<-EOSQL
         CREATE EXTENSION IF NOT EXISTS rdkit;
 EOSQL
 
     echo "📦 Granting privileges..."
-    gosu app psql --dbname=$POSTGRES_NAME <<-EOSQL
+    gosu app psql -p 5433 --dbname=$POSTGRES_NAME <<-EOSQL
         GRANT ALL ON SCHEMA public TO $POSTGRES_USER;
 EOSQL
 
