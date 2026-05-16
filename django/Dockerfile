@@ -34,7 +34,11 @@ RUN conda config --system --set remote_read_timeout_secs 600.0 && \
     if [ -n "${conda_mirror}" ]; then \
         conda config --system --set channel_alias "${conda_mirror}"; \
     fi && \
-    conda install -n chembience --yes --file /opt/django/requirements.txt && \
+    if grep -qE '^\s*[^#\s]' /opt/django/requirements.txt; then \
+        conda run -n chembience python -m pip install --no-cache-dir -r /opt/django/requirements.txt; \
+    else \
+        echo "requirements.txt is empty; skipping pip install"; \
+    fi && \
     conda clean -afy && \
     find /opt/conda/ -follow -type f -name '*.a' -delete && \
     find /opt/conda/ -follow -type f -name '*.pyc' -delete && \

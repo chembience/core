@@ -20,6 +20,9 @@ RUN if [ -n "${apt_mirror}" ]; then \
     apt-get -y --no-install-recommends install \
       gosu \
       postgresql-client \
+      libpq-dev \
+      build-essential \
+      python3-dev \
       telnet \
       curl && \
     rm -rf /var/lib/apt/lists/*

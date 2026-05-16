@@ -3,7 +3,8 @@ sqlparse
 django>=5
 djangorestframework
 django-extensions
-psycopg2
+psycopg2-binary
 whitenoise
+git+https://github.com/rdkit/django-rdkit.git
 
 

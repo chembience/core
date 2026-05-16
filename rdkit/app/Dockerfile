@@ -7,9 +7,9 @@ LABEL maintainer="markus.sitzmann@gmail.com"
 COPY requirements.txt /opt/python/app-requirements.txt
 
 RUN if grep -qE '^\s*[^#\s]' /opt/python/app-requirements.txt; then \
-        conda install -n chembience --yes --file /opt/python/app-requirements.txt; \
+        conda run -n chembience python -m pip install --no-cache-dir -r /opt/python/app-requirements.txt; \
     else \
-        echo "requirements.txt is empty; skipping conda install"; \
+        echo "requirements.txt is empty; skipping pip install"; \
     fi && \
     conda clean -afy && \
     find /opt/conda/ -follow -type f -name '*.a' -delete && \

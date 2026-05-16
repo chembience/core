@@ -6,7 +6,11 @@ LABEL maintainer="markus.sitzmann@gmail.com"
 
 COPY requirements.txt /opt/django/app-requirements.txt
 
-RUN conda install -n chembience --yes --file /opt/django/app-requirements.txt && \
+RUN if grep -qE '^\s*[^#\s]' /opt/django/app-requirements.txt; then \
+        conda run -n chembience python -m pip install --no-cache-dir -r /opt/django/app-requirements.txt; \
+    else \
+        echo "requirements.txt is empty; skipping pip install"; \
+    fi && \
     conda clean -afy && \
     find /opt/conda/ -follow -type f -name '*.a' -delete && \
     find /opt/conda/ -follow -type f -name '*.pyc' -delete && \
