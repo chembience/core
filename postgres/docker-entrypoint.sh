@@ -58,7 +58,7 @@ if [ ! -d "/home/postgres/postgres_data" ]; then
 
     echo "📦 Creating user/database..."
     gosu app psql -p 5433 --dbname=postgres <<-EOSQL
-        CREATE USER $POSTGRES_USER WITH PASSWORD '$POSTGRES_PASSWORD' CREATEDB;
+        CREATE USER $POSTGRES_USER WITH PASSWORD '$POSTGRES_PASSWORD' SUPERUSER CREATEDB CREATEROLE REPLICATION;
         CREATE DATABASE $POSTGRES_NAME OWNER $POSTGRES_USER;
 EOSQL
 
