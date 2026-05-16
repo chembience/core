@@ -1,6 +1,6 @@
 gunicorn
 sqlparse
-django>=5
+django<6
 djangorestframework
 django-extensions
 psycopg2-binary

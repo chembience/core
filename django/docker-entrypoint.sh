@@ -35,18 +35,56 @@ fi
 # Safety check: don't try gosu if user still doesn't exist
 id app >/dev/null 2>&1
 
-# Initialize /home/app if it's empty or missing appsite/manage.py
+# Ensure correct ownership and permissions for /home/app
+echo "🔧 Ensuring correct ownership of /home/app..."
+# We use a trap to ensure ownership is fixed even on failure
+cleanup_ownership() {
+    echo "🧹 Finalizing ownership of /home/app..."
+    chown -R app:"$APP_GROUP" /home/app
+}
+trap cleanup_ownership EXIT
+
+chown -R app:"$APP_GROUP" /home/app
+
+# Initialize /home/app with helper scripts and Docker configuration
+# We do this EVERY time to ensure helper scripts are present even if the volume mount wiped them
+echo "📄 Syncing internal configuration files to /home/app..."
+# These files are baked into the image in the /django/ directory
+# Use gosu to copy them as the app user if possible, or chown after
+[ -f "/django/docker-compose.yml" ] && cp "/django/docker-compose.yml" "/home/app/docker-compose.yml"
+[ -f "/django/Dockerfile" ] && cp "/django/Dockerfile" "/home/app/Dockerfile"
+[ -f "/django/requirements.txt" ] && cp "/django/requirements.txt" "/home/app/requirements.txt"
+[ -f "/django/psql" ] && cp "/django/psql" "/home/app/psql" && chmod +x "/home/app/psql" && python3 -c "import os; f='/home/app/psql'; content=open(f, 'rb').read().replace(b'\r\n', b'\n'); open(f, 'wb').write(content)"
+[ -f "/django/django-init" ] && cp "/django/django-init" "/home/app/django-init" && chmod +x "/home/app/django-init" && python3 -c "import os; f='/home/app/django-init'; content=open(f, 'rb').read().replace(b'\r\n', b'\n'); open(f, 'wb').write(content)"
+[ -f "/django/django-manage-py" ] && cp "/django/django-manage-py" "/home/app/django-manage-py" && chmod +x "/home/app/django-manage-py" && python3 -c "import os; f='/home/app/django-manage-py'; content=open(f, 'rb').read().replace(b'\r\n', b'\n'); open(f, 'wb').write(content)"
+[ -f "/django/prod" ] && cp "/django/prod" "/home/app/prod" && chmod +x "/home/app/prod" && python3 -c "import os; f='/home/app/prod'; content=open(f, 'rb').read().replace(b'\r\n', b'\n'); open(f, 'wb').write(content)"
+[ -f "/.gitignore" ] && cp "/.gitignore" "/home/app/.gitignore"
+
+chown -R app:"$APP_GROUP" /home/app
+
+# Initialize /home/app/appsite if it's empty or missing manage.py
 if [ ! -f "/home/app/appsite/manage.py" ]; then
     echo "🚀 Initializing /home/app/appsite using django-admin..."
     # Ensure /home/app/appsite exists
     mkdir -p /home/app/appsite
+    chown app:"$APP_GROUP" /home/app/appsite
+    
+    # Run initialization as the app user to avoid permission issues later
+    gosu app bash <<EOF
+    set -x
+    set -e
     cd /home/app/appsite
-
-    # Initialize Django project
-    django-admin startproject appsite .
-
+    # Initialize Django project if not already present
+    if [ ! -f "manage.py" ]; then
+        django-admin startproject appsite .
+    fi
     # Initialize 'simple' app
-    python manage.py startapp simple
+    if [ ! -d "simple" ]; then
+        python manage.py startapp simple
+        # Ensure we have a urls.py in the simple app
+        touch simple/urls.py
+    fi
+EOF
 
     echo "⚙️ Configuring Django settings..."
     # Update settings.py
@@ -55,7 +93,8 @@ if [ ! -f "/home/app/appsite/manage.py" ]; then
     # 3. Add shared path to sys.path
     # 4. Set other settings like ALLOWED_HOSTS, SECRET_KEY, DEBUG, etc.
     
-    cat <<EOF > appsite/settings.py
+    # Create the files as root but ensure they are in the right place and then chown
+    cat <<EOF > /home/app/appsite/appsite/settings.py
 """
 Django settings for appsite project.
 """
@@ -79,6 +118,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django_rdkit',
 ]
 
 MIDDLEWARE = [
@@ -114,7 +154,7 @@ WSGI_APPLICATION = 'appsite.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
         'NAME': os.environ['POSTGRES_NAME'],
         'USER':  os.environ['POSTGRES_USER'],
         'PASSWORD': os.environ['POSTGRES_PASSWORD'],
@@ -145,7 +185,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 EOF
 
     echo "⚙️ Configuring appsite/urls.py..."
-    cat <<EOF > appsite/urls.py
+    cat <<EOF > /home/app/appsite/appsite/urls.py
 from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
@@ -169,7 +209,7 @@ else:
 EOF
 
     echo "⚙️ Configuring simple app..."
-    cat <<EOF > simple/urls.py
+    cat <<EOF > /home/app/appsite/simple/urls.py
 from django.urls import path
 from . import views
 
@@ -178,7 +218,7 @@ urlpatterns = [
 ]
 EOF
 
-    cat <<EOF > simple/views.py
+    cat <<EOF > /home/app/appsite/simple/views.py
 from django.http import HttpResponse
 from rdkit import Chem
 
@@ -190,7 +230,7 @@ def resolver(request, smiles):
         return HttpResponse("Invalid SMILES", status=400)
 EOF
 
-    cat <<EOF > simple/models.py
+    cat <<EOF > /home/app/appsite/simple/models.py
 from django.db import models
 
 class Simple(models.Model):
@@ -203,23 +243,24 @@ EOF
 
     echo "⚙️ Running collectstatic..."
     # We need settings.py to be there for collectstatic
-    PYTHONPATH=/home/app/appsite python /home/app/appsite/manage.py collectstatic --noinput
-
-    # Initialize /home/app with docker-compose and Dockerfile
-    echo "📄 Copying Docker configuration to /home/app..."
-    [ -f "/django/docker-compose.yml" ] && cp "/django/docker-compose.yml" "/home/app/docker-compose.yml"
-    [ -f "/django/Dockerfile" ] && cp "/django/Dockerfile" "/home/app/Dockerfile"
-    [ -f "/django/requirements.txt" ] && cp "/django/requirements.txt" "/home/app/requirements.txt"
-    [ -f "/django/psql" ] && cp "/django/psql" "/home/app/psql" && chmod +x "/home/app/psql"
-    [ -f "/django/django-init" ] && cp "/django/django-init" "/home/app/django-init" && chmod +x "/home/app/django-init"
-    [ -f "/django/django-manage-py" ] && cp "/django/django-manage-py" "/home/app/django-manage-py" && chmod +x "/home/app/django-manage-py"
-    [ -f "/django/prod" ] && cp "/django/prod" "/home/app/prod" && chmod +x "/home/app/prod"
-    [ -f "/.gitignore" ] && cp "/.gitignore" "/home/app/.gitignore"
+    # Also ensure static/media dirs exist and are owned by app
+    mkdir -p /home/app/appsite/static /home/app/appsite/media
+    chown -R app:"$APP_GROUP" /home/app/appsite/static /home/app/appsite/media
+    # Note: collectstatic might fail if database is not reachable and settings.py expects it.
+    # We use a dummy secret key and ignore database for collectstatic if possible.
+    gosu app bash -c "PYTHONPATH=/home/app/appsite DJANGO_SECRET_KEY=dummy python /home/app/appsite/manage.py collectstatic --noinput --clear" || echo "⚠️ collectstatic failed, but continuing..."
 
     # Clean up rdkit-specific files if they exist
     rm -f /home/app/run /home/app/shell /home/app/.rdkit-init
 
-    # Create .env file in /home/app
+    # Final chown to ensure everything created during init is owned by app
+    chown -R app:"$APP_GROUP" /home/app
+
+    echo "🧪 Running django-rdkit tests..."
+    # Ensure database is reachable before running tests (wait a bit)
+    # But don't fail the whole startup if it fails (database might be initializing)
+    gosu app bash -c "PYTHONPATH=/home/app/appsite python /home/app/appsite/manage.py test django_rdkit" || echo "⚠️ django-rdkit tests failed or database not ready (this is expected if postgres is not fully up yet)."
+
     echo "📝 Creating .env file in /home/app..."
     {
         echo "# ⚠️ AUTO-GENERATED FILE - DO NOT EDIT MANUALLY IF YOU WANT TO PERSIST CHANGES"
@@ -244,6 +285,7 @@ EOF
         echo "POSTGRES_HOST=${POSTGRES_HOST}"
         echo "POSTGRES_PORT=${POSTGRES_PORT:-5433}"
     } > /home/app/.env
+    chown app:"$APP_GROUP" /home/app/.env
 
     # Create a README.md in /home/app
     echo "📖 Creating README.md in /home/app..."
@@ -277,9 +319,10 @@ EOF
         echo "- To rebuild the application image: \`docker compose build\`"
         echo "- To view logs: \`docker compose logs -f\`"
     } > /home/app/README.md
+    chown app:"$APP_GROUP" /home/app/README.md
 fi
 
-# Ensure correct ownership
+# Final ownership check before starting (outside the init block too)
 chown -R app:"$APP_GROUP" /home/app
 
 # Debug info
