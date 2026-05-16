@@ -256,10 +256,6 @@ EOF
     # Final chown to ensure everything created during init is owned by app
     chown -R app:"$APP_GROUP" /home/app
 
-    echo "🧪 Running django-rdkit tests..."
-    # Ensure database is reachable before running tests (wait a bit)
-    # But don't fail the whole startup if it fails (database might be initializing)
-    gosu app bash -c "PYTHONPATH=/home/app/appsite python /home/app/appsite/manage.py test django_rdkit" || echo "⚠️ django-rdkit tests failed or database not ready (this is expected if postgres is not fully up yet)."
 
     echo "📝 Creating .env file in /home/app..."
     {
