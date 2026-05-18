@@ -9,6 +9,7 @@ Chembience is a specialized platform for chemical informatics. It uses Django fo
 - **Django (`core/django`)**: Main web service. Entry point is `docker-entrypoint.sh`. App code is in `app/`.
 - **RDKit (`core/rdkit`)**: Informatics engine. Provides specialized chemical processing capabilities.
 - **Postgres (`core/postgres`)**: Database storing chemical structures and metadata.
+- **Test App (`core/django/app/django-rdkit-test-app`)**: A reference Django application integrated during initialization to verify RDKit functionality.
 
 ## Navigation Map
 - `core/docker-compose.yml`: Defines how all services interact.

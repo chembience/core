@@ -55,6 +55,16 @@ Running from the `core/` directory:
   - Django: `docker compose exec django /bin/bash`
   - RDKit: `docker compose exec rdkit /bin/bash`
 
+## Verification
+
+To verify the installation and RDKit integration, you can run the tests for the included `django_rdkit_test_app`:
+
+```bash
+docker compose exec django python manage.py test django_rdkit_test_app
+```
+
+The test app has been adapted from the original implementation of https://github.com/rdkit/django-rdkit
+
 ## Development
 
 For more detailed information, see:
