@@ -3,6 +3,14 @@
 # This script initializes the Django application by running migrations
 # and creating a superuser if it doesn't exist.
 
+# Check if the Django container is running
+if [ -z "$(docker compose ps django -q 2>/dev/null)" ]; then
+    echo "Django container is not running. Starting it..."
+    docker compose up -d django
+    # Wait for the container to be ready (optional but recommended)
+    # We can rely on the docker-manage-py script to handle connectivity
+fi
+
 ./django-manage-py makemigrations
 ./django-manage-py migrate
 ./django-manage-py createsuperuser --noinput || true
