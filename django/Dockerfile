@@ -21,6 +21,7 @@ COPY django/app/Dockerfile /django/Dockerfile
 COPY django/app/requirements.txt /django/requirements.txt
 COPY django/psql /django/psql
 COPY django/prod /django/prod
+COPY django/app/django-rdkit-test-app /django/django-rdkit-test-app/
 COPY django/requirements.txt /opt/django
 
 # Copy application code if it exists locally during build

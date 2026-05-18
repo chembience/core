@@ -84,6 +84,13 @@ if [ ! -f "/home/app/appsite/manage.py" ]; then
         # Ensure we have a urls.py in the simple app
         touch simple/urls.py
     fi
+
+    # Sync django-rdkit-test-app from /django/ to /home/app/appsite/ and rename it to django_rdkit_test_app
+    if [ -d "/django/django-rdkit-test-app" ]; then
+        echo "📦 Syncing django-rdkit-test-app to appsite..."
+        mkdir -p /home/app/appsite/django_rdkit_test_app
+        cp -r /django/django-rdkit-test-app/. /home/app/appsite/django_rdkit_test_app/
+    fi
 EOF
 
     echo "⚙️ Configuring Django settings..."
@@ -119,6 +126,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django_rdkit',
+    'django_rdkit_test_app',
 ]
 
 MIDDLEWARE = [
@@ -251,7 +259,7 @@ EOF
     gosu app bash -c "PYTHONPATH=/home/app/appsite DJANGO_SECRET_KEY=dummy python /home/app/appsite/manage.py collectstatic --noinput --clear" || echo "⚠️ collectstatic failed, but continuing..."
 
     # Clean up rdkit-specific files if they exist
-    rm -f /home/app/run /home/app/shell /home/app/.rdkit-init
+    rm -rf /home/app/run /home/app/shell /home/app/.rdkit-init
 
     # Final chown to ensure everything created during init is owned by app
     chown -R app:"$APP_GROUP" /home/app
@@ -316,6 +324,15 @@ EOF
         echo "- To view logs: \`docker compose logs -f\`"
     } > /home/app/README.md
     chown app:"$APP_GROUP" /home/app/README.md
+fi
+
+# Sync django-rdkit-test-app from /django/ to /home/app/appsite/ and rename it to django_rdkit_test_app
+# We do this every time to ensure it's up to date even if the volume mount is persistent
+if [ -d "/django/django-rdkit-test-app" ]; then
+    echo "📦 Syncing django-rdkit-test-app to appsite..."
+    mkdir -p /home/app/appsite/django_rdkit_test_app
+    cp -r /django/django-rdkit-test-app/. /home/app/appsite/django_rdkit_test_app/
+    chown -R app:"$APP_GROUP" /home/app/appsite/django_rdkit_test_app
 fi
 
 # Final ownership check before starting (outside the init block too)
