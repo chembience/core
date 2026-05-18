@@ -52,7 +52,8 @@ if [ ! -f "/home/app/.rdkit-init" ] || [ -d "/home/app/appsite" ]; then
         cp /opt/rdkit/Dockerfile /home/app/Dockerfile
         cp /opt/rdkit/README.md /home/app/README.md
         
-        # Create .env file in /home/app
+    # Create .env file in /home/app
+    if [ ! -f "/home/app/.env" ]; then
         echo "📝 Creating .env file in /home/app..."
         {
             echo "# ⚠️ AUTO-GENERATED FILE - DO NOT EDIT MANUALLY IF YOU WANT TO PERSIST CHANGES"
@@ -70,6 +71,10 @@ if [ ! -f "/home/app/.rdkit-init" ] || [ -d "/home/app/appsite" ]; then
             echo "POSTGRES_HOST=${POSTGRES_HOST:-postgres}"
             echo "POSTGRES_PORT=${POSTGRES_PORT:-5433}"
         } > /home/app/.env
+        
+        # Ensure LF line endings
+        python3 -c "import os; f='/home/app/.env'; content=open(f, 'rb').read().replace(b'\r\n', b'\n'); open(f, 'wb').write(content)"
+    fi
 
         chmod +x /home/app/run /home/app/shell /home/app/psql
         

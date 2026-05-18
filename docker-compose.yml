@@ -9,6 +9,7 @@ x-common-environment: &common-env
   DJANGO_SUPERUSER_PASSWORD: ${DJANGO_SUPERUSER_PASSWORD}
   DJANGO_SUPERUSER_USERNAME: ${DJANGO_SUPERUSER_USERNAME}
   DJANGO_SUPERUSER_EMAIL: ${DJANGO_SUPERUSER_EMAIL}
+  FASTAPI_CONNECTION_PORT: ${FASTAPI_CONNECTION_PORT:-8002}
   POSTGRES_USER: chembience
   POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
   POSTGRES_NAME: ${POSTGRES_NAME:-chembience}
@@ -87,6 +88,38 @@ services:
     command: ["python", "-m", "gunicorn", "appsite.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "8"]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/simple/resolver/CCO"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  fastapi:
+    image: chembience/core-fastapi:${CHEMBIENCE_VERSION}
+    build:
+      context: .
+      dockerfile: fastapi/Dockerfile
+      args:
+        build_tag: ${CHEMBIENCE_VERSION}
+        app_name: ${APP_NAME:-}
+        conda_py: ${CONDA_PY:-3.14}
+        conda_mirror: ${CONDA_MIRROR:-}
+    environment:
+      <<: *common-env
+      APP_NAME: ${APP_NAME:--app}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${FASTAPI_CONNECTION_PORT}:8000"
+    volumes:
+      - ${APP_HOME}:/home/app
+    networks:
+      - app-network
+    working_dir: "/home/app/appsite/"
+    entrypoint: [ "/docker-entrypoint.sh" ]
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
       interval: 10s
       timeout: 5s
       retries: 5

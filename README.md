@@ -18,12 +18,16 @@ Chembience is a specialized platform for chemical informatics, using Django for 
     ```bash
     ./build <type> <target>
     ```
-    - `<type>`: `django` or `rdkit`
+    - `<type>`: `django`, `fastapi` or `rdkit`
     - `<target>`: Name of your application (e.g., `myapp`)
 
     Example:
     ```bash
     ./build django myapp
+    ```
+    or
+    ```bash
+    ./build fastapi myapp
     ```
 
     By default, the application is created in `~/myapp`. You can specify a custom directory with the `-d` option:

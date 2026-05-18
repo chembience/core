@@ -3,11 +3,7 @@ x-common-environment: &common-env
   APP_HOME: ${APP_HOME:-./}
   CHEMBIENCE_UID: ${CHEMBIENCE_UID:-1000}
   CHEMBIENCE_GID: ${CHEMBIENCE_GID:-1000}
-  DJANGO_VIRTUAL_HOSTNAME: ${DJANGO_VIRTUAL_HOSTNAME:-localhost}
-  DJANGO_CONNECTION_PORT: ${DJANGO_CONNECTION_PORT:-8001}
-  DJANGO_SUPERUSER_PASSWORD: ${DJANGO_SUPERUSER_PASSWORD:-change-me-immediately}
-  DJANGO_SUPERUSER_USERNAME: ${DJANGO_SUPERUSER_USERNAME:-admin}
-  DJANGO_SUPERUSER_EMAIL: ${DJANGO_SUPERUSER_EMAIL:-admin@example.com}
+  FASTAPI_CONNECTION_PORT: ${FASTAPI_CONNECTION_PORT:-8002}
   POSTGRES_USER: ${POSTGRES_USER:-chembience}
   POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure-password-here}
   POSTGRES_NAME: ${POSTGRES_NAME:-chembience}
@@ -15,8 +11,8 @@ x-common-environment: &common-env
   POSTGRES_PORT: ${POSTGRES_PORT:-5433}
 
 services:
-  django:
-    image: chembience/core-django${APP_NAME}:${CHEMBIENCE_IMAGE_TAG:-latest}
+  fastapi:
+    image: chembience/core-fastapi${APP_NAME}:${CHEMBIENCE_IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: Dockerfile
@@ -31,16 +27,16 @@ services:
       postgres:
         condition: service_healthy
     ports:
-      - "${DJANGO_CONNECTION_PORT}:8000"
+      - "${FASTAPI_CONNECTION_PORT}:8000"
     volumes:
       - .:/home/app
     networks:
       - app-network
     working_dir: "/home/app/appsite/"
     entrypoint: [ "/docker-entrypoint.sh" ]
-    command: ["python", "-m", "gunicorn", "appsite.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "8"]
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/simple/resolver/CCO"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
       interval: 10s
       timeout: 5s
       retries: 5

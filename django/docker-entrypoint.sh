@@ -61,6 +61,30 @@ echo "📄 Syncing internal configuration files to /home/app..."
 [ -f "/django/prod" ] && cp "/django/prod" "/home/app/prod" && chmod +x "/home/app/prod" && python3 -c "import os; f='/home/app/prod'; content=open(f, 'rb').read().replace(b'\r\n', b'\n'); open(f, 'wb').write(content)"
 [ -f "/.gitignore" ] && cp "/.gitignore" "/home/app/.gitignore"
 
+# Create .env from example if it doesn't exist
+if [ ! -f "/home/app/.env" ] && [ -f "/django/.env.example" ]; then
+    echo "📄 Creating initial .env from template..."
+    cp "/django/.env.example" "/home/app/.env"
+    
+    # Customize .env with current application settings
+    sed -i "s|^APP_HOME=.*|APP_HOME=./|g" "/home/app/.env"
+    
+    if [ -n "${APP_NAME}" ]; then
+        if grep -q "^APP_NAME=" "/home/app/.env"; then
+            sed -i "s|^APP_NAME=.*|APP_NAME=${APP_NAME}|g" "/home/app/.env"
+        else
+            echo "APP_NAME=${APP_NAME}" >> "/home/app/.env"
+        fi
+    fi
+    
+    if [ -n "${CHEMBIENCE_VERSION}" ]; then
+        sed -i "s|^CHEMBIENCE_VERSION=.*|CHEMBIENCE_VERSION=${CHEMBIENCE_VERSION}|g" "/home/app/.env"
+    fi
+
+    # Ensure LF line endings for .env
+    python3 -c "import os; f='/home/app/.env'; content=open(f, 'rb').read().replace(b'\r\n', b'\n'); open(f, 'wb').write(content)"
+fi
+
 chown -R app:"$APP_GROUP" /home/app
 
 # Initialize /home/app/appsite if it's empty or missing manage.py

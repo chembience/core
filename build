@@ -59,8 +59,8 @@ done
 TYPE="${POSITIONAL_ARGS[0]:-django}"
 TARGET="${POSITIONAL_ARGS[1]:-app}"
 
-if [ "$TYPE" != "django" ] && [ "$TYPE" != "rdkit" ]; then
-  echo "Error: Only 'django' and 'rdkit' types are currently supported."
+if [ "$TYPE" != "django" ] && [ "$TYPE" != "rdkit" ] && [ "$TYPE" != "fastapi" ]; then
+  echo "Error: Only 'django', 'rdkit' and 'fastapi' types are currently supported."
   exit 1
 fi
 
@@ -105,6 +105,9 @@ echo "📂 Using APP_HOME: $APP_HOME for target: $TARGET (type: $TYPE)"
 if [ "$TYPE" = "rdkit" ]; then
     docker compose build "${BUILD_FLAGS[@]}" rdkit postgres
     APP_NAME="$APP_NAME" docker compose build "${BUILD_FLAGS[@]}" rdkit-app
+elif [ "$TYPE" = "fastapi" ]; then
+    docker compose build "${BUILD_FLAGS[@]}" rdkit postgres
+    APP_NAME="$APP_NAME" docker compose build "${BUILD_FLAGS[@]}" fastapi
 else
     docker compose build "${BUILD_FLAGS[@]}" rdkit postgres
     APP_NAME="$APP_NAME" docker compose build "${BUILD_FLAGS[@]}" django
@@ -116,12 +119,16 @@ if [ "$QUIT_AFTER_SETUP" = true ]; then
     # Fail-safe mode: try to start, but don't exit if it fails
     if [ "$TYPE" = "rdkit" ]; then
       APP_NAME="$APP_NAME" docker compose up --wait rdkit-app postgres || echo "⚠️ Warning: Failed to start containers (likely due to port conflict)."
+    elif [ "$TYPE" = "fastapi" ]; then
+      APP_NAME="$APP_NAME" docker compose up --wait fastapi postgres || echo "⚠️ Warning: Failed to start containers (likely due to port conflict)."
     else
       APP_NAME="$APP_NAME" docker compose up --wait django postgres || echo "⚠️ Warning: Failed to start containers (likely due to port conflict)."
     fi
   else
     if [ "$TYPE" = "rdkit" ]; then
       APP_NAME="$APP_NAME" docker compose up --wait rdkit-app postgres
+    elif [ "$TYPE" = "fastapi" ]; then
+      APP_NAME="$APP_NAME" docker compose up --wait fastapi postgres
     else
       APP_NAME="$APP_NAME" docker compose up --wait django postgres
     fi
@@ -132,12 +139,16 @@ else
     # Fail-safe mode: try to start, but don't exit if it fails
     if [ "$TYPE" = "rdkit" ]; then
       APP_NAME="$APP_NAME" docker compose up --abort-on-container-exit rdkit-app postgres || echo "⚠️ Warning: Failed to start containers."
+    elif [ "$TYPE" = "fastapi" ]; then
+      APP_NAME="$APP_NAME" docker compose up --abort-on-container-exit fastapi postgres || echo "⚠️ Warning: Failed to start containers."
     else
       APP_NAME="$APP_NAME" docker compose up --abort-on-container-exit django postgres || echo "⚠️ Warning: Failed to start containers."
     fi
   else
     if [ "$TYPE" = "rdkit" ]; then
       APP_NAME="$APP_NAME" docker compose up --abort-on-container-exit rdkit-app postgres
+    elif [ "$TYPE" = "fastapi" ]; then
+      APP_NAME="$APP_NAME" docker compose up --abort-on-container-exit fastapi postgres
     else
       APP_NAME="$APP_NAME" docker compose up --abort-on-container-exit django postgres
     fi
