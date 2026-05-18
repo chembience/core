@@ -6,3 +6,5 @@
 ./django-manage-py makemigrations
 ./django-manage-py migrate
 ./django-manage-py createsuperuser --noinput || true
+./django-manage-py collectstatic --noinput || true
+./django-manage-py test

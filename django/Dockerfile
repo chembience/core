@@ -19,6 +19,7 @@ COPY .gitignore /
 COPY django/docker-compose.yml /django/docker-compose.yml
 COPY django/app/Dockerfile /django/Dockerfile
 COPY django/app/requirements.txt /django/requirements.txt
+COPY django/app/README.md /django/README.md
 COPY django/psql /django/psql
 COPY django/prod /django/prod
 COPY django/app/django-rdkit-test-app /django/django-rdkit-test-app/

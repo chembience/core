@@ -50,6 +50,7 @@ if [ ! -f "/home/app/.rdkit-init" ] || [ -d "/home/app/appsite" ]; then
         cp /opt/rdkit/psql /home/app/psql
         cp /opt/rdkit/docker-compose.yml /home/app/docker-compose.yml
         cp /opt/rdkit/Dockerfile /home/app/Dockerfile
+        cp /opt/rdkit/README.md /home/app/README.md
         
         # Create .env file in /home/app
         echo "📝 Creating .env file in /home/app..."

@@ -68,9 +68,9 @@ The test app has been adapted from the original implementation of https://github
 ## Development
 
 For more detailed information, see:
-- [CLAUDE.md](CLAUDE.md): Development guide and common commands.
-- [AGENTS.md](AGENTS.md): Information for AI agents and high-level overview.
+- [CLAUDE.md](https://github.com/chembience/chembience/blob/main/core/CLAUDE.md): Development guide and common commands.
+- [AGENTS.md](https://github.com/chembience/chembience/blob/main/core/AGENTS.md): Information for AI agents and high-level overview.
 
 ## License
 
-This project is licensed under the BSD 3-Clause License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the BSD 3-Clause License - see the [LICENSE](https://github.com/chembience/chembience/blob/main/core/LICENSE) file for details.
