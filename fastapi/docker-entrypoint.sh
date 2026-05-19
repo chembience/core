@@ -43,7 +43,7 @@ echo "📄 Syncing internal configuration files to /home/app..."
 [ -f "/fastapi/README.md" ] && cp "/fastapi/README.md" "/home/app/README.md"
 [ -f "/fastapi/psql" ] && cp "/fastapi/psql" "/home/app/psql" && chmod +x "/home/app/psql" && python3 -c "import os; f='/home/app/psql'; content=open(f, 'rb').read().replace(b'\r\n', b'\n'); open(f, 'wb').write(content)"
 [ -f "/fastapi/fastapi-init" ] && cp "/fastapi/fastapi-init" "/home/app/fastapi-init" && chmod +x "/home/app/fastapi-init" && python3 -c "import os; f='/home/app/fastapi-init'; content=open(f, 'rb').read().replace(b'\r\n', b'\n'); open(f, 'wb').write(content)"
-[ -f "/fastapi/fastapi-run" ] && cp "/fastapi/fastapi-run" "/home/app/fastapi-run" && chmod +x "/home/app/fastapi-run" && python3 -c "import os; f='/home/app/fastapi-run'; content=open(f, 'rb').read().replace(b'\r\n', b'\n'); open(f, 'wb').write(content)"
+[ -f "/fastapi/fastapi" ] && cp "/fastapi/fastapi" "/home/app/fastapi" && chmod +x "/home/app/fastapi" && python3 -c "import os; f='/home/app/fastapi'; content=open(f, 'rb').read().replace(b'\r\n', b'\n'); open(f, 'wb').write(content)"
 [ -f "/.gitignore" ] && cp "/.gitignore" "/home/app/.gitignore"
 
 # Create .env from example if it doesn't exist
@@ -92,15 +92,15 @@ fi
 # Ensure all synced files have correct ownership
 chown -R app:"$APP_GROUP" /home/app
 
-if [ ! -f "/home/app/appsite/main.py" ]; then
-    echo "🚀 Initializing /home/app/appsite with a FastAPI prototype..."
-    mkdir -p /home/app/appsite
-    chown app:"$APP_GROUP" /home/app/appsite
+if [ ! -f "/home/app/apisite/main.py" ]; then
+    echo "🚀 Initializing /home/app/apisite with a FastAPI prototype..."
+    mkdir -p /home/app/apisite
+    chown app:"$APP_GROUP" /home/app/apisite
     
     gosu app bash <<EOF
     set -x
     set -e
-    cd /home/app/appsite
+    cd /home/app/apisite
 
     cat <<EOPY > main.py
 from fastapi import FastAPI, Depends
@@ -164,12 +164,18 @@ EOF
     gosu app bash <<EOF
     set -x
     set -e
-    cd /home/app/appsite
+    cd /home/app/apisite
     python3 -c "import os; f='main.py'; content=open(f, 'rb').read().replace(b'\r\n', b'\n'); open(f, 'wb').write(content)"
 EOF
 fi
 
 # Final ownership check
 chown -R app:"$APP_GROUP" /home/app
+
+# Clean up appsite if it exists (renamed to apisite)
+if [ -d "/home/app/appsite" ]; then
+    echo "🧹 Removing legacy appsite directory..."
+    rm -rf /home/app/appsite
+fi
 
 exec gosu app "$@"

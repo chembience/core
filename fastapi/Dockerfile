@@ -15,6 +15,7 @@ RUN mkdir -p /opt/fastapi
 COPY fastapi/docker-entrypoint.sh /
 RUN chmod +x /docker-entrypoint.sh
 COPY fastapi/fastapi-init /fastapi/fastapi-init
+COPY fastapi/fastapi /fastapi/fastapi
 COPY .gitignore /
 COPY fastapi/docker-compose.yml /fastapi/docker-compose.yml
 COPY fastapi/app/Dockerfile /fastapi/Dockerfile
@@ -33,7 +34,7 @@ RUN if [ -d /home/app ]; then chown -R 1000:1000 /home/app && find /home/app -ty
 # Make sure scripts are executable
 RUN if [ -f /home/app/psql ]; then chmod +x /home/app/psql; fi && \
     if [ -f /home/app/fastapi-init ]; then chmod +x /home/app/fastapi-init; fi && \
-    if [ -f /home/app/fastapi-run ]; then chmod +x /home/app/fastapi-run; fi
+    if [ -f /home/app/fastapi ]; then chmod +x /home/app/fastapi; fi
 
 ENV PATH=/opt/conda/envs/chembience/bin:/opt/conda/bin:$PATH
 
@@ -51,4 +52,4 @@ RUN conda config --system --set remote_read_timeout_secs 600.0 && \
     find /opt/conda/ -follow -type f -name '*.pyc' -delete && \
     find /opt/conda/ -follow -type f -name '*.js.map' -delete
 
-WORKDIR /home/app/appsite
+WORKDIR /home/app/apisite

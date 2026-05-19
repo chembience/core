@@ -33,7 +33,7 @@ services:
       - .:/home/app
     networks:
       - app-network
-    working_dir: "/home/app/appsite/"
+    working_dir: "/home/app/apisite/"
     entrypoint: [ "/docker-entrypoint.sh" ]
     command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
     healthcheck:

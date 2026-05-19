@@ -79,7 +79,7 @@ if [ ! -f "/home/app/.rdkit-init" ] || [ -d "/home/app/appsite" ]; then
         chmod +x /home/app/run /home/app/shell /home/app/psql
         
         # Clean up django-specific files if they exist
-        rm -rf /home/app/appsite /home/app/django-init /home/app/django-manage-py
+        rm -rf /home/app/appsite /home/app/apisite /home/app/django-init /home/app/django-manage-py
         
         touch /home/app/.rdkit-init
     fi
