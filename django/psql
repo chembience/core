@@ -14,7 +14,8 @@ fi
 POSTGRES_USER=${POSTGRES_USER:-chembience}
 POSTGRES_NAME=${POSTGRES_NAME:-chembience}
 POSTGRES_PORT=${POSTGRES_PORT:-5433}
+POSTGRES_INTERNAL_PORT=${POSTGRES_INTERNAL_PORT:-5432}
 
-echo "Connecting to database '$POSTGRES_NAME' as user '$POSTGRES_USER'..."
+echo "Connecting to database '$POSTGRES_NAME' as user '$POSTGRES_USER' on internal port '$POSTGRES_INTERNAL_PORT'..."
 
-docker compose exec -e PGPASSWORD="$POSTGRES_PASSWORD" postgres psql -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d "$POSTGRES_NAME" "$@"
+docker compose exec -e PGPASSWORD="$POSTGRES_PASSWORD" postgres psql -p "$POSTGRES_INTERNAL_PORT" -U "$POSTGRES_USER" -d "$POSTGRES_NAME" "$@"

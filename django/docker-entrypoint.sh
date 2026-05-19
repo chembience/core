@@ -192,7 +192,7 @@ DATABASES = {
         'USER':  os.environ['POSTGRES_USER'],
         'PASSWORD': os.environ['POSTGRES_PASSWORD'],
         'HOST': os.environ['POSTGRES_HOST'],
-        'PORT': os.environ['POSTGRES_PORT']
+        'PORT': os.environ.get('POSTGRES_INTERNAL_PORT', '5432')
     }
 }
 
@@ -312,7 +312,7 @@ EOF
         echo "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}"
         echo "POSTGRES_NAME=${POSTGRES_NAME}"
         echo "POSTGRES_HOST=${POSTGRES_HOST}"
-        echo "POSTGRES_PORT=${POSTGRES_PORT:-5433}"
+        echo "POSTGRES_PORT=\${POSTGRES_PORT:-5433}"
     } > /home/app/.env
     chown app:"$APP_GROUP" /home/app/.env
 

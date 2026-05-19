@@ -13,6 +13,7 @@ x-common-environment: &common-env
   POSTGRES_NAME: ${POSTGRES_NAME:-chembience}
   POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
   POSTGRES_PORT: ${POSTGRES_PORT:-5433}
+  POSTGRES_INTERNAL_PORT: 5432
 
 services:
   django:
@@ -53,14 +54,14 @@ services:
     environment:
       <<: *common-env
     ports:
-      - "5433:5433"
+      - "${POSTGRES_PORT:-5433}:5432"
     networks:
       - app-network
     working_dir: "/home/postgres/"
     entrypoint: [ "/docker-entrypoint.sh" ]
     command: [ "gosu", "app", "postgres", "-D", "/home/postgres/postgres_data" ]
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_NAME -p $$POSTGRES_PORT" ]
+      test: [ "CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_NAME -p 5432" ]
       interval: 10s
       timeout: 5s
       retries: 10
