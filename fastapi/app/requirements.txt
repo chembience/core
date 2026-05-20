@@ -1,2 +1,4 @@
 # Add additional packages for your FastAPI app here
 # fastapi, uvicorn, sqlalchemy, etc. are already in the base image
+pytest
+pytest-asyncio

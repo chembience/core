@@ -31,3 +31,10 @@ To access the database:
 ```bash
 ./psql
 ```
+
+## Running Tests
+
+To run the RDKit-PostgreSQL integration tests:
+```bash
+docker compose exec fastapi pytest
+```

@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, declarative_base
+from razi.rdkit_postgresql.types import Mol, Bfp
 import os
 
 # Database configuration
@@ -21,6 +21,7 @@ class Molecule(Base):
     __tablename__ = "molecules"
     id = Column(Integer, primary_key=True, index=True)
     smiles = Column(String, unique=True, index=True)
+    m = Column(Mol, index=True)
 
 def init_db():
     Base.metadata.create_all(bind=engine)
