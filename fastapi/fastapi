@@ -1,6 +1,0 @@
-#!/bin/bash
-
-# This script passes any arguments to the uvicorn command
-# of the FastAPI instance running inside the FastAPI container.
-
-docker compose exec --user app fastapi "$@"

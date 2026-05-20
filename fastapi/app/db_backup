@@ -1,0 +1,49 @@
+#!/bin/bash
+
+# Load environment variables from .env file
+if [ -f .env ]; then
+  set -o allexport
+  source .env
+  set +o allexport
+else
+  echo ".env file not found!"
+  exit 1
+fi
+
+# Set defaults if not defined in .env
+POSTGRES_USER=${POSTGRES_USER:-chembience}
+POSTGRES_NAME=${POSTGRES_NAME:-chembience}
+POSTGRES_HOST=${POSTGRES_HOST:-postgres}
+POSTGRES_INTERNAL_PORT=${POSTGRES_INTERNAL_PORT:-5432}
+
+# Identify the project name to find the correct container
+PROJECT_NAME=$(basename "$(pwd)")
+
+# Check if the container is running
+CONTAINER_ID=$(docker ps -q -f "name=${PROJECT_NAME}-postgres-1" -f "status=running")
+
+if [ -z "$CONTAINER_ID" ]; then
+    # Fallback to just "postgres" if project-specific name not found
+    CONTAINER_ID=$(docker ps -q -f "name=postgres" -f "status=running")
+fi
+
+if [ -z "$CONTAINER_ID" ]; then
+    echo "❌ Error: PostgreSQL container is not running."
+    echo "Please start the services with 'docker-compose up -d' first."
+    exit 1
+fi
+
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+BACKUP_FILE="backup_${POSTGRES_NAME}_${TIMESTAMP}.sql"
+
+echo "💾 Backing up database '$POSTGRES_NAME' to '$BACKUP_FILE'..."
+
+# Execute pg_dump inside the container and redirect output to a file
+docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" "$CONTAINER_ID" pg_dump -p "$POSTGRES_INTERNAL_PORT" -U "$POSTGRES_USER" -d "$POSTGRES_NAME" > "$BACKUP_FILE"
+
+if [ $? -eq 0 ]; then
+    echo "✅ Backup completed successfully: $BACKUP_FILE"
+else
+    echo "❌ Error: Backup failed."
+    exit 1
+fi

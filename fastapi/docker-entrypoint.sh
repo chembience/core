@@ -38,12 +38,26 @@ chown -R app:"$APP_GROUP" /home/app
 
 echo "📄 Syncing internal configuration files to /home/app..."
 [ -f "/fastapi/docker-compose.yml" ] && cp "/fastapi/docker-compose.yml" "/home/app/docker-compose.yml"
+[ -f "/fastapi/docker-compose.override.yml" ] && cp "/fastapi/docker-compose.override.yml" "/home/app/docker-compose.override.yml"
 [ -f "/fastapi/Dockerfile" ] && cp "/fastapi/Dockerfile" "/home/app/Dockerfile"
 [ -f "/fastapi/requirements.txt" ] && cp "/fastapi/requirements.txt" "/home/app/requirements.txt"
 [ -f "/fastapi/README.md" ] && cp "/fastapi/README.md" "/home/app/README.md"
-[ -f "/fastapi/psql" ] && cp "/fastapi/psql" "/home/app/psql" && chmod +x "/home/app/psql" && python3 -c "import os; f='/home/app/psql'; content=open(f, 'rb').read().replace(b'\r\n', b'\n'); open(f, 'wb').write(content)"
-[ -f "/fastapi/fastapi-init" ] && cp "/fastapi/fastapi-init" "/home/app/fastapi-init" && chmod +x "/home/app/fastapi-init" && python3 -c "import os; f='/home/app/fastapi-init'; content=open(f, 'rb').read().replace(b'\r\n', b'\n'); open(f, 'wb').write(content)"
-[ -f "/fastapi/fastapi" ] && cp "/fastapi/fastapi" "/home/app/fastapi" && chmod +x "/home/app/fastapi" && python3 -c "import os; f='/home/app/fastapi'; content=open(f, 'rb').read().replace(b'\r\n', b'\n'); open(f, 'wb').write(content)"
+sync_script() {
+    src="$1"
+    dst="$2"
+    if [ -f "$src" ]; then
+        cp "$src" "$dst"
+        chmod +x "$dst"
+        python3 -c "import os; content=open('$dst', 'rb').read().replace(b'\r\n', b'\n'); open('$dst', 'wb').write(content)"
+    fi
+}
+
+sync_script "/fastapi/psql" "/home/app/psql"
+sync_script "/fastapi/db_backup" "/home/app/db_backup"
+sync_script "/fastapi/db_restore" "/home/app/db_restore"
+sync_script "/fastapi/db_cleanup" "/home/app/db_cleanup"
+# fastapi-init is now expected to be in /fastapi/fastapi-init (synced from fastapi/app/fastapi-init in Dockerfile)
+sync_script "/fastapi/fastapi-init" "/home/app/fastapi-init"
 [ -f "/.gitignore" ] && cp "/.gitignore" "/home/app/.gitignore"
 
 # Create .env from example if it doesn't exist
@@ -108,6 +122,7 @@ from sqlalchemy import Column, Integer, String, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from rdkit import Chem
+from razi.rdkit_postgresql.types import Mol
 import os
 
 app = FastAPI(title="Chembience FastAPI Prototype")
@@ -122,7 +137,6 @@ POSTGRES_PORT = os.getenv("POSTGRES_INTERNAL_PORT", "5432")
 SQLALCHEMY_DATABASE_URL = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_NAME}"
 
 print(f"DEBUG: Connecting to {POSTGRES_HOST}:{POSTGRES_PORT} as {POSTGRES_USER}")
-print(f"DEBUG: Using password: {POSTGRES_PASSWORD}")
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

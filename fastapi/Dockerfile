@@ -14,13 +14,16 @@ RUN mkdir -p /opt/fastapi
 
 COPY fastapi/docker-entrypoint.sh /
 RUN chmod +x /docker-entrypoint.sh
-COPY fastapi/fastapi-init /fastapi/fastapi-init
-COPY fastapi/fastapi /fastapi/fastapi
 COPY .gitignore /
 COPY fastapi/docker-compose.yml /fastapi/docker-compose.yml
+COPY fastapi/app/docker-compose.override.yml /fastapi/docker-compose.override.yml
 COPY fastapi/app/Dockerfile /fastapi/Dockerfile
 COPY fastapi/app/requirements.txt /fastapi/requirements.txt
 COPY fastapi/app/README.md /fastapi/README.md
+COPY fastapi/app/db_backup /fastapi/db_backup
+COPY fastapi/app/db_restore /fastapi/db_restore
+COPY fastapi/app/db_cleanup /fastapi/db_cleanup
+COPY fastapi/app/fastapi-init /fastapi/fastapi-init
 COPY psql /fastapi/psql
 COPY .env.example /fastapi/.env.example
 COPY fastapi/requirements.txt /opt/fastapi
@@ -32,9 +35,11 @@ COPY . /home/app/
 # Ensure correct permissions for the default app user (1000)
 RUN if [ -d /home/app ]; then chown -R 1000:1000 /home/app && find /home/app -type d -exec chmod 755 {} + && find /home/app -type f -exec chmod 644 {} +; fi
 # Make sure scripts are executable
-RUN if [ -f /home/app/psql ]; then chmod +x /home/app/psql; fi && \
-    if [ -f /home/app/fastapi-init ]; then chmod +x /home/app/fastapi-init; fi && \
-    if [ -f /home/app/fastapi ]; then chmod +x /home/app/fastapi; fi
+RUN if [ -f /home/app/psql ]; then chmod +x /home/app/psql; fi
+RUN if [ -f /home/app/db_backup ]; then chmod +x /home/app/db_backup; fi
+RUN if [ -f /home/app/db_restore ]; then chmod +x /home/app/db_restore; fi
+RUN if [ -f /home/app/db_cleanup ]; then chmod +x /home/app/db_cleanup; fi
+RUN if [ -f /home/app/fastapi-init ]; then chmod +x /home/app/fastapi-init; fi
 
 ENV PATH=/opt/conda/envs/chembience/bin:/opt/conda/bin:$PATH
 

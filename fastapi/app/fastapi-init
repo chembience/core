@@ -1,0 +1,36 @@
+#!/bin/bash
+
+# Check if the FastAPI container is running (only if on host)
+if [ ! -f /.dockerenv ]; then
+    if [ -z "$(docker compose ps fastapi -q 2>/dev/null)" ]; then
+        echo "FastAPI container is not running. Starting it..."
+        docker compose up -d fastapi
+    fi
+fi
+
+echo "🚀 Recreating database schema for FastAPI..."
+
+# Run a one-liner Python command to trigger SQLAlchemy's create_all
+if [ -f /.dockerenv ]; then
+    # We are inside the container
+    python -c "
+import sys
+sys.path.append('/home/app/apisite')
+import main
+from main import engine, Base
+print('Connecting to database...')
+Base.metadata.create_all(bind=engine)
+print('✅ Database schema recreated successfully.')
+"
+else
+    # We are on the host
+    docker compose exec fastapi python -c "
+import sys
+sys.path.append('/home/app/apisite')
+import main
+from main import engine, Base
+print('Connecting to database...')
+Base.metadata.create_all(bind=engine)
+print('✅ Database schema recreated successfully.')
+"
+fi

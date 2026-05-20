@@ -1,0 +1,5 @@
+services:
+  fastapi:
+    extra_hosts:
+      - "host.docker.internal:172.17.32.1"
+#      - "host.docker.internal:10.255.255.254"
