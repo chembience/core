@@ -40,9 +40,6 @@ Chembience is a specialized platform for chemical informatics, using Django for 
 
 Running from the `core/` directory:
 
-- **Start services**: `docker compose up -d`
-- **Stop services**: `docker compose down`
-- **View logs**: `docker compose logs -f`
 - **Remove an application**:
   ```bash
   ./remove <target>
@@ -51,23 +48,6 @@ Running from the `core/` directory:
   ```bash
   ./remove <target> -d /path/to/parent_dir
   ```
-- **Run Django management commands**:
-  ```bash
-  docker compose exec django python manage.py <command>
-  ```
-- **Shell access**:
-  - Django: `docker compose exec django /bin/bash`
-  - RDKit: `docker compose exec rdkit /bin/bash`
-
-## Verification
-
-To verify the installation and RDKit integration, you can run the tests for the included `django_rdkit_test_app`:
-
-```bash
-docker compose exec django python manage.py test django_rdkit_test_app
-```
-
-The test app has been adapted from the original implementation of https://github.com/rdkit/django-rdkit
 
 ## Development
 
