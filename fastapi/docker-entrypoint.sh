@@ -106,81 +106,13 @@ fi
 # Ensure all synced files have correct ownership
 chown -R app:"$APP_GROUP" /home/app
 
-if [ ! -f "/home/app/apisite/main.py" ]; then
-    echo "🚀 Initializing /home/app/apisite with a FastAPI prototype..."
-    mkdir -p /home/app/apisite
-    chown app:"$APP_GROUP" /home/app/apisite
+# Sync apisite if it exists in /fastapi/apisite (though Dockerfile handles it, this ensures volume persistence works)
+if [ -d "/fastapi/apisite" ] && [ ! -d "/home/app/apisite" ]; then
+    echo "📄 Syncing apisite to /home/app/apisite..."
+    cp -r "/fastapi/apisite" "/home/app/apisite"
     
-    gosu app bash <<EOF
-    set -x
-    set -e
-    cd /home/app/apisite
-
-    cat <<EOPY > main.py
-from fastapi import FastAPI, Depends
-from sqlalchemy import Column, Integer, String, create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session
-from rdkit import Chem
-from razi.rdkit_postgresql.types import Mol
-import os
-
-app = FastAPI(title="Chembience FastAPI Prototype")
-
-# Database configuration
-POSTGRES_USER = os.getenv("POSTGRES_USER", "chembience")
-POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "secure-password-here")
-POSTGRES_NAME = os.getenv("POSTGRES_NAME", "chembience")
-POSTGRES_HOST = os.getenv("POSTGRES_HOST", "postgres")
-POSTGRES_PORT = os.getenv("POSTGRES_INTERNAL_PORT", "5432")
-
-SQLALCHEMY_DATABASE_URL = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_NAME}"
-
-print(f"DEBUG: Connecting to {POSTGRES_HOST}:{POSTGRES_PORT} as {POSTGRES_USER}")
-
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
-
-# Example Model
-class Molecule(Base):
-    __tablename__ = "molecules"
-    id = Column(Integer, primary_key=True, index=True)
-    smiles = Column(String, unique=True, index=True)
-
-Base.metadata.create_all(bind=engine)
-
-# Dependency
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-@app.get("/")
-def read_root():
-    return {"message": "Welcome to Chembience FastAPI Prototype"}
-
-@app.get("/rdkit-info")
-def rdkit_info():
-    return {"rdkit_version": Chem.rdBase.rdkitVersion}
-
-@app.get("/mol/{smiles}")
-def get_mol(smiles: str):
-    mol = Chem.MolFromSmiles(smiles)
-    if mol:
-        return {"smiles": smiles, "molblock": Chem.MolToMolBlock(mol)}
-    return {"error": "Invalid SMILES"}
-EOPY
-EOF
-    # Ensure all created files have correct ownership and line endings
-    gosu app bash <<EOF
-    set -x
-    set -e
-    cd /home/app/apisite
-    python3 -c "import os; f='main.py'; content=open(f, 'rb').read().replace(b'\r\n', b'\n'); open(f, 'wb').write(content)"
-EOF
+    # Ensure LF line endings for apisite files
+    find /home/app/apisite -type f -name "*.py" -exec python3 -c "import sys; f=sys.argv[1]; content=open(f, 'rb').read().replace(b'\r\n', b'\n'); open(f, 'wb').write(content)" {} \;
 fi
 
 # Final ownership check

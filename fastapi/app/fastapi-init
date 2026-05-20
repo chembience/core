@@ -16,10 +16,9 @@ if [ -f /.dockerenv ]; then
     python -c "
 import sys
 sys.path.append('/home/app/apisite')
-import main
-from main import engine, Base
+from db import init_db
 print('Connecting to database...')
-Base.metadata.create_all(bind=engine)
+init_db()
 print('✅ Database schema recreated successfully.')
 "
 else
@@ -27,10 +26,9 @@ else
     docker compose exec fastapi python -c "
 import sys
 sys.path.append('/home/app/apisite')
-import main
-from main import engine, Base
+from db import init_db
 print('Connecting to database...')
-Base.metadata.create_all(bind=engine)
+init_db()
 print('✅ Database schema recreated successfully.')
 "
 fi

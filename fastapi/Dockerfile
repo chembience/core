@@ -24,6 +24,7 @@ COPY fastapi/app/db_backup /fastapi/db_backup
 COPY fastapi/app/db_restore /fastapi/db_restore
 COPY fastapi/app/db_cleanup /fastapi/db_cleanup
 COPY fastapi/app/fastapi-init /fastapi/fastapi-init
+COPY fastapi/app/apisite /fastapi/apisite
 COPY psql /fastapi/psql
 COPY .env.example /fastapi/.env.example
 COPY fastapi/requirements.txt /opt/fastapi
