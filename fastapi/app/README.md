@@ -16,7 +16,12 @@ This is the web service for your Chembience project. It is built using FastAPI a
 
 ## Getting Started
 
-To run FastAPI:
+To run the FastAPI application along with its dependencies (like PostgreSQL):
+```bash
+docker compose up
+```
+
+Alternatively, to run FastAPI manually inside the container (e.g., for development with auto-reload):
 ```bash
 docker compose exec fastapi uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
