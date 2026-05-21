@@ -94,6 +94,7 @@ cleanup_all_chembience() {
       grep -v 'chembience/core-rdkit:' | \
       grep -v 'chembience/core-rdkit-postgres:' | \
       grep -v 'chembience/core-django:' | \
+      grep -v 'chembience/core-jupyter:' | \
       awk '{print $2}')
   else
     echo "🗑️ Removing all Chembience-related images..."

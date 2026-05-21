@@ -1,0 +1,19 @@
+#!/bin/bash
+
+# Check if the Jupyter container is running (only if on host)
+if [ ! -f /.dockerenv ]; then
+    if [ -z "$(docker compose ps jupyter -q 2>/dev/null)" ]; then
+        echo "Jupyter container is not running. Starting it..."
+        docker compose up -d jupyter
+    fi
+fi
+
+echo "🚀 Verifying Jupyter environment..."
+
+if [ -f /.dockerenv ]; then
+    # We are inside the container
+    python notebooks/check_env.py
+else
+    # We are on the host
+    docker compose exec jupyter python notebooks/check_env.py
+fi

@@ -10,6 +10,8 @@ x-common-environment: &common-env
   DJANGO_SUPERUSER_USERNAME: ${DJANGO_SUPERUSER_USERNAME}
   DJANGO_SUPERUSER_EMAIL: ${DJANGO_SUPERUSER_EMAIL}
   FASTAPI_CONNECTION_PORT: ${FASTAPI_CONNECTION_PORT:-8002}
+  JUPYTER_CONNECTION_PORT: ${JUPYTER_CONNECTION_PORT:-8888}
+  APP_NAME: ${APP_NAME:-}
   POSTGRES_USER: chembience
   POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
   POSTGRES_NAME: ${POSTGRES_NAME:-chembience}
@@ -125,6 +127,32 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
+
+  jupyter:
+    image: chembience/core-jupyter:${CHEMBIENCE_VERSION}
+    build:
+      context: .
+      dockerfile: jupyter/Dockerfile
+      args:
+        build_tag: ${CHEMBIENCE_VERSION}
+        app_name: ${APP_NAME:-}
+        conda_py: ${CONDA_PY:-3.14}
+        conda_mirror: ${CONDA_MIRROR:-}
+    environment:
+      <<: *common-env
+      APP_NAME: ${APP_NAME:--app}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${JUPYTER_CONNECTION_PORT}:8888"
+    volumes:
+      - ${APP_HOME}:/home/app
+    networks:
+      - app-network
+    working_dir: "/home/app"
+    entrypoint: [ "/docker-entrypoint.sh" ]
+    command: ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root", "--ServerApp.token=''"]
 
   postgres:
     image: chembience/core-rdkit-postgres:${CHEMBIENCE_VERSION}

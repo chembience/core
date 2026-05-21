@@ -1,0 +1,66 @@
+
+x-common-environment: &common-env
+  APP_HOME: ${APP_HOME:-./}
+  CHEMBIENCE_UID: ${CHEMBIENCE_UID:-1000}
+  CHEMBIENCE_GID: ${CHEMBIENCE_GID:-1000}
+  JUPYTER_CONNECTION_PORT: ${JUPYTER_CONNECTION_PORT:-8888}
+  POSTGRES_USER: ${POSTGRES_USER:-chembience}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure-password-here}
+  POSTGRES_NAME: ${POSTGRES_NAME:-chembience}
+  POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+  POSTGRES_PORT: ${POSTGRES_PORT:-5433}
+  POSTGRES_INTERNAL_PORT: 5432
+
+services:
+  jupyter:
+    image: chembience/core-jupyter${APP_NAME}:${CHEMBIENCE_IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        build_tag: ${CHEMBIENCE_VERSION:-latest}
+        app_name: ${APP_NAME:-}
+        conda_py: ${CONDA_PY:-3.14}
+    environment:
+      <<: *common-env
+      APP_NAME: ${APP_NAME:--app}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${JUPYTER_CONNECTION_PORT}:8888"
+    volumes:
+      - .:/home/app
+    networks:
+      - app-network
+    working_dir: "/home/app"
+    entrypoint: [ "/docker-entrypoint.sh" ]
+    command: ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root", "--ServerApp.token=''"]
+
+  postgres:
+    image: chembience/core-rdkit-postgres:${CHEMBIENCE_VERSION:-latest}
+    volumes:
+      - ./postgres:/home/postgres
+    environment:
+      <<: *common-env
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    networks:
+      - app-network
+    working_dir: "/home/postgres/"
+    entrypoint: [ "/docker-entrypoint.sh" ]
+    command: [ "gosu", "app", "postgres", "-D", "/home/postgres/postgres_data" ]
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_NAME -p 5432" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres-db-volume:
+
+networks:
+  app-network:
+    name: app-backend
+  chembience-network:
+    name: chembience-network

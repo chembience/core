@@ -1,0 +1,8 @@
+jupyterlab
+sqlalchemy
+psycopg2-binary
+rdkit
+git+https://github.com/rvianello/razi.git
+ipywidgets
+pandas
+matplotlib

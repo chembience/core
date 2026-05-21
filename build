@@ -59,8 +59,8 @@ done
 TYPE="${POSITIONAL_ARGS[0]:-django}"
 TARGET="${POSITIONAL_ARGS[1]:-app}"
 
-if [ "$TYPE" != "django" ] && [ "$TYPE" != "rdkit" ] && [ "$TYPE" != "fastapi" ]; then
-  echo "Error: Only 'django', 'rdkit' and 'fastapi' types are currently supported."
+if [ "$TYPE" != "django" ] && [ "$TYPE" != "rdkit" ] && [ "$TYPE" != "fastapi" ] && [ "$TYPE" != "jupyter" ]; then
+  echo "Error: Only 'django', 'rdkit', 'fastapi' and 'jupyter' types are currently supported."
   exit 1
 fi
 
@@ -99,6 +99,9 @@ fi
 mkdir -p "$APP_HOME"
 export APP_HOME=$(cd "$APP_HOME" && pwd)
 
+# posix shell variable expansion for JUPYTER_CONNECTION_PORT if not set
+export JUPYTER_CONNECTION_PORT="${JUPYTER_CONNECTION_PORT:-8888}"
+
 echo "📂 Using APP_HOME: $APP_HOME for target: $TARGET (type: $TYPE)"
 
 # Build base images first, then images that depend on them
@@ -108,6 +111,9 @@ if [ "$TYPE" = "rdkit" ]; then
 elif [ "$TYPE" = "fastapi" ]; then
     docker compose build "${BUILD_FLAGS[@]}" rdkit postgres
     APP_NAME="$APP_NAME" docker compose build "${BUILD_FLAGS[@]}" fastapi
+elif [ "$TYPE" = "jupyter" ]; then
+    docker compose build "${BUILD_FLAGS[@]}" rdkit postgres
+    APP_NAME="$APP_NAME" docker compose build "${BUILD_FLAGS[@]}" jupyter
 else
     docker compose build "${BUILD_FLAGS[@]}" rdkit postgres
     APP_NAME="$APP_NAME" docker compose build "${BUILD_FLAGS[@]}" django
@@ -121,6 +127,8 @@ if [ "$QUIT_AFTER_SETUP" = true ]; then
       APP_NAME="$APP_NAME" docker compose up --wait rdkit-app postgres || echo "⚠️ Warning: Failed to start containers (likely due to port conflict)."
     elif [ "$TYPE" = "fastapi" ]; then
       APP_NAME="$APP_NAME" docker compose up --wait fastapi postgres || echo "⚠️ Warning: Failed to start containers (likely due to port conflict)."
+    elif [ "$TYPE" = "jupyter" ]; then
+      APP_NAME="$APP_NAME" docker compose up --wait jupyter postgres || echo "⚠️ Warning: Failed to start containers (likely due to port conflict)."
     else
       APP_NAME="$APP_NAME" docker compose up --wait django postgres || echo "⚠️ Warning: Failed to start containers (likely due to port conflict)."
     fi
@@ -129,6 +137,8 @@ if [ "$QUIT_AFTER_SETUP" = true ]; then
       APP_NAME="$APP_NAME" docker compose up --wait rdkit-app postgres
     elif [ "$TYPE" = "fastapi" ]; then
       APP_NAME="$APP_NAME" docker compose up --wait fastapi postgres
+    elif [ "$TYPE" = "jupyter" ]; then
+      APP_NAME="$APP_NAME" docker compose up --wait jupyter postgres
     else
       APP_NAME="$APP_NAME" docker compose up --wait django postgres
     fi
@@ -141,6 +151,8 @@ else
       APP_NAME="$APP_NAME" docker compose up --abort-on-container-exit rdkit-app postgres || echo "⚠️ Warning: Failed to start containers."
     elif [ "$TYPE" = "fastapi" ]; then
       APP_NAME="$APP_NAME" docker compose up --abort-on-container-exit fastapi postgres || echo "⚠️ Warning: Failed to start containers."
+    elif [ "$TYPE" = "jupyter" ]; then
+      APP_NAME="$APP_NAME" docker compose up --abort-on-container-exit jupyter postgres || echo "⚠️ Warning: Failed to start containers."
     else
       APP_NAME="$APP_NAME" docker compose up --abort-on-container-exit django postgres || echo "⚠️ Warning: Failed to start containers."
     fi
@@ -149,6 +161,8 @@ else
       APP_NAME="$APP_NAME" docker compose up --abort-on-container-exit rdkit-app postgres
     elif [ "$TYPE" = "fastapi" ]; then
       APP_NAME="$APP_NAME" docker compose up --abort-on-container-exit fastapi postgres
+    elif [ "$TYPE" = "jupyter" ]; then
+      APP_NAME="$APP_NAME" docker compose up --abort-on-container-exit jupyter postgres
     else
       APP_NAME="$APP_NAME" docker compose up --abort-on-container-exit django postgres
     fi
