@@ -24,12 +24,12 @@ _INSECURE_DEFAULT_KEY='django-insecure-default-change-me-in-production'
 
 # Pick a group to use:
 # - Prefer an existing "app" group
-# - Else, if the requested GID already exists, reuse that group name
+# - Else, if the requested GID already exists, reuse that group's name
 # - Else, create "app" with the requested GID
 if ! getent group app >/dev/null 2>&1; then
     if getent group "${CHEMBIENCE_GID}" >/dev/null 2>&1; then
-        # Group with this GID already exists, rename it to app or just use it?
-        # Actually, if we want the user 'app' to have this GID, we should just use the existing group name.
+        # A group with this GID already exists — reuse its name rather than
+        # creating a duplicate; the user 'app' will be bound to it below.
         APP_GROUP="$(getent group "${CHEMBIENCE_GID}" | cut -d: -f1)"
         echo "✅ Group with GID $CHEMBIENCE_GID already exists: $APP_GROUP"
     else
@@ -53,30 +53,57 @@ fi
 # Safety check: don't try gosu if user still doesn't exist
 id app >/dev/null 2>&1
 
-# Ensure correct ownership and permissions for /home/app
+# Ensure correct ownership and permissions for /home/app.
+# We chown only files not already owned by 'app' to avoid a slow full -R sweep
+# on large bind-mounted APP_HOME volumes.
 echo "🔧 Ensuring correct ownership of /home/app..."
-# We use a trap to ensure ownership is fixed even on failure
+fix_ownership() {
+    find /home/app -not -user app -print0 2>/dev/null \
+        | xargs -0 -r chown "app:$APP_GROUP" 2>/dev/null || true
+}
 cleanup_ownership() {
     echo "🧹 Finalizing ownership of /home/app..."
-    chown -R app:"$APP_GROUP" /home/app
+    fix_ownership
 }
 trap cleanup_ownership EXIT
 
-chown -R app:"$APP_GROUP" /home/app
+fix_ownership
 
-# Initialize /home/app with helper scripts and Docker configuration
-# We do this EVERY time to ensure helper scripts are present even if the volume mount wiped them
+# Helpers ---------------------------------------------------------------------
+# sync_config: copy a baked-in config file into APP_HOME only if it does NOT
+# already exist there. User edits on the bind mount are preserved across
+# restarts; missing files are restored. A ".dist" copy is always refreshed so
+# users can diff against the latest shipped version.
+sync_config() {
+    src="$1"; dst="$2"
+    [ -f "$src" ] || return 0
+    if [ ! -f "$dst" ]; then
+        cp "$src" "$dst"
+        sed -i 's/\r$//' "$dst" 2>/dev/null || true
+    fi
+    cp "$src" "${dst}.dist"
+    sed -i 's/\r$//' "${dst}.dist" 2>/dev/null || true
+}
+
+# sync_script: always refresh helper scripts (they must stay in sync with the
+# image), strip CRLF, mark executable.
+sync_script() {
+    src="$1"; dst="$2"
+    [ -f "$src" ] || return 0
+    cp "$src" "$dst"
+    chmod +x "$dst"
+    sed -i 's/\r$//' "$dst"
+}
+
 echo "📄 Syncing internal configuration files to /home/app..."
-# These files are baked into the image in the /django/ directory
-# Use gosu to copy them as the app user if possible, or chown after
-[ -f "/django/docker-compose.yml" ] && cp "/django/docker-compose.yml" "/home/app/docker-compose.yml"
-[ -f "/django/Dockerfile" ] && cp "/django/Dockerfile" "/home/app/Dockerfile"
-[ -f "/django/requirements.txt" ] && cp "/django/requirements.txt" "/home/app/requirements.txt"
-[ -f "/django/README.md" ] && cp "/django/README.md" "/home/app/README.md"
-[ -f "/django/psql" ] && cp "/django/psql" "/home/app/psql" && chmod +x "/home/app/psql" && python3 -c "import os; f='/home/app/psql'; content=open(f, 'rb').read().replace(b'\r\n', b'\n'); open(f, 'wb').write(content)"
-[ -f "/django/django-init" ] && cp "/django/django-init" "/home/app/django-init" && chmod +x "/home/app/django-init" && python3 -c "import os; f='/home/app/django-init'; content=open(f, 'rb').read().replace(b'\r\n', b'\n'); open(f, 'wb').write(content)"
-[ -f "/django/django-manage-py" ] && cp "/django/django-manage-py" "/home/app/django-manage-py" && chmod +x "/home/app/django-manage-py" && python3 -c "import os; f='/home/app/django-manage-py'; content=open(f, 'rb').read().replace(b'\r\n', b'\n'); open(f, 'wb').write(content)"
-[ -f "/django/prod" ] && cp "/django/prod" "/home/app/prod" && chmod +x "/home/app/prod" && python3 -c "import os; f='/home/app/prod'; content=open(f, 'rb').read().replace(b'\r\n', b'\n'); open(f, 'wb').write(content)"
+sync_config "/django/docker-compose.yml" "/home/app/docker-compose.yml"
+sync_config "/django/Dockerfile"         "/home/app/Dockerfile"
+sync_config "/django/requirements.txt"   "/home/app/requirements.txt"
+sync_config "/django/README.md"          "/home/app/README.md"
+sync_script "/django/psql"               "/home/app/psql"
+sync_script "/django/django-init"        "/home/app/django-init"
+sync_script "/django/django-manage-py"   "/home/app/django-manage-py"
+sync_script "/django/prod"               "/home/app/prod"
 [ -f "/.gitignore" ] && cp "/.gitignore" "/home/app/.gitignore"
 
 # Create .env from example if it doesn't exist
@@ -100,10 +127,10 @@ if [ ! -f "/home/app/.env" ] && [ -f "/django/.env.example" ]; then
     fi
 
     # Ensure LF line endings for .env
-    python3 -c "import os; f='/home/app/.env'; content=open(f, 'rb').read().replace(b'\r\n', b'\n'); open(f, 'wb').write(content)"
+    sed -i 's/\r$//' "/home/app/.env"
 fi
 
-chown -R app:"$APP_GROUP" /home/app
+fix_ownership
 
 # Initialize /home/app/appsite if it's empty or missing manage.py
 if [ ! -f "/home/app/appsite/manage.py" ]; then
@@ -253,7 +280,7 @@ WSGI_APPLICATION = 'appsite.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'ENGINE': 'django.db.backends.postgresql',
         'NAME': os.environ['POSTGRES_NAME'],
         'USER':  os.environ['POSTGRES_USER'],
         'PASSWORD': os.environ['POSTGRES_PASSWORD'],
@@ -366,8 +393,8 @@ EOF
     # Clean up rdkit-specific files if they exist
     rm -rf /home/app/run /home/app/shell /home/app/.rdkit-init
 
-    # Final chown to ensure everything created during init is owned by app
-    chown -R app:"$APP_GROUP" /home/app
+    # Final ownership pass for files created during init.
+    fix_ownership
 
 
     echo "📝 Creating .env file in /home/app..."
@@ -451,7 +478,7 @@ if [ -d "/django/django-rdkit-test-app" ]; then
 fi
 
 # Final ownership check before starting (outside the init block too)
-chown -R app:"$APP_GROUP" /home/app
+fix_ownership
 
 # Debug info
 echo "📂 Contents of /home/app/appsite:"

@@ -6,12 +6,12 @@ CHEMBIENCE_GID="${CHEMBIENCE_GID:-1000}"
 
 # Pick a group to use:
 # - Prefer an existing "app" group
-# - Else, if the requested GID already exists, reuse that group name
+# - Else, if the requested GID already exists, reuse that group's name
 # - Else, create "app" with the requested GID
 if ! getent group app >/dev/null 2>&1; then
     if getent group "${CHEMBIENCE_GID}" >/dev/null 2>&1; then
-        # Group with this GID already exists, rename it to app or just use it?
-        # Actually, if we want the user 'app' to have this GID, we should just use the existing group name.
+        # A group with this GID already exists — reuse its name rather than
+        # creating a duplicate; the user 'app' will be bound to it below.
         APP_GROUP="$(getent group "${CHEMBIENCE_GID}" | cut -d: -f1)"
         echo "✅ Group with GID $CHEMBIENCE_GID already exists: $APP_GROUP"
     else
@@ -73,7 +73,7 @@ if [ ! -f "/home/app/.rdkit-init" ] || [ -d "/home/app/appsite" ]; then
         } > /home/app/.env
         
         # Ensure LF line endings
-        python3 -c "import os; f='/home/app/.env'; content=open(f, 'rb').read().replace(b'\r\n', b'\n'); open(f, 'wb').write(content)"
+        sed -i 's/\r$//' "/home/app/.env"
     fi
 
         chmod +x /home/app/run /home/app/shell /home/app/psql
@@ -89,8 +89,9 @@ if [ ! -f "/home/app/requirements.txt" ]; then
     cp /opt/rdkit/app-requirements.txt /home/app/requirements.txt
 fi
 
-# Ensure all files in /home/app are owned by the app user
-chown -R "app:${APP_GROUP}" /home/app
+# Ensure all files in /home/app are owned by the app user (selective).
+find /home/app -not -user app -print0 2>/dev/null \
+    | xargs -0 -r chown "app:${APP_GROUP}" 2>/dev/null || true
 
 exec gosu app "$@"
 

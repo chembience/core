@@ -1,8 +1,10 @@
-jupyterlab
-sqlalchemy
-psycopg2-binary
+# Pinned to compatible ranges to keep builds reproducible.
+# Bump intentionally; do not change to "latest" — see core/README.md.
+jupyterlab>=4.2,<5
+sqlalchemy>=2.0,<3
+psycopg2-binary>=2.9,<3
 rdkit
 git+https://github.com/rvianello/razi.git
-ipywidgets
-pandas
-matplotlib
+ipywidgets>=8.1,<9
+pandas>=2.2,<3
+matplotlib>=3.9,<4

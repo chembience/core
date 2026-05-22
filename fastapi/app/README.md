@@ -1,6 +1,6 @@
 # Chembience FastAPI Application
 
-This is the web service for your Chembience project. It is built using [FastAPI](https://fastapi.fastapi.tiangolo.com/) (latest) and integrated with [SQLAlchemy](https://www.sqlalchemy.org/) (latest) and [RDKit](https://www.rdkit.org/) (2026.03.2).
+This is the web service for your Chembience project. It is built using [FastAPI](https://fastapi.tiangolo.com/) (latest) and integrated with [SQLAlchemy](https://www.sqlalchemy.org/) (latest) and [RDKit](https://www.rdkit.org/) (2026.03.2).
 
 ## Directory Structure
 

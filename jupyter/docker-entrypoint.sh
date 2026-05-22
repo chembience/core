@@ -4,8 +4,14 @@ set -e
 CHEMBIENCE_UID="${CHEMBIENCE_UID:-1000}"
 CHEMBIENCE_GID="${CHEMBIENCE_GID:-1000}"
 
+# Pick a group to use:
+# - Prefer an existing "app" group
+# - Else, if the requested GID already exists, reuse that group's name
+# - Else, create "app" with the requested GID
 if ! getent group app >/dev/null 2>&1; then
     if getent group "${CHEMBIENCE_GID}" >/dev/null 2>&1; then
+        # A group with this GID already exists — reuse its name rather than
+        # creating a duplicate; the user 'app' will be bound to it below.
         APP_GROUP="$(getent group "${CHEMBIENCE_GID}" | cut -d: -f1)"
         echo "✅ Group with GID $CHEMBIENCE_GID already exists: $APP_GROUP"
     else
@@ -27,34 +33,52 @@ fi
 
 id app >/dev/null 2>&1
 
+# Ensure correct ownership and permissions for /home/app.
+# Selective chown to avoid a slow full -R sweep on large bind-mounted volumes.
 echo "🔧 Ensuring correct ownership of /home/app..."
+fix_ownership() {
+    find /home/app -not -user app -print0 2>/dev/null \
+        | xargs -0 -r chown "app:$APP_GROUP" 2>/dev/null || true
+}
 cleanup_ownership() {
     echo "🧹 Finalizing ownership of /home/app..."
-    chown -R app:"$APP_GROUP" /home/app
+    fix_ownership
 }
 trap cleanup_ownership EXIT
 
-chown -R app:"$APP_GROUP" /home/app
+fix_ownership
 
-echo "📄 Syncing internal configuration files to /home/app..."
-[ -f "/jupyter/docker-compose.yml" ] && cp "/jupyter/docker-compose.yml" "/home/app/docker-compose.yml"
-[ -f "/jupyter/Dockerfile" ] && cp "/jupyter/Dockerfile" "/home/app/Dockerfile"
-[ -f "/jupyter/requirements.txt" ] && cp "/jupyter/requirements.txt" "/home/app/requirements.txt"
-[ -f "/jupyter/app-requirements.txt" ] && cp "/jupyter/app-requirements.txt" "/home/app/app-requirements.txt"
-[ -f "/jupyter/README.md" ] && cp "/jupyter/README.md" "/home/app/README.md"
-
-sync_script() {
-    src="$1"
-    dst="$2"
-    if [ -f "$src" ]; then
+# Helpers ---------------------------------------------------------------------
+# sync_config: copy a baked-in config file into APP_HOME only if missing.
+# Refresh a ".dist" sibling so users can diff against the shipped version.
+sync_config() {
+    src="$1"; dst="$2"
+    [ -f "$src" ] || return 0
+    if [ ! -f "$dst" ]; then
         cp "$src" "$dst"
-        chmod +x "$dst"
-        python3 -c "import os; content=open('$dst', 'rb').read().replace(b'\r\n', b'\n'); open('$dst', 'wb').write(content)"
+        sed -i 's/\r$//' "$dst" 2>/dev/null || true
     fi
+    cp "$src" "${dst}.dist"
+    sed -i 's/\r$//' "${dst}.dist" 2>/dev/null || true
 }
 
-sync_script "/jupyter/psql" "/home/app/psql"
-sync_script "/jupyter/jupyter-init" "/home/app/jupyter-init"
+# sync_script: always refresh helper scripts, strip CRLF, mark executable.
+sync_script() {
+    src="$1"; dst="$2"
+    [ -f "$src" ] || return 0
+    cp "$src" "$dst"
+    chmod +x "$dst"
+    sed -i 's/\r$//' "$dst"
+}
+
+echo "📄 Syncing internal configuration files to /home/app..."
+sync_config "/jupyter/docker-compose.yml"    "/home/app/docker-compose.yml"
+sync_config "/jupyter/Dockerfile"            "/home/app/Dockerfile"
+sync_config "/jupyter/requirements.txt"      "/home/app/requirements.txt"
+sync_config "/jupyter/app-requirements.txt"  "/home/app/app-requirements.txt"
+sync_config "/jupyter/README.md"             "/home/app/README.md"
+sync_script "/jupyter/psql"                  "/home/app/psql"
+sync_script "/jupyter/jupyter-init"          "/home/app/jupyter-init"
 [ -f "/.gitignore" ] && cp "/.gitignore" "/home/app/.gitignore"
 
 # Create .env from example if it doesn't exist
@@ -100,7 +124,7 @@ if [ ! -f "/home/app/.env" ] && [ -f "/jupyter/.env.example" ]; then
         fi
     fi
 
-    python3 -c "import os; f='/home/app/.env'; content=open(f, 'rb').read().replace(b'\r\n', b'\n'); open(f, 'wb').write(content)"
+    sed -i 's/\r$//' "/home/app/.env"
 fi
 
 # Sync app if it exists in /jupyter/app
@@ -110,6 +134,6 @@ if [ -d "/jupyter/app/notebooks" ] && [ ! -d "/home/app/notebooks" ]; then
 fi
 
 # Final ownership check
-chown -R app:"$APP_GROUP" /home/app
+fix_ownership
 
 exec gosu app "$@"

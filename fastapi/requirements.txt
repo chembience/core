@@ -1,9 +1,11 @@
-pytest
-pytest-asyncio
-fastapi
-uvicorn[standard]
-sqlalchemy
-psycopg2-binary
-pydantic-settings
+# Pinned to compatible ranges to keep builds reproducible.
+# Bump intentionally; do not change to "latest" — see core/README.md.
+pytest>=8,<9
+pytest-asyncio>=0.24,<1
+fastapi>=0.115,<1
+uvicorn[standard]>=0.32,<1
+sqlalchemy>=2.0,<3
+psycopg2-binary>=2.9,<3
+pydantic-settings>=2.6,<3
 rdkit
 git+https://github.com/rvianello/razi.git
