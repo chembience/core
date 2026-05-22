@@ -4,8 +4,22 @@ Chembience is a specialized platform for chemical informatics, using Django for 
 
 ## Prerequisites
 
-- Docker and Docker Compose
-- Bash (Linux/macOS/WSL2)
+- **Docker**: Version 20.10.0 or higher
+- **Docker Compose**: Version 2.0.0 or higher
+- **Bash**: (Linux/macOS/WSL2)
+
+## Major Software Libraries
+
+- **Python**: 3.14
+- **RDKit**: 2026.03.2
+- **PostgreSQL**: 18 (PostGIS/rdkit-ready)
+- **Django**: 5.x
+- **SQLAlchemy**: latest
+- **FastAPI**: latest
+- **JupyterLab**: latest
+- **django-rdkit**: latest (GitHub)
+- **razi**: latest (GitHub)
+
 
 ## Installation & Setup
 
