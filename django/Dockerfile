@@ -21,13 +21,13 @@ COPY django/app/Dockerfile /django/Dockerfile
 COPY django/app/requirements.txt /django/requirements.txt
 COPY django/app/README.md /django/README.md
 COPY django/psql /django/psql
-COPY django/prod /django/prod
 COPY django/app/django-rdkit-test-app /django/django-rdkit-test-app/
+COPY share /opt/share
 COPY .env.example /django/.env.example
 COPY django/requirements.txt /opt/django
 
 # Copy application code if it exists locally during build
-# When running 'prod' script, this will copy the current directory (app context) into the image
+# This will copy the current directory (app context) into the image
 # We use a conditional check to see if there's anything to copy that isn't just the core directory
 COPY . /home/app/
 # Ensure correct permissions for the default app user (1000)
@@ -35,8 +35,7 @@ RUN if [ -d /home/app ]; then chown -R 1000:1000 /home/app && find /home/app -ty
 # Make sure scripts are executable
 RUN if [ -f /home/app/psql ]; then chmod +x /home/app/psql; fi && \
     if [ -f /home/app/django-init ]; then chmod +x /home/app/django-init; fi && \
-    if [ -f /home/app/django-manage-py ]; then chmod +x /home/app/django-manage-py; fi && \
-    if [ -f /home/app/prod ]; then chmod +x /home/app/prod; fi
+    if [ -f /home/app/django-manage-py ]; then chmod +x /home/app/django-manage-py; fi
 
 ENV PATH=/opt/conda/envs/chembience/bin:/opt/conda/bin:$PATH
 
@@ -49,6 +48,7 @@ RUN conda config --system --set remote_read_timeout_secs 600.0 && \
     else \
         echo "requirements.txt is empty; skipping pip install"; \
     fi && \
+    conda run -n chembience python -m pip install -e /opt/share && \
     conda run -n chembience python -c "import django_rdkit" && \
     conda clean -afy && \
     find /opt/conda/ -follow -type f -name '*.a' -delete && \

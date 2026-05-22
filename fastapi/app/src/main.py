@@ -4,7 +4,8 @@ from fastapi import APIRouter, FastAPI, HTTPException, status
 from pydantic import BaseModel, Field
 from rdkit import Chem
 
-from db import init_db
+from chembience.db import engine, init_db
+from db.schema import Molecule
 
 
 # --- Pydantic models ---------------------------------------------------------

@@ -22,6 +22,7 @@ COPY jupyter/app/requirements.txt /jupyter/app-requirements.txt
 COPY jupyter/app/jupyter-init /jupyter/jupyter-init
 COPY jupyter/app/notebooks /jupyter/app/notebooks
 COPY psql /jupyter/psql
+COPY share /opt/share
 COPY .env.example /jupyter/.env.example
 
 # Copy application code if it exists locally during build
@@ -46,6 +47,7 @@ RUN conda config --system --set remote_read_timeout_secs 600.0 && \
     else \
         echo "requirements.txt is empty; skipping pip install"; \
     fi && \
+    conda run -n chembience python -m pip install -e /opt/share && \
     conda clean -afy && \
     find /opt/conda/ -follow -type f -name '*.a' -delete && \
     find /opt/conda/ -follow -type f -name '*.pyc' -delete && \

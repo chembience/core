@@ -90,8 +90,8 @@ All are intended to be run from `core/` unless noted.
 - `./remove <target> [-d <parent_dir>]` — tear it down.
 - `./psql` — open a `psql` shell on the Postgres container.
 - `core/django/django-init`, `core/django/django-manage-py`,
-  `core/django/prod`, `core/django/psql` — Django-side helpers
-  (project init, `manage.py` proxy, prod start, DB shell).
+  `core/django/psql` — Django-side helpers
+  (project init, `manage.py` proxy, DB shell).
 - `core/fastapi/app/fastapi-init`, `core/fastapi/app/db_backup`,
   `core/fastapi/app/db_cleanup`, `core/fastapi/app/db_restore` —
   FastAPI-side helpers.

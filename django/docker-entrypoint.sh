@@ -103,7 +103,6 @@ sync_config "/django/README.md"          "/home/app/README.md"
 sync_script "/django/psql"               "/home/app/psql"
 sync_script "/django/django-init"        "/home/app/django-init"
 sync_script "/django/django-manage-py"   "/home/app/django-manage-py"
-sync_script "/django/prod"               "/home/app/prod"
 [ -f "/.gitignore" ] && cp "/.gitignore" "/home/app/.gitignore"
 
 # Create .env from example if it doesn't exist
@@ -189,7 +188,7 @@ from pathlib import Path
 import os
 import sys
 
-sys.path.append('/share')
+sys.path.append('/opt/share')
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -514,7 +513,7 @@ echo "📂 Contents of /home/app/src:"
 ls -F /home/app/src
 echo "🐍 PYTHONPATH: $PYTHONPATH"
 
-export PYTHONPATH=/home/app/src:/share${PYTHONPATH:+:$PYTHONPATH}
+export PYTHONPATH=/home/app/src:/opt/share${PYTHONPATH:+:$PYTHONPATH}
 
 # Ensure DJANGO_SECRET_KEY is available to the server process on every start.
 # Priority: 1) inbound container env, 2) persisted project .env, 3) generate (and persist).

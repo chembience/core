@@ -26,11 +26,12 @@ COPY fastapi/app/db_cleanup /fastapi/db_cleanup
 COPY fastapi/app/fastapi-init /fastapi/fastapi-init
 COPY fastapi/app/src /fastapi/src
 COPY psql /fastapi/psql
+COPY share /opt/share
 COPY .env.example /fastapi/.env.example
 COPY fastapi/requirements.txt /opt/fastapi
 
 # Copy application code if it exists locally during build
-# When running 'prod' script, this will copy the current directory (app context) into the image
+# This will copy the current directory (app context) into the image
 # We use a conditional check to see if there's anything to copy that isn't just the core directory
 COPY . /home/app/
 # Ensure correct permissions for the default app user (1000)
@@ -53,6 +54,7 @@ RUN conda config --system --set remote_read_timeout_secs 600.0 && \
     else \
         echo "requirements.txt is empty; skipping pip install"; \
     fi && \
+    conda run -n chembience python -m pip install -e /opt/share && \
     conda clean -afy && \
     find /opt/conda/ -follow -type f -name '*.a' -delete && \
     find /opt/conda/ -follow -type f -name '*.pyc' -delete && \

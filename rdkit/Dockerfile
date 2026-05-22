@@ -42,6 +42,7 @@ COPY rdkit/app/requirements.txt /opt/rdkit/app-requirements.txt
 COPY rdkit/app/README.md /opt/rdkit/README.md
 COPY psql /opt/rdkit/psql
 COPY .env.example /opt/rdkit/.env.example
+COPY share /opt/share
 
 RUN conda config --system --set remote_read_timeout_secs 600.0 && \
     if [ -n "${conda_mirror}" ]; then \
@@ -62,6 +63,7 @@ RUN conda config --system --set remote_read_timeout_secs 600.0 && \
     else \
         echo "requirements.txt is empty; skipping pip install"; \
     fi && \
+    conda run -n ${CONDA_ENV} python -m pip install -e /opt/share && \
     conda clean -afy && \
     find /opt/conda/ -follow -type f -name '*.a' -delete && \
     find /opt/conda/ -follow -type f -name '*.pyc' -delete && \

@@ -1,1 +1,2 @@
-from .schema import SessionLocal, Base, Molecule, init_db, get_db, engine
+from chembience.db import SessionLocal, Base, get_db, init_db, engine
+from .schema import Molecule
