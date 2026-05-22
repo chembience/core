@@ -17,8 +17,8 @@ Chembience is a specialized platform for chemical informatics, using Django for 
 - **SQLAlchemy**: latest
 - **FastAPI**: latest
 - **JupyterLab**: latest
-- **django-rdkit**: latest (GitHub)
-- **razi**: latest (GitHub)
+- **django-rdkit**: [latest](https://github.com/rdkit/django-rdkit) (GitHub)
+- **razi**: [latest](https://github.com/rvianello/razi) (GitHub)
 
 
 ## Installation & Setup

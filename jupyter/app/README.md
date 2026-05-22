@@ -6,7 +6,7 @@ This service provides a JupyterLab environment integrated with RDKit and pre-con
 
 - **JupyterLab**: Modern web-based interface for notebooks.
 - **RDKit**: Chemical informatics and machine learning software.
-- **SQLAlchemy & Razi**: Database toolkit and RDKit-Postgres integration for chemical data queries.
+- **SQLAlchemy & [Razi](https://github.com/rvianello/razi)**: Database toolkit and RDKit-Postgres integration for chemical data queries.
 - **Pre-configured Connectivity**: Automatically connects to the `postgres` service using environment variables.
 
 ## Getting Started

@@ -1,6 +1,6 @@
 # Chembience FastAPI Application
 
-This is the web service for your Chembience project. It is built using FastAPI and integrated with SQLAlchemy and RDKit.
+This is the web service for your Chembience project. It is built using [FastAPI](https://fastapi.fastapi.tiangolo.com/) (latest) and integrated with [SQLAlchemy](https://www.sqlalchemy.org/) (latest) and [RDKit](https://www.rdkit.org/) (2026.03.2).
 
 ## Directory Structure
 
@@ -34,7 +34,7 @@ To access the database:
 
 ## Running Tests
 
-To run the RDKit-PostgreSQL integration tests:
+To run the RDKit-PostgreSQL integration tests (adapted from [Razi](https://github.com/rvianello/razi)):
 ```bash
 docker compose exec fastapi pytest
 ```
