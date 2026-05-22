@@ -1,0 +1,19 @@
+#!/bin/bash
+
+# Check if the RDKit container is running (only if on host)
+if [ ! -f /.dockerenv ]; then
+    if [ -z "$(docker compose ps rdkit -q 2>/dev/null)" ]; then
+        echo "RDKit-app container is not running. Starting it..."
+        docker compose up -d rdkit
+    fi
+fi
+
+echo "🚀 Verifying RDKit environment..."
+
+if [ -f /.dockerenv ]; then
+    # We are inside the container
+    python -c "from rdkit import Chem; print(f'✅ RDKit is working! Version: {Chem.rdBase.rdkitVersion}')"
+else
+    # We are on the host
+    docker compose exec rdkit python -c "from rdkit import Chem; print(f'✅ RDKit is working! Version: {Chem.rdBase.rdkitVersion}')"
+fi

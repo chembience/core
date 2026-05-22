@@ -1,0 +1,100 @@
+#!/bin/bash
+set -e
+
+# This script builds every app sequentially, calls the corresponding init script,
+# and then removes the app. This is used for verification of the build process.
+
+# Ensure we are in the core directory
+cd "$(dirname "$0")"
+
+APPS=("rdkit" "django" "fastapi" "jupyter")
+TEST_DIR="./test-builds"
+
+# Create a clean test directory
+TEST_DIR_ABS=$(realpath "$TEST_DIR")
+if [ -d "$TEST_DIR" ]; then
+    echo "🧹 Removing existing test directory: $TEST_DIR"
+    # Try to clean up any running containers first to avoid "device or resource busy"
+    for app in "${APPS[@]}"; do
+        if [ -d "$TEST_DIR/$app" ]; then
+            (cd "$TEST_DIR/$app" && docker compose down -v --remove-orphans >/dev/null 2>&1 || true)
+        fi
+    done
+    rm -rf "$TEST_DIR"
+fi
+mkdir -p "$TEST_DIR"
+
+# Function to run init script for each app
+run_init() {
+    local app=$1
+    local app_dir=$2
+    
+    echo "🚀 Running init script for $app in $app_dir..."
+    
+    # Check if the init script exists in the root of app_dir
+    local init_script="./${app}-init"
+    if [ ! -f "$app_dir/$init_script" ]; then
+        # Fallback to checking in src/ (some apps might put it there)
+        if [ -f "$app_dir/src/${app}-init" ]; then
+             init_script="./src/${app}-init"
+        else
+            echo "❌ Error: Could not find ${app}-init in $app_dir or $app_dir/src/"
+            ls -R "$app_dir"
+            return 1
+        fi
+    fi
+
+    (cd "$app_dir" && "$init_script")
+}
+
+for app in "${APPS[@]}"; do
+    echo "----------------------------------------------------------------------"
+    echo "🧪 Testing build and init for: $app"
+    echo "----------------------------------------------------------------------"
+    
+    # Ensure port is free by stopping any potential leftovers
+    # (though build should handle it, this is extra safe for sequential tests)
+    docker stop core-postgres-1 >/dev/null 2>&1 || true
+    docker rm core-postgres-1 >/dev/null 2>&1 || true
+    # Also stop any container that might be using the postgres port (5433)
+    PG_CONTAINER=$(docker ps -q --filter "publish=5433")
+    if [ -n "$PG_CONTAINER" ]; then
+        docker stop "$PG_CONTAINER" >/dev/null 2>&1 || true
+        docker rm "$PG_CONTAINER" >/dev/null 2>&1 || true
+    fi
+    APP_NAME="-$app" docker compose down -v --remove-orphans >/dev/null 2>&1 || true
+
+    # 1. Build the app using the build script
+    # We pass 'app' as the target name so it's created in $TEST_DIR_ABS/$app
+    ./build "$app" "$app" -d "$TEST_DIR_ABS"
+    
+    APP_PATH="$TEST_DIR_ABS/$app"
+    
+    # 2. Run the init script
+    # We must ensure we are calling the init script from the app directory
+    # which has its own docker-compose.yml.
+    if run_init "$app" "$APP_PATH"; then
+        echo "✅ $app init successful!"
+    else
+        echo "❌ $app init failed!"
+        # Clean up before exit on failure to release ports
+        (yes y 2>/dev/null | ./remove "$app" -d "$TEST_DIR_ABS" --images >/dev/null 2>&1) || true
+        exit 1
+    fi
+    
+    # 3. Remove the app
+    echo "🗑️ Removing test app: $app"
+    # Use -y for non-interactive remove if it supported it, 
+    # but it doesn't. We'll use yes to bypass the confirmation.
+    # We use a subshell to avoid broken pipe warnings from yes
+    (yes y 2>/dev/null | ./remove "$app" -d "$TEST_DIR_ABS" --images) || true
+    
+    echo "✅ $app test completed successfully!"
+done
+
+# Cleanup test directory if empty
+rmdir "$TEST_DIR" 2>/dev/null || true
+
+echo "----------------------------------------------------------------------"
+echo "🎉 All apps built and initialized successfully!"
+echo "----------------------------------------------------------------------"

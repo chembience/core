@@ -95,8 +95,10 @@ All are intended to be run from `core/` unless noted.
 - `core/fastapi/app/fastapi-init`, `core/fastapi/app/db_backup`,
   `core/fastapi/app/db_cleanup`, `core/fastapi/app/db_restore` —
   FastAPI-side helpers.
-- `core/jupyter/app/jupyter-init` — Jupyter project bootstrap.
+- `core/jupyter/app/jupyter-init` — Jupyter-side helper.
+- `core/rdkit/app/rdkit-init` — RDKit-side helper.
 - `core/rdkit/app/run`, `core/rdkit/app/shell` — RDKit one-shot run / shell.
+- `core/test-build-all` — Test script to build and init all apps.
 
 ## Common Commands
 
