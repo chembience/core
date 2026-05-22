@@ -106,11 +106,17 @@ fi
 # Ensure all synced files have correct ownership
 chown -R app:"$APP_GROUP" /home/app
 
-# Sync apisite if it exists in /fastapi/apisite (though Dockerfile handles it, this ensures volume persistence works)
-if [ -d "/fastapi/apisite" ] && [ ! -d "/home/app/apisite" ]; then
-    echo "📄 Syncing apisite to /home/app/apisite..."
-    cp -r "/fastapi/apisite" "/home/app/apisite"
-    
+# Sync apisite from the image into the bind-mounted /home/app.
+# The host bind mount (${APP_HOME}:/home/app) shadows the apisite/ baked into
+# the image, so we must materialize it here on every start. We only copy files
+# that don't already exist in the target so user edits are preserved across
+# restarts, but missing files (e.g. main.py on a freshly created APP_HOME) are
+# always restored — otherwise uvicorn fails with "Could not import module main".
+if [ -d "/fastapi/apisite" ]; then
+    echo "📄 Syncing apisite to /home/app/apisite (preserving existing files)..."
+    mkdir -p /home/app/apisite
+    cp -rn /fastapi/apisite/. /home/app/apisite/
+
     # Ensure LF line endings for apisite files
     find /home/app/apisite -type f -name "*.py" -exec python3 -c "import sys; f=sys.argv[1]; content=open(f, 'rb').read().replace(b'\r\n', b'\n'); open(f, 'wb').write(content)" {} \;
 fi

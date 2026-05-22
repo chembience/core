@@ -4,6 +4,24 @@ set -e
 CHEMBIENCE_UID="${CHEMBIENCE_UID:-1000}"
 CHEMBIENCE_GID="${CHEMBIENCE_GID:-1000}"
 
+# Generate a cryptographically strong Django SECRET_KEY.
+# Prefer openssl; fall back to Python's secrets module (always present in this image).
+# Output is URL-safe-ish and never contains the literal insecure default.
+generate_django_secret_key() {
+    local key
+    key="$(openssl rand -base64 50 2>/dev/null | tr -d '\n' || true)"
+    if [ -z "$key" ]; then
+        key="$(python3 -c 'import secrets; print(secrets.token_urlsafe(50))' 2>/dev/null || true)"
+    fi
+    if [ -z "$key" ]; then
+        # Last-resort: /dev/urandom. Avoid the well-known insecure default.
+        key="$(head -c 50 /dev/urandom | base64 | tr -d '\n')"
+    fi
+    printf '%s' "$key"
+}
+
+_INSECURE_DEFAULT_KEY='django-insecure-default-change-me-in-production'
+
 # Pick a group to use:
 # - Prefer an existing "app" group
 # - Else, if the requested GID already exists, reuse that group name
@@ -138,8 +156,51 @@ sys.path.append('/share')
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-default-change-me-in-production')
-DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
+DEBUG = os.environ.get('DJANGO_DEBUG', 'False').lower() in ('1', 'true', 'yes', 'on')
+
+# In production (DEBUG=False) we refuse to start with the insecure default key.
+_default_secret = 'django-insecure-default-change-me-in-production'
+
+
+def _load_secret_key_from_env_file():
+    # Fallback for invocations that bypass the container entrypoint
+    # (e.g. \`docker compose exec django python manage.py ...\`): read the
+    # persisted per-project .env directly so management commands work without
+    # the user having to re-export DJANGO_SECRET_KEY into the host environment.
+    for candidate in ('/home/app/.env', os.path.join(str(BASE_DIR.parent), '.env')):
+        try:
+            with open(candidate, 'r', encoding='utf-8') as fh:
+                for line in fh:
+                    line = line.strip()
+                    if not line or line.startswith('#'):
+                        continue
+                    if not line.startswith('DJANGO_SECRET_KEY='):
+                        continue
+                    value = line.split('=', 1)[1].strip()
+                    if (value.startswith("'") and value.endswith("'")) or \
+                       (value.startswith('"') and value.endswith('"')):
+                        value = value[1:-1]
+                    if value and value != _default_secret:
+                        return value
+        except OSError:
+            continue
+    return None
+
+
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', '') or ''
+if not SECRET_KEY or SECRET_KEY == _default_secret:
+    _fallback = _load_secret_key_from_env_file()
+    if _fallback:
+        SECRET_KEY = _fallback
+        os.environ['DJANGO_SECRET_KEY'] = _fallback
+
+if not DEBUG and (not SECRET_KEY or SECRET_KEY == _default_secret):
+    raise RuntimeError(
+        'DJANGO_SECRET_KEY is not set (or still uses the insecure default) '
+        'while DJANGO_DEBUG is False. Refusing to start. Set DJANGO_SECRET_KEY '
+        'to a long random string in your .env file.'
+    )
+
 ALLOWED_HOSTS = os.environ.get('DJANGO_VIRTUAL_HOSTNAME', 'localhost').split(",")
 # Ensure the in-container healthcheck (curl http://localhost:8000/healthz/) always passes
 # the Django host header validation, regardless of DJANGO_VIRTUAL_HOSTNAME.
@@ -211,7 +272,7 @@ AUTH_PASSWORD_VALIDATORS = [
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
-USE_L10N = True
+# USE_L10N was deprecated in Django 4.0 and removed in 5.0; localization is always enabled.
 USE_TZ = True
 
 STATIC_URL = '/static/'
@@ -322,8 +383,18 @@ EOF
         echo "CHEMBIENCE_GID=${CHEMBIENCE_GID}"
         echo "DJANGO_VIRTUAL_HOSTNAME=${DJANGO_VIRTUAL_HOSTNAME}"
         echo "DJANGO_CONNECTION_PORT=${DJANGO_CONNECTION_PORT:-8001}"
-        echo "DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:-$(openssl rand -base64 32 2>/dev/null || echo 'django-insecure-default-change-me-in-production')}"
-        echo "DJANGO_DEBUG=${DJANGO_DEBUG:-True}"
+        # Use the inbound DJANGO_SECRET_KEY if the user set one in the host .env;
+        # otherwise generate a strong one (persisted here so it survives restarts).
+        _env_key="${DJANGO_SECRET_KEY:-}"
+        if [ -z "$_env_key" ] || [ "$_env_key" = "$_INSECURE_DEFAULT_KEY" ]; then
+            _env_key="$(generate_django_secret_key)"
+            echo "🔐 Generated DJANGO_SECRET_KEY (persisted in ./.env; treat that file as a secret)." >&2
+        fi
+        # Single-quote to defend against +, /, = or any future special chars.
+        echo "DJANGO_SECRET_KEY='${_env_key}'"
+        # Export it so the gunicorn process started right after this init can read it.
+        export DJANGO_SECRET_KEY="$_env_key"
+        echo "DJANGO_DEBUG=${DJANGO_DEBUG:-False}"
         echo "DJANGO_SUPERUSER_USERNAME=${DJANGO_SUPERUSER_USERNAME}"
         echo "DJANGO_SUPERUSER_EMAIL=${DJANGO_SUPERUSER_EMAIL}"
         echo "DJANGO_SUPERUSER_PASSWORD=${DJANGO_SUPERUSER_PASSWORD}"
@@ -331,7 +402,7 @@ EOF
         echo "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}"
         echo "POSTGRES_NAME=${POSTGRES_NAME}"
         echo "POSTGRES_HOST=${POSTGRES_HOST}"
-        echo "POSTGRES_PORT=\${POSTGRES_PORT:-5433}"
+        echo "POSTGRES_HOST_PORT=${POSTGRES_HOST_PORT:-${POSTGRES_PORT:-5433}}"
     } > /home/app/.env
     chown app:"$APP_GROUP" /home/app/.env
 
@@ -388,5 +459,34 @@ ls -F /home/app/appsite
 echo "🐍 PYTHONPATH: $PYTHONPATH"
 
 export PYTHONPATH=/home/app/appsite:/share${PYTHONPATH:+:$PYTHONPATH}
+
+# Ensure DJANGO_SECRET_KEY is available to the server process on every start.
+# Priority: 1) inbound container env, 2) persisted project .env, 3) generate (and persist).
+if [ -z "${DJANGO_SECRET_KEY:-}" ] || [ "${DJANGO_SECRET_KEY}" = "$_INSECURE_DEFAULT_KEY" ]; then
+    if [ -f /home/app/.env ] && grep -q '^DJANGO_SECRET_KEY=' /home/app/.env; then
+        # Strip optional surrounding single/double quotes.
+        _persisted_key="$(grep '^DJANGO_SECRET_KEY=' /home/app/.env | head -n1 | cut -d= -f2-)"
+        _persisted_key="${_persisted_key%\'}"; _persisted_key="${_persisted_key#\'}"
+        _persisted_key="${_persisted_key%\"}"; _persisted_key="${_persisted_key#\"}"
+        if [ -n "$_persisted_key" ] && [ "$_persisted_key" != "$_INSECURE_DEFAULT_KEY" ]; then
+            export DJANGO_SECRET_KEY="$_persisted_key"
+            echo "🔐 Loaded DJANGO_SECRET_KEY from project .env."
+        fi
+    fi
+fi
+if [ -z "${DJANGO_SECRET_KEY:-}" ] || [ "${DJANGO_SECRET_KEY}" = "$_INSECURE_DEFAULT_KEY" ]; then
+    _gen_key="$(generate_django_secret_key)"
+    export DJANGO_SECRET_KEY="$_gen_key"
+    if [ -w /home/app/.env ]; then
+        # Persist for next restart (or create the line if it didn't exist).
+        if grep -q '^DJANGO_SECRET_KEY=' /home/app/.env; then
+            sed -i "s|^DJANGO_SECRET_KEY=.*|DJANGO_SECRET_KEY='${_gen_key}'|" /home/app/.env
+        else
+            echo "DJANGO_SECRET_KEY='${_gen_key}'" >> /home/app/.env
+        fi
+        chown app:"$APP_GROUP" /home/app/.env || true
+    fi
+    echo "🔐 Generated DJANGO_SECRET_KEY on the fly (persisted to ./.env when writable)."
+fi
 
 exec gosu app "$@"

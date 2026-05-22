@@ -9,14 +9,23 @@ x-common-environment: &common-env
   DJANGO_SUPERUSER_PASSWORD: ${DJANGO_SUPERUSER_PASSWORD}
   DJANGO_SUPERUSER_USERNAME: ${DJANGO_SUPERUSER_USERNAME}
   DJANGO_SUPERUSER_EMAIL: ${DJANGO_SUPERUSER_EMAIL}
+  # Forwarded to the django container. If left empty, the django entrypoint
+  # auto-generates a strong key on first init and persists it in the
+  # project's .env (next to docker-compose.yml in the bind-mounted APP_HOME).
+  DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-}
+  DJANGO_DEBUG: ${DJANGO_DEBUG:-False}
   FASTAPI_CONNECTION_PORT: ${FASTAPI_CONNECTION_PORT:-8002}
   JUPYTER_CONNECTION_PORT: ${JUPYTER_CONNECTION_PORT:-8888}
   APP_NAME: ${APP_NAME:-}
-  POSTGRES_USER: chembience
+  POSTGRES_USER: ${POSTGRES_USER:-chembience}
   POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
   POSTGRES_NAME: ${POSTGRES_NAME:-chembience}
   POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
-  POSTGRES_PORT: ${POSTGRES_PORT:-5433}
+  # Host-side published port (the one exposed on the Docker host).
+  POSTGRES_HOST_PORT: ${POSTGRES_HOST_PORT:-${POSTGRES_PORT:-5433}}
+  # In-network port used by services to connect to the postgres container.
+  POSTGRES_PORT: 5432
+  # Backwards-compatible alias kept for code that still reads POSTGRES_INTERNAL_PORT.
   POSTGRES_INTERNAL_PORT: 5432
 
 services:
@@ -38,6 +47,7 @@ services:
     working_dir: "/home/app"
     networks:
       - app-network
+    restart: "no"
     entrypoint: [ "/docker-entrypoint.sh" ]
     tty: true
     command: [ "python" ]
@@ -61,6 +71,7 @@ services:
     networks:
       - app-network
     working_dir: "/home/app"
+    restart: unless-stopped
     entrypoint: [ "/docker-entrypoint.sh" ]
     command: ["tail", "-f", "/dev/null"]
 
@@ -87,6 +98,7 @@ services:
     networks:
       - app-network
     working_dir: "/home/app/appsite/"
+    restart: unless-stopped
     entrypoint: [ "/docker-entrypoint.sh" ]
     command: ["python", "-m", "gunicorn", "appsite.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "8"]
     healthcheck:
@@ -119,6 +131,7 @@ services:
     networks:
       - app-network
     working_dir: "/home/app/apisite/"
+    restart: unless-stopped
     entrypoint: [ "/docker-entrypoint.sh" ]
     command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
     healthcheck:
@@ -151,6 +164,7 @@ services:
     networks:
       - app-network
     working_dir: "/home/app"
+    restart: unless-stopped
     entrypoint: [ "/docker-entrypoint.sh" ]
     command: ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root", "--ServerApp.token=''"]
 
@@ -171,10 +185,11 @@ services:
     environment:
       <<: *common-env
     ports:
-      - "${POSTGRES_PORT:-5433}:5432"
+      - "${POSTGRES_HOST_PORT:-${POSTGRES_PORT:-5433}}:5432"
     networks:
       - app-network
     working_dir: "/home/postgres/"
+    restart: unless-stopped
     entrypoint: [ "/docker-entrypoint.sh" ]
     command: [ "gosu", "app", "postgres", "-D", "/home/postgres/postgres_data" ]
     healthcheck:
@@ -183,11 +198,6 @@ services:
       timeout: 5s
       retries: 10
 
-volumes:
-  postgres-db-volume:
-
 networks:
   app-network:
     name: app-backend
-  chembience-network:
-    name: chembience-network

@@ -50,6 +50,21 @@ Chembience is a specialized platform for chemical informatics, using Django for 
     ```
     This will create the app in `/path/to/parent_dir/myapp`.
 
+## Secrets
+
+`DJANGO_SECRET_KEY` is auto-generated on first `./build` and persisted in the
+per-project `.env` inside `APP_HOME` (e.g. `~/myapp/.env`). The same key is
+reused on every container restart, so sessions, signed cookies, and password
+reset tokens remain valid. Treat that `.env` as a secret.
+
+- To inject your own key (e.g. from Vault or a CI secret store), set
+  `DJANGO_SECRET_KEY` in `core/.env` *before* running `./build`; it will be
+  forwarded to the container and persisted into the project `.env`.
+- Rotating the key (replacing it in the project `.env` and restarting) will
+  log out all existing users and invalidate any outstanding signed tokens.
+- The key is never baked into the Docker image; generation happens at
+  container start, inside the bind-mounted volume.
+
 ## Common Commands
 
 Running from the `core/` directory:
