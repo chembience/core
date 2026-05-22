@@ -108,6 +108,9 @@ venv.bak/
 # mypy
 .mypy_cache/
 
+# Test builds
+test-builds/
+
 
 
 
