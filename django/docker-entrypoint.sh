@@ -132,34 +132,44 @@ fi
 
 fix_ownership
 
-# Initialize /home/app/appsite if it's empty or missing manage.py
-if [ ! -f "/home/app/appsite/manage.py" ]; then
-    echo "🚀 Initializing /home/app/appsite using django-admin..."
-    # Ensure /home/app/appsite exists
-    mkdir -p /home/app/appsite
-    chown app:"$APP_GROUP" /home/app/appsite
+# Ensure dbbackup directory exists (for django-dbbackup)
+mkdir -p /home/app/src/dbbackup
+chown app:"$APP_GROUP" /home/app/src/dbbackup
+
+# Initialize /home/app/src if it's empty or missing manage.py
+if [ ! -f "/home/app/src/manage.py" ]; then
+    # Migration: check if we have a legacy directory to rename
+    for legacy in "/home/app/appsite" "/home/app/apisite" "/home/app/app"; do
+        if [ -d "$legacy" ] && [ -f "$legacy/manage.py" ]; then
+            echo "📦 Migrating legacy directory $legacy to src..."
+            mv "$legacy" "/home/app/src"
+            # If it was appsite, we need to rename the internal package too if possible
+            # but that's complex. Better to just let it be or advise the user.
+            break
+        fi
+    done
+fi
+
+if [ ! -f "/home/app/src/manage.py" ]; then
+    echo "🚀 Initializing /home/app/src using django-admin..."
+    # Ensure /home/app/src exists
+    mkdir -p /home/app/src
+    chown app:"$APP_GROUP" /home/app/src
     
     # Run initialization as the app user to avoid permission issues later
     gosu app bash <<EOF
     set -x
     set -e
-    cd /home/app/appsite
+    cd /home/app/src
     # Initialize Django project if not already present
     if [ ! -f "manage.py" ]; then
-        django-admin startproject appsite .
+        django-admin startproject src .
     fi
     # Initialize 'simple' app
     if [ ! -d "simple" ]; then
         python manage.py startapp simple
         # Ensure we have a urls.py in the simple app
         touch simple/urls.py
-    fi
-
-    # Sync django-rdkit-test-app from /django/ to /home/app/appsite/ and rename it to django_rdkit_test_app
-    if [ -d "/django/django-rdkit-test-app" ]; then
-        echo "📦 Syncing django-rdkit-test-app to appsite..."
-        mkdir -p /home/app/appsite/django_rdkit_test_app
-        cp -r /django/django-rdkit-test-app/. /home/app/appsite/django_rdkit_test_app/
     fi
 EOF
 
@@ -171,9 +181,9 @@ EOF
     # 4. Set other settings like ALLOWED_HOSTS, SECRET_KEY, DEBUG, etc.
     
     # Create the files as root but ensure they are in the right place and then chown
-    cat <<EOF > /home/app/appsite/appsite/settings.py
+    cat <<EOF > /home/app/src/src/settings.py
 """
-Django settings for appsite project.
+Django settings for src project.
 """
 from pathlib import Path
 import os
@@ -245,7 +255,11 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django_rdkit',
     'django_rdkit_test_app',
+    'dbbackup',
 ]
+
+DBBACKUP_STORAGE = 'django.core.files.storage.FileSystemStorage'
+DBBACKUP_STORAGE_OPTIONS = {'location': BASE_DIR / 'dbbackup'}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -258,7 +272,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF = 'appsite.urls'
+ROOT_URLCONF = 'src.urls'
 
 TEMPLATES = [
     {
@@ -276,7 +290,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'appsite.wsgi.application'
+WSGI_APPLICATION = 'src.wsgi.application'
 
 DATABASES = {
     'default': {
@@ -310,8 +324,8 @@ MEDIA_URL = "/media/"
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 EOF
 
-    echo "⚙️ Configuring appsite/urls.py..."
-    cat <<EOF > /home/app/appsite/appsite/urls.py
+    echo "⚙️ Configuring src/urls.py..."
+    cat <<EOF > /home/app/src/src/urls.py
 from django.contrib import admin
 from django.db import connection
 from django.http import HttpResponse
@@ -349,7 +363,7 @@ else:
 EOF
 
     echo "⚙️ Configuring simple app..."
-    cat <<EOF > /home/app/appsite/simple/urls.py
+    cat <<EOF > /home/app/src/simple/urls.py
 from django.urls import path
 from . import views
 
@@ -358,7 +372,7 @@ urlpatterns = [
 ]
 EOF
 
-    cat <<EOF > /home/app/appsite/simple/views.py
+    cat <<EOF > /home/app/src/simple/views.py
 from django.http import HttpResponse
 from rdkit import Chem
 
@@ -370,7 +384,7 @@ def resolver(request, smiles):
         return HttpResponse("Invalid SMILES", status=400)
 EOF
 
-    cat <<EOF > /home/app/appsite/simple/models.py
+    cat <<EOF > /home/app/src/simple/models.py
 from django.db import models
 
 class Simple(models.Model):
@@ -381,14 +395,30 @@ EOF
     # Go back to /
     cd /
 
+    # Sync django-rdkit-test-app from /django/ to /home/app/src/ and rename it to django_rdkit_test_app
+    if [ -d "/django/django-rdkit-test-app" ]; then
+        echo "📦 Syncing django-rdkit-test-app to src..."
+        mkdir -p /home/app/src/django_rdkit_test_app
+        cp -r /django/django-rdkit-test-app/. /home/app/src/django_rdkit_test_app/
+        chown -R app:"$APP_GROUP" /home/app/src/django_rdkit_test_app
+    fi
+
     echo "⚙️ Running collectstatic..."
     # We need settings.py to be there for collectstatic
     # Also ensure static/media dirs exist and are owned by app
-    mkdir -p /home/app/appsite/static /home/app/appsite/media
-    chown -R app:"$APP_GROUP" /home/app/appsite/static /home/app/appsite/media
+    mkdir -p /home/app/src/static /home/app/src/media
+    chown -R app:"$APP_GROUP" /home/app/src/static /home/app/src/media
     # Note: collectstatic might fail if database is not reachable and settings.py expects it.
     # We use a dummy secret key and ignore database for collectstatic if possible.
-    gosu app bash -c "PYTHONPATH=/home/app/appsite DJANGO_SECRET_KEY=dummy python /home/app/appsite/manage.py collectstatic --noinput --clear" || echo "⚠️ collectstatic failed, but continuing..."
+    gosu app bash -c "PYTHONPATH=/home/app/src DJANGO_SECRET_KEY=dummy python /home/app/src/manage.py collectstatic --noinput --clear" || echo "⚠️ collectstatic failed, but continuing..."
+
+    # Clean up legacy directories if they exist
+    for legacy in "/home/app/appsite" "/home/app/apisite" "/home/app/app"; do
+        if [ -d "$legacy" ]; then
+            echo "🧹 Removing legacy directory: $legacy"
+            rm -rf "$legacy"
+        fi
+    done
 
     # Clean up rdkit-specific files if they exist
     rm -rf /home/app/run /home/app/shell /home/app/.rdkit-init
@@ -450,7 +480,7 @@ EOF
         echo ""
         echo "## Directory Structure"
         echo ""
-        echo "- \`appsite/\`: Django application code."
+        echo "- \`src/\`: Django application code."
         echo "- \`postgres/\`: PostgreSQL data and configuration (initialized on first start)."
         echo "- \`docker-compose.yml\`: Defines the services (django, postgres)."
         echo "- \`Dockerfile\`: Used for building the django service."
@@ -468,24 +498,23 @@ EOF
     chown app:"$APP_GROUP" /home/app/README.md
 fi
 
-# Sync django-rdkit-test-app from /django/ to /home/app/appsite/ and rename it to django_rdkit_test_app
-# We do this every time to ensure it's up to date even if the volume mount is persistent
-if [ -d "/django/django-rdkit-test-app" ]; then
-    echo "📦 Syncing django-rdkit-test-app to appsite..."
-    mkdir -p /home/app/appsite/django_rdkit_test_app
-    cp -r /django/django-rdkit-test-app/. /home/app/appsite/django_rdkit_test_app/
-    chown -R app:"$APP_GROUP" /home/app/appsite/django_rdkit_test_app
+# Sync django-rdkit-test-app from /django/ to /home/app/src/ and rename it to django_rdkit_test_app
+if [ -d "/django/django-rdkit-test-app" ] && [ -d "/home/app/src" ]; then
+    echo "📦 Syncing django-rdkit-test-app to src..."
+    mkdir -p /home/app/src/django_rdkit_test_app
+    cp -r /django/django-rdkit-test-app/. /home/app/src/django_rdkit_test_app/
+    chown -R app:"$APP_GROUP" /home/app/src/django_rdkit_test_app
 fi
 
 # Final ownership check before starting (outside the init block too)
 fix_ownership
 
 # Debug info
-echo "📂 Contents of /home/app/appsite:"
-ls -F /home/app/appsite
+echo "📂 Contents of /home/app/src:"
+ls -F /home/app/src
 echo "🐍 PYTHONPATH: $PYTHONPATH"
 
-export PYTHONPATH=/home/app/appsite:/share${PYTHONPATH:+:$PYTHONPATH}
+export PYTHONPATH=/home/app/src:/share${PYTHONPATH:+:$PYTHONPATH}
 
 # Ensure DJANGO_SECRET_KEY is available to the server process on every start.
 # Priority: 1) inbound container env, 2) persisted project .env, 3) generate (and persist).

@@ -5,6 +5,7 @@ sqlparse>=0.5,<0.6
 django>=5.1,<6
 djangorestframework>=3.15,<4
 django-extensions>=3.2,<4
+django-dbbackup>=5.1,<6
 psycopg2-binary>=2.9,<3
 whitenoise>=6.7,<7
 git+https://github.com/rdkit/django-rdkit.git

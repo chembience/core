@@ -132,28 +132,30 @@ fi
 # Ensure all synced files have correct ownership
 fix_ownership
 
-# Sync apisite from the image into the bind-mounted /home/app.
-# The host bind mount (${APP_HOME}:/home/app) shadows the apisite/ baked into
+# Sync src from the image into the bind-mounted /home/app.
+# The host bind mount (${APP_HOME}:/home/app) shadows the src/ baked into
 # the image, so we must materialize it here on every start. We only copy files
 # that don't already exist in the target so user edits are preserved across
 # restarts, but missing files (e.g. main.py on a freshly created APP_HOME) are
 # always restored — otherwise uvicorn fails with "Could not import module main".
-if [ -d "/fastapi/apisite" ]; then
-    echo "📄 Syncing apisite to /home/app/apisite (preserving existing files)..."
-    mkdir -p /home/app/apisite
-    cp -rn /fastapi/apisite/. /home/app/apisite/
+if [ -d "/fastapi/src" ]; then
+    echo "📄 Syncing src to /home/app/src (preserving existing files)..."
+    mkdir -p /home/app/src
+    cp -rn /fastapi/src/. /home/app/src/
 
-    # Ensure LF line endings for apisite files
-    find /home/app/apisite -type f -name "*.py" -exec sed -i 's/\r$//' {} +
+    # Ensure LF line endings for src files
+    find /home/app/src -type f -name "*.py" -exec sed -i 's/\r$//' {} +
 fi
 
 # Final ownership check
 fix_ownership
 
-# Clean up appsite if it exists (renamed to apisite)
-if [ -d "/home/app/appsite" ]; then
-    echo "🧹 Removing legacy appsite directory..."
-    rm -rf /home/app/appsite
-fi
+# Clean up legacy directories if they exist (renamed to src)
+for legacy in "/home/app/appsite" "/home/app/apisite" "/home/app/app"; do
+    if [ -d "$legacy" ]; then
+        echo "🧹 Removing legacy directory: $legacy..."
+        rm -rf "$legacy"
+    fi
+done
 
 exec gosu app "$@"

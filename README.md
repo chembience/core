@@ -32,7 +32,7 @@ Chembience is a specialized platform for chemical informatics, using Django for 
     ```bash
     ./build <type> <target>
     ```
-    - `<type>`: `django`, `fastapi` or `rdkit`
+    - `<type>`: `django`, `fastapi`, `jupyter` or `rdkit`
     - `<target>`: Name of your application (e.g., `myapp`)
 
     Example:
@@ -64,6 +64,39 @@ reset tokens remain valid. Treat that `.env` as a secret.
   log out all existing users and invalidate any outstanding signed tokens.
 - The key is never baked into the Docker image; generation happens at
   container start, inside the bind-mounted volume.
+
+## Services
+
+Chembience ships five services, all wired together via `core/docker-compose.yml`:
+
+| Service   | Path             | Purpose                                                 |
+| --------- | ---------------- | ------------------------------------------------------- |
+| `django`  | `core/django`    | Main Django web app (`src/`).                       |
+| `fastapi` | `core/fastapi`   | Async REST API (`src/`).                            |
+| `jupyter` | `core/jupyter`   | JupyterLab environment with RDKit + Postgres pre-wired. |
+| `rdkit`   | `core/rdkit`     | RDKit shell / base image for one-shot scripts.          |
+| `postgres`| `core/postgres`  | PostgreSQL with the RDKit cartridge.                    |
+
+Note on naming: Both Django and FastAPI use `src/` for their application
+source code within the container. This provides a consistent naming convention
+across the platform.
+
+## Helper Scripts
+
+Thin Bash wrappers around `docker compose` and the per-service entrypoints.
+All are intended to be run from `core/` unless noted.
+
+- `./build <type> <target> [-d <parent_dir>]` — bootstrap a new project.
+- `./remove <target> [-d <parent_dir>]` — tear it down.
+- `./psql` — open a `psql` shell on the Postgres container.
+- `core/django/django-init`, `core/django/django-manage-py`,
+  `core/django/prod`, `core/django/psql` — Django-side helpers
+  (project init, `manage.py` proxy, prod start, DB shell).
+- `core/fastapi/app/fastapi-init`, `core/fastapi/app/db_backup`,
+  `core/fastapi/app/db_cleanup`, `core/fastapi/app/db_restore` —
+  FastAPI-side helpers.
+- `core/jupyter/app/jupyter-init` — Jupyter project bootstrap.
+- `core/rdkit/app/run`, `core/rdkit/app/shell` — RDKit one-shot run / shell.
 
 ## Common Commands
 

@@ -55,4 +55,4 @@ RUN conda config --system --set remote_read_timeout_secs 600.0 && \
     find /opt/conda/ -follow -type f -name '*.pyc' -delete && \
     find /opt/conda/ -follow -type f -name '*.js.map' -delete
 
-WORKDIR /home/app/appsite
+WORKDIR /home/app/src

@@ -38,7 +38,7 @@ id app >/dev/null 2>&1
 export PYTHONPATH=/home/app:/share:$PYTHONPATH
 
 # Initialize app context if missing or if it looks like a django app
-if [ ! -f "/home/app/.rdkit-init" ] || [ -d "/home/app/appsite" ]; then
+if [ ! -f "/home/app/.rdkit-init" ] || [ -d "/home/app/src" ]; then
     # ONLY initialize if we are NOT in a django container.
     # We can check for existence of /django (copied in django/Dockerfile)
     if [ -d "/django" ]; then
@@ -79,7 +79,7 @@ if [ ! -f "/home/app/.rdkit-init" ] || [ -d "/home/app/appsite" ]; then
         chmod +x /home/app/run /home/app/shell /home/app/psql
         
         # Clean up django-specific files if they exist
-        rm -rf /home/app/appsite /home/app/apisite /home/app/django-init /home/app/django-manage-py
+        rm -rf /home/app/appsite /home/app/apisite /home/app/src /home/app/django-init /home/app/django-manage-py
         
         touch /home/app/.rdkit-init
     fi

@@ -17,7 +17,7 @@
 ## Code Style Guidelines
 - **Line Endings**: Use Linux line endings (`LF`) for all files.
 - **Python**: Follow PEP 8. Use 4 spaces for indentation.
-- **Django**: Standard Django project layout. Settings are expected in `appsite/settings.py`.
+- **Django**: Standard Django project layout. Settings are expected in `src/src/settings.py`.
 - **Docker**: Use environment variables for configuration. Multi-stage builds are preferred.
 - **Naming**: Use `snake_case` for variables/functions, `PascalCase` for classes.
 

@@ -4,7 +4,7 @@ This is the web service for your Chembience project. It is built using [FastAPI]
 
 ## Directory Structure
 
-- `apisite/`: The FastAPI application code.
+- `src/`: The FastAPI application code.
   - `main.py`: The entry point for the FastAPI application.
   - `db/`: Database models and configuration.
 - `psql`: Helper script for accessing the PostgreSQL database.
@@ -25,7 +25,7 @@ Alternatively, to run FastAPI manually inside the container (e.g., for developme
 ```bash
 docker compose exec fastapi uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
-(Note: `uvicorn` is started in the `apisite` directory)
+(Note: `uvicorn` is started in the `src` directory)
 
 To access the database:
 ```bash

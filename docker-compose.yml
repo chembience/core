@@ -97,10 +97,10 @@ services:
       - ${APP_HOME}:/home/app
     networks:
       - app-network
-    working_dir: "/home/app/appsite/"
+    working_dir: "/home/app/src/"
     restart: unless-stopped
     entrypoint: [ "/docker-entrypoint.sh" ]
-    command: ["python", "-m", "gunicorn", "appsite.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "8"]
+    command: ["python", "-m", "gunicorn", "src.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "8"]
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8000/healthz/"]
       interval: 10s
@@ -130,10 +130,10 @@ services:
       - ${APP_HOME}:/home/app
     networks:
       - app-network
-    working_dir: "/home/app/apisite/"
+    working_dir: "/home/app/src/"
     restart: unless-stopped
     entrypoint: [ "/docker-entrypoint.sh" ]
-    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+    command: ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/"]
       interval: 10s

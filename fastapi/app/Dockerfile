@@ -16,4 +16,4 @@ RUN if grep -qE '^\s*[^#\s]' /opt/fastapi/app-requirements.txt; then \
     find /opt/conda/ -follow -type f -name '*.pyc' -delete && \
     find /opt/conda/ -follow -type f -name '*.js.map' -delete
 
-WORKDIR /home/app/apisite
+WORKDIR /home/app/src

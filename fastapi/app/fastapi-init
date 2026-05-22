@@ -15,7 +15,7 @@ if [ -f /.dockerenv ]; then
     # We are inside the container
     python -c "
 import sys
-sys.path.append('/home/app/apisite')
+sys.path.append('/home/app/src')
 from db import init_db
 print('Connecting to database...')
 init_db()
@@ -25,7 +25,7 @@ else
     # We are on the host
     docker compose exec fastapi python -c "
 import sys
-sys.path.append('/home/app/apisite')
+sys.path.append('/home/app/src')
 from db import init_db
 print('Connecting to database...')
 init_db()

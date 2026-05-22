@@ -14,6 +14,7 @@ RUN if grep -qE '^\s*[^#\s]' /opt/django/app-requirements.txt; then \
     conda clean -afy && \
     find /opt/conda/ -follow -type f -name '*.a' -delete && \
     find /opt/conda/ -follow -type f -name '*.pyc' -delete && \
-    find /opt/conda/ -follow -type f -name '*.js.map' -delete
+    find /opt/conda/ -follow -type f -name '*.js.map' -delete && \
+    mkdir -p /home/app/src/dbbackup
 
-WORKDIR /home/app/appsite
+WORKDIR /home/app/src
