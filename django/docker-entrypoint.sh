@@ -141,6 +141,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-default-change-me-in-production')
 DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = os.environ.get('DJANGO_VIRTUAL_HOSTNAME', 'localhost').split(",")
+# Ensure the in-container healthcheck (curl http://localhost:8000/healthz/) always passes
+# the Django host header validation, regardless of DJANGO_VIRTUAL_HOSTNAME.
+for _h in ('localhost', '127.0.0.1'):
+    if _h not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(_h)
 
 INSTALLED_APPS = [
     'simple.apps.SimpleConfig',
@@ -220,11 +225,25 @@ EOF
     echo "⚙️ Configuring appsite/urls.py..."
     cat <<EOF > /home/app/appsite/appsite/urls.py
 from django.contrib import admin
+from django.db import connection
+from django.http import HttpResponse
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 
+
+def healthz(request):
+    # Lightweight liveness/readiness probe used by the Docker healthcheck.
+    # Verifies the WSGI worker is alive and the database is reachable.
+    try:
+        connection.ensure_connection()
+    except Exception as exc:  # pragma: no cover - probe path
+        return HttpResponse("db-unavailable: %s" % exc, status=503)
+    return HttpResponse("ok")
+
+
 urlpatterns = [
+    path('healthz/', healthz),
     path('simple/', include('simple.urls')),
     path('admin/', admin.site.urls),
 ]

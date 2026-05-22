@@ -4,6 +4,8 @@ FROM $conda_package:$conda_tag
 ARG conda_py
 ARG apt_mirror
 ARG conda_mirror
+ARG CHEMBIENCE_UID=1000
+ARG CHEMBIENCE_GID=1000
 
 LABEL maintainer="markussitzmann@gmail.com "
 
