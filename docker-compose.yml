@@ -16,6 +16,8 @@ x-common-environment: &common-env
   DJANGO_DEBUG: ${DJANGO_DEBUG:-False}
   FASTAPI_CONNECTION_PORT: ${FASTAPI_CONNECTION_PORT:-8002}
   JUPYTER_CONNECTION_PORT: ${JUPYTER_CONNECTION_PORT:-8888}
+  GUNICORN_WORKERS: ${GUNICORN_WORKERS:-8}
+  UVICORN_WORKERS: ${UVICORN_WORKERS:-4}
   APP_NAME: ${APP_NAME:-}
   POSTGRES_USER: ${POSTGRES_USER:-chembience}
   POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -100,7 +102,7 @@ services:
     working_dir: "/home/app/src/"
     restart: unless-stopped
     entrypoint: [ "/docker-entrypoint.sh" ]
-    command: ["python", "-m", "gunicorn", "src.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "8"]
+    command: ["sh", "-c", "exec python -m gunicorn src.wsgi:application --bind 0.0.0.0:8000 --workers ${GUNICORN_WORKERS:-8}"]
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8000/healthz/"]
       interval: 10s
@@ -133,7 +135,7 @@ services:
     working_dir: "/home/app/src/"
     restart: unless-stopped
     entrypoint: [ "/docker-entrypoint.sh" ]
-    command: ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+    command: ["sh", "-c", "exec uvicorn src.main:app --host 0.0.0.0 --port 8000 --workers ${UVICORN_WORKERS:-4}"]
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8000/healthz"]
       interval: 10s
@@ -167,6 +169,12 @@ services:
     restart: unless-stopped
     entrypoint: [ "/docker-entrypoint.sh" ]
     command: ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root", "--ServerApp.token=''"]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8888/api"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   postgres:
     image: chembience/core-rdkit-postgres:${CHEMBIENCE_VERSION}
