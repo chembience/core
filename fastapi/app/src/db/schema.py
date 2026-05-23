@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String
-from razi.rdkit_postgresql.types import Mol, Bfp
-from chembience.db import Base, engine, SessionLocal, get_db, init_db
+from razi.rdkit_postgresql.types import Mol
+from chembience.db import Base
+
 
 # Example Model
 class Molecule(Base):

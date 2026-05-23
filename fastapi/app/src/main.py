@@ -4,8 +4,8 @@ from fastapi import APIRouter, FastAPI, HTTPException, status
 from pydantic import BaseModel, Field
 from rdkit import Chem
 
-from chembience.db import engine, init_db
-from db.schema import Molecule
+from chembience.db import init_db
+from db.schema import Molecule  # noqa: F401  # ensure model is registered with Base.metadata
 
 
 # --- Pydantic models ---------------------------------------------------------
