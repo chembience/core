@@ -32,6 +32,13 @@ To access the database:
 ./psql
 ```
 
+## Configuration
+
+- Use `./fastapi-configure [--rebuild] [NEW_ENV_FILE]` to manage environment updates safely.
+  - First run creates `./.env.new` from the current `./.env` and prints edit instructions.
+  - After editing, rerun with the same file to apply changes and refresh the service.
+  - Add `--rebuild` to force a rebuild/restart after applying changes.
+
 ## Running Tests
 
 To run the RDKit-PostgreSQL integration tests (adapted from [Razi](https://github.com/rvianello/razi)):

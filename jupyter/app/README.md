@@ -51,3 +51,10 @@ The environment is pre-configured with the following variables for database acce
 - `POSTGRES_NAME`
 - `POSTGRES_HOST`
 - `POSTGRES_PORT` (Internal port 5432)
+
+## Configuration
+
+- Use `./jupyter-configure [--rebuild] [NEW_ENV_FILE]` to manage environment updates safely.
+  - First run creates `./.env.new` from the current `./.env` and prints edit instructions.
+  - After editing, rerun with the same file to apply changes and refresh the service.
+  - Add `--rebuild` to force a rebuild/restart after applying changes.

@@ -87,7 +87,7 @@ Thin Bash wrappers around `docker compose` and the per-service entrypoints.
 All are intended to be run from `core/` unless noted.
 
 - `./build <type> <target> [-d <parent_dir>]` — bootstrap a new project.
-- `./remove <target> [-d <parent_dir>]` — tear it down.
+- `./remove <target> [-d <parent_dir>] [-i|--images] [--silent|-s]` — tear it down. `-i/--images` also removes Chembience Docker images (with safety checks). When `--silent` is used, the command is non-interactive (no confirmation prompt) and suppresses standard output while preserving errors on stderr.
 - `./psql` — open a `psql` shell on the Postgres container.
 - `core/django/django-init`, `core/django/django-manage-py`,
   `core/django/psql` — Django-side helpers
@@ -99,6 +99,7 @@ All are intended to be run from `core/` unless noted.
 - `core/rdkit/app/rdkit-init` — RDKit-side helper.
 - `core/rdkit/app/run`, `core/rdkit/app/shell` — RDKit one-shot run / shell.
 - `core/test-build-all` — Test script to build and init all apps.
+   - Note: this script now uses `./remove --silent` for cleanup and prints exactly `Removed app` after each removal.
 
 ## Common Commands
 
@@ -111,6 +112,14 @@ Running from the `core/` directory:
   If you used a custom directory:
   ```bash
   ./remove <target> -d /path/to/parent_dir
+  ```
+  Also remove Chembience images for this app and/or globally (see `./remove -h`):
+  ```bash
+  ./remove <target> -d /path/to/parent_dir -i
+  ```
+  Run silently (no confirmation, minimal output):
+  ```bash
+  ./remove <target> -d /path/to/parent_dir --silent
   ```
 
 ## Development

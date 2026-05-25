@@ -34,3 +34,10 @@ To access the database:
 ```
 
 For more information, see the root [README.md](https://github.com/chembience/chembience/blob/main/README.md).
+
+## Configuration
+
+- Use `./django-configure [--rebuild] [NEW_ENV_FILE]` to manage environment updates safely.
+  - First run creates `./.env.new` from the current `./.env` and prints edit instructions.
+  - After editing, rerun with the same file to apply changes (handles password rotation, migrations, superuser check).
+  - Add `--rebuild` to force a rebuild/restart after applying changes.
