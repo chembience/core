@@ -1,6 +1,14 @@
 #!/bin/bash
 
-# This script passes any arguments to the manage.py script 
+# This script passes any arguments to the manage.py script
 # of the Django instance running inside the Django container.
+# If stdin is not a TTY (e.g., when using a here-doc or piping),
+# disable TTY allocation with -T to avoid "cannot attach stdin to a TTY-enabled container" errors.
 
-docker compose exec --user app django python manage.py "$@"
+if [ -t 0 ]; then
+  TTY_FLAG=""    # interactive terminal present
+else
+  TTY_FLAG="-T"  # non-interactive stdin; do not allocate TTY
+fi
+
+docker compose exec ${TTY_FLAG} --user app django python manage.py "$@"

@@ -79,6 +79,7 @@ sync_config "/jupyter/app-requirements.txt"  "/home/app/app-requirements.txt"
 sync_config "/jupyter/README.md"             "/home/app/README.md"
 sync_script "/jupyter/psql"                  "/home/app/psql"
 sync_script "/jupyter/jupyter-init"          "/home/app/jupyter-init"
+sync_script "/jupyter/jupyter-configure"      "/home/app/jupyter-configure"
 [ -f "/.gitignore" ] && cp "/.gitignore" "/home/app/.gitignore"
 
 # Create .env from example if it doesn't exist

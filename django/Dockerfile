@@ -15,6 +15,7 @@ RUN mkdir -p /opt/django
 COPY django/docker-entrypoint.sh /
 COPY django/django-init /django/django-init
 COPY django/django-manage-py /django/django-manage-py
+COPY django/app/django-configure /django/django-configure
 COPY .gitignore /
 COPY django/docker-compose.yml /django/docker-compose.yml
 COPY django/app/Dockerfile /django/Dockerfile

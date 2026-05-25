@@ -1,0 +1,165 @@
+#!/bin/bash
+set -euo pipefail
+
+# Usage:
+#   ./fastapi-configure [--rebuild] [NEW_ENV_FILE]
+#
+# Two-phase workflow with a proposed new config file:
+# 1) First run: If NEW_ENV_FILE (default: ./.env.new) does not exist, this script
+#    creates it as a copy of ./.env, prints instructions to edit it, and exits.
+# 2) Second run: With NEW_ENV_FILE present and recently edited (≤5 minutes old)
+#    it compares ./.env with NEW_ENV_FILE and applies changes safely:
+#      - If POSTGRES_PASSWORD changed, rotate it inside Postgres using the old
+#        password (prompted securely if needed), then adopt the new .env.
+#      - Refresh FastAPI container to load new env.
+
+APP_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$APP_DIR"
+
+REBUILD=0
+NEW_ENV_FILE=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --rebuild) REBUILD=1; shift ;;
+    -*) echo "Unknown option: $1" >&2; exit 2 ;;
+    *) NEW_ENV_FILE="$1"; shift ;;
+  esac
+done
+
+# Default new env file path
+if [[ -z "${NEW_ENV_FILE}" ]]; then
+  NEW_ENV_FILE=".env.new"
+fi
+
+# Ensure base .env exists (authoritative current runtime env)
+if [[ ! -f .env ]]; then
+  echo "Missing ./.env in $APP_DIR. Aborting." >&2
+  exit 1
+fi
+
+# Helper: get mtime (epoch seconds)
+mtime_epoch() {
+  local f="$1"
+  if stat --version >/dev/null 2>&1; then
+    stat -c %Y "$f"
+  else
+    stat -f %m "$f"
+  fi
+}
+
+# Helper: parse VAR=VALUE from a dotenv file (last occurrence wins)
+get_var_from_file() {
+  local file="$1" var="$2"
+  local line
+  line=$(grep -E "^${var}=" "$file" | tail -n1 || true)
+  if [[ -z "$line" ]]; then
+    echo ""; return 0
+  fi
+  local val="${line#*=}"
+  val="${val%\' }"; val="${val#\' }"
+  val="${val%\"}"; val="${val#\"}"
+  echo "$val"
+}
+
+# Phase 1: create NEW_ENV_FILE if missing
+if [[ ! -f "$NEW_ENV_FILE" ]]; then
+  cp -f .env "$NEW_ENV_FILE"
+  echo "🆕 Created '$NEW_ENV_FILE' as a copy of current .env."
+  echo "➡️  Please edit '$NEW_ENV_FILE' with your desired new configuration, then re-run:"
+  echo "    ./fastapi-configure [--rebuild] $NEW_ENV_FILE"
+  exit 0
+fi
+
+# Freshness checks
+now=$(date +%s)
+new_mtime=$(mtime_epoch "$NEW_ENV_FILE")
+age=$(( now - new_mtime ))
+if (( age > 300 )); then
+  echo "⏱️  '$NEW_ENV_FILE' seems older than 5 minutes (age=${age}s)."
+  echo "For safety, please confirm it by touching it and rerun:"
+  echo "    touch '$NEW_ENV_FILE' && ./fastapi-configure [--rebuild] $NEW_ENV_FILE"
+  exit 2
+fi
+
+env_mtime=$(mtime_epoch .env)
+if (( new_mtime < env_mtime )); then
+  echo "📄 '$NEW_ENV_FILE' is older than the current .env (new:${new_mtime}, current:${env_mtime})." >&2
+  echo "Refusing to apply an out-of-date configuration. Please edit the file or run:"
+  echo "    touch '$NEW_ENV_FILE'"
+  echo "Then rerun:"
+  echo "    ./fastapi-configure [--rebuild] $NEW_ENV_FILE"
+  exit 2
+fi
+
+# Load current env (old state)
+set -a; source ./.env; set +a
+POSTGRES_USER="${POSTGRES_USER:-chembience}"
+POSTGRES_NAME="${POSTGRES_NAME:-chembience}"
+OLD_DB_PASSWORD="${POSTGRES_PASSWORD:-}"
+
+# Prospective new values
+NEW_DB_PASSWORD="$(get_var_from_file "$NEW_ENV_FILE" POSTGRES_PASSWORD)"
+NEW_POSTGRES_USER="$(get_var_from_file "$NEW_ENV_FILE" POSTGRES_USER)"; NEW_POSTGRES_USER="${NEW_POSTGRES_USER:-$POSTGRES_USER}"
+NEW_POSTGRES_NAME="$(get_var_from_file "$NEW_ENV_FILE" POSTGRES_NAME)"; NEW_POSTGRES_NAME="${NEW_POSTGRES_NAME:-$POSTGRES_NAME}"
+
+if [[ $REBUILD -eq 1 ]]; then
+  echo "🔨 Rebuilding images (rdkit, postgres, fastapi)..."
+  docker compose build --no-cache rdkit postgres fastapi
+fi
+
+echo "🚀 Starting Postgres and FastAPI..."
+docker compose up -d postgres
+docker compose up -d fastapi
+
+echo "⏳ Waiting for Postgres to be healthy..."
+for i in {1..30}; do
+  if docker compose exec -T postgres pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_NAME" -p 5432 >/dev/null 2>&1; then
+    break
+  fi
+  sleep 2
+done
+
+# Determine if DB password is changing
+DB_PW_CHANGE=0
+if [[ -n "$NEW_DB_PASSWORD" && "$NEW_DB_PASSWORD" != "$OLD_DB_PASSWORD" ]]; then
+  DB_PW_CHANGE=1
+fi
+
+if [[ $DB_PW_CHANGE -eq 1 ]]; then
+  echo "🔐 Detected DB password change in '$NEW_ENV_FILE'. Rotating inside Postgres..."
+  if [[ -z "$OLD_DB_PASSWORD" && -t 1 ]]; then
+    read -r -s -p "Enter CURRENT (old) Postgres password for user $POSTGRES_USER: " OLD_DB_PASSWORD; echo
+  fi
+  if [[ -z "$OLD_DB_PASSWORD" ]]; then
+    echo "Cannot rotate DB password: old password is unknown. Ensure ./.env contains the current POSTGRES_PASSWORD or run interactively." >&2
+    exit 2
+  fi
+  PGPASSWORD="$OLD_DB_PASSWORD" docker compose exec -T -e PGPASSWORD="$OLD_DB_PASSWORD" postgres psql \
+    -U "$POSTGRES_USER" -p 5432 -d "$POSTGRES_NAME" <<SQL
+ALTER USER $POSTGRES_USER WITH PASSWORD '$NEW_DB_PASSWORD';
+SQL
+  echo "✅ Postgres password rotated."
+fi
+
+# Adopt the new env atomically
+tmp_env=".env.next.$$"
+cp -f "$NEW_ENV_FILE" "$tmp_env" && mv -f "$tmp_env" .env
+
+# Refresh FastAPI to pick up the updated env
+echo "🔁 Refreshing FastAPI service to pick up latest .env..."
+docker compose up -d --force-recreate fastapi
+
+# Optional health check
+if command -v curl >/dev/null 2>&1; then
+  set +e
+  curl -fsS "http://localhost:${FASTAPI_CONNECTION_PORT:-8002}/healthz" >/dev/null 2>&1 && \
+    echo "✅ FastAPI health check passed" || echo "ℹ️ Skipping/failed FastAPI health check"
+  set -e
+fi
+
+# Final ensure services are up
+echo "🚀 Ensuring FastAPI (and Postgres) are up..."
+docker compose up -d postgres fastapi
+
+echo "✅ fastapi-configure completed."

@@ -1,0 +1,293 @@
+#!/bin/bash
+set -euo pipefail
+
+# Usage:
+#   ./django-configure [--rebuild] [NEW_ENV_FILE]
+#
+# Two-phase workflow with a proposed new config file:
+# 1) First run: If NEW_ENV_FILE (default: ./.env.new) does not exist, this script
+#    creates it as a copy of ./.env, prints instructions to edit it, and exits.
+# 2) Second run: With NEW_ENV_FILE present and recently edited (modified within
+#    the last few minutes), the script compares the old ./.env to the NEW_ENV_FILE
+#    and applies changes safely:
+#      - If POSTGRES_PASSWORD changed, rotate it inside Postgres using the old
+#        password, then adopt the new .env content.
+#      - Refresh Django container to load new env, run migrations, ensure superuser.
+#
+# Notes:
+# - "Recently edited" threshold is 5 minutes; if the NEW_ENV_FILE is older,
+#   the script will ask you to `touch` it and rerun, to avoid applying stale edits.
+# - ./.env in this directory is the authoritative runtime env after installation.
+
+APP_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$APP_DIR"
+
+REBUILD=0
+NEW_ENV_FILE=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --rebuild) REBUILD=1; shift ;;
+    -*) echo "Unknown option: $1" >&2; exit 2 ;;
+    *) NEW_ENV_FILE="$1"; shift ;;
+  esac
+done
+
+# Default new env file path
+if [[ -z "${NEW_ENV_FILE}" ]]; then
+  NEW_ENV_FILE=".env.new"
+fi
+
+# Ensure base .env exists (authoritative current runtime env)
+if [[ ! -f .env ]]; then
+  echo "Missing ./.env in $APP_DIR. Aborting." >&2
+  exit 1
+fi
+
+# Helper: get mtime (epoch seconds)
+mtime_epoch() {
+  local f="$1"
+  if stat --version >/dev/null 2>&1; then
+    # GNU stat
+    stat -c %Y "$f"
+  else
+    # BSD/macOS
+    stat -f %m "$f"
+  fi
+}
+
+# Helper: parse VAR=VALUE from a dotenv file (last occurrence wins)
+get_var_from_file() {
+  local file="$1" var="$2"
+  # shellcheck disable=SC2002
+  local line
+  line=$(grep -E "^${var}=" "$file" | tail -n1 || true)
+  if [[ -z "$line" ]]; then
+    echo ""
+    return 0
+  fi
+  local val="${line#*=}"
+  # strip surrounding quotes if present
+  val="${val%\' }"; val="${val#\' }"
+  val="${val%\"}"; val="${val#\"}"
+  echo "$val"
+}
+
+# Phase 1: if NEW_ENV_FILE does not exist, create it and ask user to edit
+if [[ ! -f "$NEW_ENV_FILE" ]]; then
+  cp -f .env "$NEW_ENV_FILE"
+  echo "🆕 Created '$NEW_ENV_FILE' as a copy of current .env."
+  echo "➡️  Please edit '$NEW_ENV_FILE' with your desired new configuration, then re-run:"
+  echo "    ./django-configure [--rebuild] $NEW_ENV_FILE"
+  exit 0
+fi
+
+# Ensure NEW_ENV_FILE is fresh (edited within last 5 minutes)
+now=$(date +%s)
+new_mtime=$(mtime_epoch "$NEW_ENV_FILE")
+age=$(( now - new_mtime ))
+if (( age > 300 )); then
+  echo "⏱️  '$NEW_ENV_FILE' seems older than 5 minutes (age=${age}s)."
+  echo "For safety, please confirm it by touching it and rerun:"
+  echo "    touch '$NEW_ENV_FILE' && ./django-configure [--rebuild] $NEW_ENV_FILE"
+  exit 2
+fi
+
+# Additional safety: ensure the proposed new config is not older than the current one
+env_mtime=$(mtime_epoch .env)
+if (( new_mtime < env_mtime )); then
+  echo "📄 '$NEW_ENV_FILE' is older than the current .env (new:${new_mtime}, current:${env_mtime})." >&2
+  echo "Refusing to apply an out-of-date configuration. Please edit the file or run:"
+  echo "    touch '$NEW_ENV_FILE'"
+  echo "Then rerun:"
+  echo "    ./django-configure [--rebuild] $NEW_ENV_FILE"
+  exit 2
+fi
+
+# Load current env (authoritative old state)
+set -a; source ./.env; set +a
+
+POSTGRES_USER="${POSTGRES_USER:-chembience}"
+POSTGRES_NAME="${POSTGRES_NAME:-chembience}"
+POSTGRES_HOST_PORT="${POSTGRES_HOST_PORT:-${POSTGRES_PORT:-5433}}"
+OLD_DB_PASSWORD="${POSTGRES_PASSWORD:-}"
+
+# Read prospective new values from NEW_ENV_FILE
+NEW_DB_PASSWORD="$(get_var_from_file "$NEW_ENV_FILE" POSTGRES_PASSWORD)"
+NEW_POSTGRES_USER="$(get_var_from_file "$NEW_ENV_FILE" POSTGRES_USER)"; NEW_POSTGRES_USER="${NEW_POSTGRES_USER:-$POSTGRES_USER}"
+NEW_POSTGRES_NAME="$(get_var_from_file "$NEW_ENV_FILE" POSTGRES_NAME)"; NEW_POSTGRES_NAME="${NEW_POSTGRES_NAME:-$POSTGRES_NAME}"
+NEW_DSU_PW="$(get_var_from_file "$NEW_ENV_FILE" DJANGO_SUPERUSER_PASSWORD)"
+
+if [[ $REBUILD -eq 1 ]]; then
+  echo "🔨 Rebuilding images (rdkit, postgres, django)..."
+  docker compose build --no-cache rdkit postgres django
+fi
+
+echo "🚀 Starting Postgres and Django..."
+docker compose up -d postgres
+docker compose up -d django
+
+# Wait for postgres healthy (reuse healthcheck logic)
+echo "⏳ Waiting for Postgres to be healthy..."
+for i in {1..30}; do
+  if docker compose ps --format json postgres 2>/dev/null | grep -q '"State":"running"'; then
+    if docker compose exec -T postgres pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_NAME" -p 5432 >/dev/null 2>&1; then
+      break
+    fi
+  fi
+  sleep 2
+done
+
+# Determine if DB password is changing
+DB_PW_CHANGE=0
+if [[ -n "$NEW_DB_PASSWORD" && "$NEW_DB_PASSWORD" != "$OLD_DB_PASSWORD" ]]; then
+  DB_PW_CHANGE=1
+fi
+
+# If DB password is changing, rotate inside Postgres first
+if [[ $DB_PW_CHANGE -eq 1 ]]; then
+  echo "🔐 Detected DB password change in '$NEW_ENV_FILE'. Rotating inside Postgres..."
+  if [[ -z "$OLD_DB_PASSWORD" ]]; then
+    # Try interactive prompt when possible
+    if [[ -t 1 ]]; then
+      read -r -s -p "Enter CURRENT (old) Postgres password for user $POSTGRES_USER: " OLD_DB_PASSWORD; echo
+    fi
+  fi
+  if [[ -z "$OLD_DB_PASSWORD" ]]; then
+    echo "Cannot rotate DB password: old password is unknown. Ensure ./.env contains the current POSTGRES_PASSWORD or run interactively." >&2
+    exit 2
+  fi
+  PGPASSWORD="$OLD_DB_PASSWORD" docker compose exec -T -e PGPASSWORD="$OLD_DB_PASSWORD" postgres psql \
+    -U "$POSTGRES_USER" -p 5432 -d "$POSTGRES_NAME" <<SQL
+ALTER USER $POSTGRES_USER WITH PASSWORD '$NEW_DB_PASSWORD';
+SQL
+  echo "✅ Postgres password rotated."
+fi
+
+# Adopt the new environment file as the authoritative .env (atomically when possible)
+tmp_env=".env.next.$$"
+cp -f "$NEW_ENV_FILE" "$tmp_env"
+mv -f "$tmp_env" .env
+
+# Note: syncing to core/.env has been removed by design; this app is independent after install.
+
+# After adopting the new env, determine the EFFECTIVE DB connection values
+EFFECTIVE_DB_USER="$(get_var_from_file .env POSTGRES_USER)"; EFFECTIVE_DB_USER="${EFFECTIVE_DB_USER:-$POSTGRES_USER}"
+EFFECTIVE_DB_NAME="$(get_var_from_file .env POSTGRES_NAME)"; EFFECTIVE_DB_NAME="${EFFECTIVE_DB_NAME:-$POSTGRES_NAME}"
+EFFECTIVE_DB_PASS="$(get_var_from_file .env POSTGRES_PASSWORD)"
+if [[ -z "$EFFECTIVE_DB_PASS" ]]; then
+  if [[ -n "$NEW_DB_PASSWORD" ]]; then
+    EFFECTIVE_DB_PASS="$NEW_DB_PASSWORD"
+  else
+    EFFECTIVE_DB_PASS="$OLD_DB_PASSWORD"
+  fi
+fi
+
+# Helper to run manage.py with the EFFECTIVE env injected explicitly into the process
+manage_exec() {
+  local -a extra
+  # If stdin is a TTY, allow interactive; else, disable TTY (-T)
+  if [ -t 0 ]; then extra=(); else extra=(-T); fi
+  docker compose exec "${extra[@]}" \
+    -e POSTGRES_USER="$EFFECTIVE_DB_USER" \
+    -e POSTGRES_PASSWORD="$EFFECTIVE_DB_PASS" \
+    -e POSTGRES_NAME="$EFFECTIVE_DB_NAME" \
+    -e POSTGRES_HOST="${POSTGRES_HOST:-postgres}" \
+    -e POSTGRES_INTERNAL_PORT="5432" \
+    -e DJANGO_SUPERUSER_USERNAME="${DJANGO_SUPERUSER_USERNAME:-admin}" \
+    -e DJANGO_SUPERUSER_EMAIL="${DJANGO_SUPERUSER_EMAIL:-admin@example.com}" \
+    -e DJANGO_SUPERUSER_PASSWORD="${NEW_DSU_PW:-${DJANGO_SUPERUSER_PASSWORD:-}}" \
+    --user app django python manage.py "$@"
+}
+
+# Helper to test DB auth with the new credentials (runs inside postgres container)
+test_db_auth() {
+  PGPASSWORD="$1" docker compose exec -T -e PGPASSWORD="$1" postgres \
+    psql -U "$2" -p 5432 -d "$3" -c "\\q" >/dev/null 2>&1
+}
+
+# If we rotated the password or changed credentials, wait until Postgres
+# accepts the new credentials before touching Django.
+if [[ $DB_PW_CHANGE -eq 1 || "$EFFECTIVE_DB_USER" != "$POSTGRES_USER" || "$EFFECTIVE_DB_NAME" != "$POSTGRES_NAME" ]]; then
+  echo "🔎 Verifying Postgres accepts the updated credentials..."
+  for i in {1..20}; do
+    if test_db_auth "$EFFECTIVE_DB_PASS" "$EFFECTIVE_DB_USER" "$EFFECTIVE_DB_NAME"; then
+      echo "✅ DB authentication with new credentials succeeded."
+      break
+    fi
+    sleep 1
+    if [[ $i -eq 20 ]]; then
+      echo "⚠️  Still failing to authenticate with new DB credentials after retries. Proceeding but migrations may fail." >&2
+    fi
+  done
+fi
+
+# After possible config changes, (re)create the Django container so it picks up
+# updated app .env values before running manage.py commands.
+echo "🔁 Refreshing Django service to pick up latest .env..."
+docker compose up -d --force-recreate django
+
+# Give the container a brief moment to start up before running manage.py
+sleep 1
+
+# Probe Django DB connectivity with retries (protects against timing edges)
+echo "🔎 Probing Django DB connectivity..."
+DB_PROBE_OK=0
+for i in {1..20}; do
+  if manage_exec migrate --plan >/dev/null 2>&1; then
+    DB_PROBE_OK=1
+    break
+  fi
+  sleep 2
+done
+if [[ $DB_PROBE_OK -ne 1 ]]; then
+  echo "⚠️  Django DB connectivity probe kept failing; proceeding to migrations which will retry once." >&2
+fi
+
+# Run migrations after ensuring the runtime has reloaded configuration.
+echo "📦 Running Django migrations..."
+set +e
+manage_exec makemigrations || true
+manage_exec migrate
+MIGRATE_RC=$?
+set -e
+
+# In rare cases, immediately after rotating DB credentials, the very first
+# migrate can see stale auth. Retry once after a short pause.
+if [[ $MIGRATE_RC -ne 0 ]]; then
+  echo "🔁 migrate failed once; retrying shortly..."
+  sleep 2
+  manage_exec migrate
+fi
+
+echo "👤 Ensuring superuser exists with configured password..."
+manage_exec shell <<'PY'
+import os
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+username = os.environ.get('DJANGO_SUPERUSER_USERNAME', 'admin')
+password = os.environ.get('DJANGO_SUPERUSER_PASSWORD')
+email = os.environ.get('DJANGO_SUPERUSER_EMAIL', 'admin@example.com')
+if not password:
+    raise SystemExit('DJANGO_SUPERUSER_PASSWORD is not set in environment')
+u, created = User.objects.get_or_create(
+    username=username,
+    defaults={
+        'email': email,
+        'is_staff': True,
+        'is_superuser': True,
+    },
+)
+u.set_password(password)
+u.is_staff = True
+u.is_superuser = True
+u.save()
+print('Superuser created' if created else 'Superuser updated')
+PY
+
+# Final ensure: bring services up so the app is ready to serve requests
+echo "🚀 Ensuring Django (and Postgres) are up..."
+docker compose up -d postgres django
+
+echo "✅ django-configure completed."

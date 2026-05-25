@@ -84,6 +84,7 @@ sync_script "/fastapi/db_restore"                  "/home/app/db_restore"
 sync_script "/fastapi/db_cleanup"                  "/home/app/db_cleanup"
 # fastapi-init is now expected to be in /fastapi/fastapi-init (synced from fastapi/app/fastapi-init in Dockerfile)
 sync_script "/fastapi/fastapi-init"                "/home/app/fastapi-init"
+sync_script "/fastapi/fastapi-configure"           "/home/app/fastapi-configure"
 [ -f "/.gitignore" ] && cp "/.gitignore" "/home/app/.gitignore"
 
 # Create .env from example if it doesn't exist

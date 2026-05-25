@@ -48,6 +48,7 @@ if [ ! -f "/home/app/.rdkit-init" ] || [ -d "/home/app/src" ]; then
         cp /opt/rdkit/run /home/app/run
         cp /opt/rdkit/shell /home/app/shell
         cp /opt/rdkit/rdkit-init /home/app/rdkit-init
+        cp /opt/rdkit/rdkit-configure /home/app/rdkit-configure
         cp /opt/rdkit/psql /home/app/psql
         cp /opt/rdkit/docker-compose.yml /home/app/docker-compose.yml
         cp /opt/rdkit/Dockerfile /home/app/Dockerfile
@@ -77,7 +78,7 @@ if [ ! -f "/home/app/.rdkit-init" ] || [ -d "/home/app/src" ]; then
         sed -i 's/\r$//' "/home/app/.env"
     fi
 
-        chmod +x /home/app/run /home/app/shell /home/app/rdkit-init /home/app/psql
+        chmod +x /home/app/run /home/app/shell /home/app/rdkit-init /home/app/rdkit-configure /home/app/psql
         
         # Clean up django-specific files if they exist
         rm -rf /home/app/appsite /home/app/apisite /home/app/src /home/app/django-init /home/app/django-manage-py

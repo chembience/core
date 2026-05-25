@@ -103,6 +103,7 @@ sync_config "/django/README.md"          "/home/app/README.md"
 sync_script "/django/psql"               "/home/app/psql"
 sync_script "/django/django-init"        "/home/app/django-init"
 sync_script "/django/django-manage-py"   "/home/app/django-manage-py"
+sync_script "/django/django-configure"   "/home/app/django-configure"
 [ -f "/.gitignore" ] && cp "/.gitignore" "/home/app/.gitignore"
 
 # Create .env from example if it doesn't exist

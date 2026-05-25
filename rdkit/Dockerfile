@@ -39,6 +39,7 @@ COPY rdkit/app/Dockerfile /opt/rdkit/Dockerfile
 COPY rdkit/app/docker-compose.yml /opt/rdkit/docker-compose.yml
 COPY rdkit/app/requirements.txt /opt/rdkit/app-requirements.txt
 COPY rdkit/app/rdkit-init /opt/rdkit/rdkit-init
+COPY rdkit/app/rdkit-configure /opt/rdkit/rdkit-configure
 COPY rdkit/app/README.md /opt/rdkit/README.md
 COPY rdkit/environment.yml /opt/rdkit/environment.yml
 COPY psql /opt/rdkit/psql
