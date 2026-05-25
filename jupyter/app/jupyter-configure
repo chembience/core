@@ -48,14 +48,25 @@ fi
 
 now=$(date +%s); new_mtime=$(mtime_epoch "$NEW_ENV_FILE"); age=$(( now - new_mtime ))
 if (( age > 300 )); then
-  echo "⏱️  '$NEW_ENV_FILE' seems older than 5 minutes (age=${age}s)."
+  echo
+  echo "============================================================"
+  echo " STALE NEW CONFIG: '$NEW_ENV_FILE' (age=${age}s)"
+  echo "------------------------------------------------------------"
+  echo " For safety, confirm the file is up-to-date, then run:"
   echo "    touch '$NEW_ENV_FILE' && ./jupyter-configure [--rebuild] $NEW_ENV_FILE"
+  echo "============================================================"
   exit 2
 fi
 env_mtime=$(mtime_epoch .env)
 if (( new_mtime < env_mtime )); then
-  echo "📄 '$NEW_ENV_FILE' is older than the current .env (new:${new_mtime}, current:${env_mtime})." >&2
-  echo "    touch '$NEW_ENV_FILE' && ./jupyter-configure [--rebuild] $NEW_ENV_FILE"
+  echo
+  echo "============================================================"
+  echo " NEW CONFIG IS OLDER THAN CURRENT .env"
+  echo "------------------------------------------------------------"
+  echo " '$NEW_ENV_FILE' (mtime ${new_mtime}) < current .env (mtime ${env_mtime})."
+  echo " Edit or 'touch' the new file, then rerun:"
+  echo "    ./jupyter-configure [--rebuild] $NEW_ENV_FILE"
+  echo "============================================================" >&2
   exit 2
 fi
 

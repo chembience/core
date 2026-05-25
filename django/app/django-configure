@@ -76,9 +76,18 @@ get_var_from_file() {
 # Phase 1: if NEW_ENV_FILE does not exist, create it and ask user to edit
 if [[ ! -f "$NEW_ENV_FILE" ]]; then
   cp -f .env "$NEW_ENV_FILE"
-  echo "🆕 Created '$NEW_ENV_FILE' as a copy of current .env."
-  echo "➡️  Please edit '$NEW_ENV_FILE' with your desired new configuration, then re-run:"
+  echo
+  echo "============================================================"
+  echo " ACTION REQUIRED: Edit '$NEW_ENV_FILE' now"
+  echo "------------------------------------------------------------"
+  echo " A copy of your current .env was written to:"
+  echo "   $NEW_ENV_FILE"
+  echo
+  echo " 1) Open and edit this file with your desired new settings."
+  echo " 2) Save it, then run:"
   echo "    ./django-configure [--rebuild] $NEW_ENV_FILE"
+  echo "    (File must be freshly edited in the last 5 minutes.)"
+  echo "============================================================"
   exit 0
 fi
 
@@ -87,20 +96,27 @@ now=$(date +%s)
 new_mtime=$(mtime_epoch "$NEW_ENV_FILE")
 age=$(( now - new_mtime ))
 if (( age > 300 )); then
-  echo "⏱️  '$NEW_ENV_FILE' seems older than 5 minutes (age=${age}s)."
-  echo "For safety, please confirm it by touching it and rerun:"
+  echo
+  echo "============================================================"
+  echo " STALE NEW CONFIG: '$NEW_ENV_FILE' (age=${age}s)"
+  echo "------------------------------------------------------------"
+  echo " For safety, confirm the file is up-to-date, then run:"
   echo "    touch '$NEW_ENV_FILE' && ./django-configure [--rebuild] $NEW_ENV_FILE"
+  echo "============================================================"
   exit 2
 fi
 
 # Additional safety: ensure the proposed new config is not older than the current one
 env_mtime=$(mtime_epoch .env)
 if (( new_mtime < env_mtime )); then
-  echo "📄 '$NEW_ENV_FILE' is older than the current .env (new:${new_mtime}, current:${env_mtime})." >&2
-  echo "Refusing to apply an out-of-date configuration. Please edit the file or run:"
-  echo "    touch '$NEW_ENV_FILE'"
-  echo "Then rerun:"
+  echo
+  echo "============================================================"
+  echo " NEW CONFIG IS OLDER THAN CURRENT .env"
+  echo "------------------------------------------------------------"
+  echo " '$NEW_ENV_FILE' (mtime ${new_mtime}) < current .env (mtime ${env_mtime})."
+  echo " Edit or 'touch' the new file, then rerun:"
   echo "    ./django-configure [--rebuild] $NEW_ENV_FILE"
+  echo "============================================================" >&2
   exit 2
 fi
 

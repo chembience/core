@@ -30,22 +30,42 @@ get_var_from_file() { local file="$1" var="$2" line val; line=$(grep -E "^${var}
 
 if [[ ! -f "$NEW_ENV_FILE" ]]; then
   cp -f .env "$NEW_ENV_FILE"
-  echo "🆕 Created '$NEW_ENV_FILE' as a copy of current .env."
-  echo "➡️  Please edit '$NEW_ENV_FILE' with your desired new configuration, then re-run:"
+  echo
+  echo "============================================================"
+  echo " ACTION REQUIRED: Edit '$NEW_ENV_FILE' now"
+  echo "------------------------------------------------------------"
+  echo " A copy of your current .env was written to:"
+  echo "   $NEW_ENV_FILE"
+  echo
+  echo " 1) Open and edit this file with your desired new settings."
+  echo " 2) Save it, then run:"
   echo "    ./rdkit-configure [--rebuild] $NEW_ENV_FILE"
+  echo "    (File must be freshly edited in the last 5 minutes.)"
+  echo "============================================================"
   exit 0
 fi
 
 now=$(date +%s); new_mtime=$(mtime_epoch "$NEW_ENV_FILE"); age=$(( now - new_mtime ))
 if (( age > 300 )); then
-  echo "⏱️  '$NEW_ENV_FILE' seems older than 5 minutes (age=${age}s)."
+  echo
+  echo "============================================================"
+  echo " STALE NEW CONFIG: '$NEW_ENV_FILE' (age=${age}s)"
+  echo "------------------------------------------------------------"
+  echo " For safety, confirm the file is up-to-date, then run:"
   echo "    touch '$NEW_ENV_FILE' && ./rdkit-configure [--rebuild] $NEW_ENV_FILE"
+  echo "============================================================"
   exit 2
 fi
 env_mtime=$(mtime_epoch .env)
 if (( new_mtime < env_mtime )); then
-  echo "📄 '$NEW_ENV_FILE' is older than the current .env (new:${new_mtime}, current:${env_mtime})." >&2
-  echo "    touch '$NEW_ENV_FILE' && ./rdkit-configure [--rebuild] $NEW_ENV_FILE"
+  echo
+  echo "============================================================"
+  echo " NEW CONFIG IS OLDER THAN CURRENT .env"
+  echo "------------------------------------------------------------"
+  echo " '$NEW_ENV_FILE' (mtime ${new_mtime}) < current .env (mtime ${env_mtime})."
+  echo " Edit or 'touch' the new file, then rerun:"
+  echo "    ./rdkit-configure [--rebuild] $NEW_ENV_FILE"
+  echo "============================================================" >&2
   exit 2
 fi
 
@@ -56,13 +76,13 @@ OLD_DB_PASSWORD="${POSTGRES_PASSWORD:-}"
 NEW_DB_PASSWORD="$(get_var_from_file "$NEW_ENV_FILE" POSTGRES_PASSWORD)"
 
 if [[ $REBUILD -eq 1 ]]; then
-  echo "🔨 Rebuilding images (rdkit, postgres, rdkit-app)..."
-  docker compose build --no-cache rdkit postgres rdkit-app || docker compose build --no-cache rdkit postgres
+  echo "🔨 Rebuilding images (rdkit, postgres)..."
+  docker compose build --no-cache rdkit postgres
 fi
 
-echo "🚀 Starting Postgres and rdkit-app..."
+echo "🚀 Starting Postgres and rdkit..."
 docker compose up -d postgres || true
-docker compose up -d rdkit-app || true
+docker compose up -d rdkit || true
 
 echo "⏳ Waiting for Postgres to be healthy..."
 for i in {1..30}; do
@@ -81,8 +101,8 @@ fi
 
 tmp_env=".env.next.$$"; cp -f "$NEW_ENV_FILE" "$tmp_env" && mv -f "$tmp_env" .env
 
-echo "🔁 Refreshing rdkit-app service to pick up updated .env (if defined)..."
-docker compose up -d --force-recreate rdkit-app || true
+echo "🔁 Refreshing rdkit service to pick up updated .env (if defined)..."
+docker compose up -d --force-recreate rdkit || true
 
 echo "🧪 RDKit smoke test..."
 set +e
@@ -97,7 +117,7 @@ if [[ $status -ne 0 ]]; then
   echo "⚠️ RDKit smoke test failed (container may not be present in this compose)." >&2
 fi
 
-echo "🚀 Ensuring rdkit-app (and Postgres) are up..."
-docker compose up -d postgres rdkit-app || true
+echo "🚀 Ensuring rdkit (and Postgres) are up..."
+docker compose up -d postgres rdkit || true
 
 echo "✅ rdkit-configure completed."
