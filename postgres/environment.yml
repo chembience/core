@@ -1,0 +1,6 @@
+name: chembience
+channels:
+  - conda-forge
+dependencies:
+  - python
+  - rdkit-postgresql

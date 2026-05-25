@@ -23,7 +23,6 @@ RUN if [ -n "${apt_mirror}" ]; then \
       libpq-dev \
       build-essential \
       python3-dev \
-      telnet \
       curl && \
     rm -rf /var/lib/apt/lists/*
 
@@ -41,6 +40,7 @@ COPY rdkit/app/docker-compose.yml /opt/rdkit/docker-compose.yml
 COPY rdkit/app/requirements.txt /opt/rdkit/app-requirements.txt
 COPY rdkit/app/rdkit-init /opt/rdkit/rdkit-init
 COPY rdkit/app/README.md /opt/rdkit/README.md
+COPY rdkit/environment.yml /opt/rdkit/environment.yml
 COPY psql /opt/rdkit/psql
 COPY .env.example /opt/rdkit/.env.example
 COPY share /opt/share
@@ -53,11 +53,16 @@ RUN conda config --system --set remote_read_timeout_secs 600.0 && \
     conda config --system --add channels conda-forge && \
     conda config --system --set channel_priority strict && \
     conda config --system --set show_channel_urls yes && \
-    conda create --verbose --yes -n ${CONDA_ENV} python=${conda_py} && \
+    conda env create --verbose --file /opt/rdkit/environment.yml --name ${CONDA_ENV} && \
+    if [ -n "${conda_py}" ]; then \
+        conda run -n ${CONDA_ENV} conda install --yes "python=${conda_py}"; \
+    else \
+        true; \
+    fi && \
     if [ -n "${rdkit_version}" ]; then \
         conda run -n ${CONDA_ENV} conda install --yes "rdkit=${rdkit_version}"; \
     else \
-        conda run -n ${CONDA_ENV} conda install --yes rdkit; \
+        true; \
     fi && \
     if grep -qE '^\s*[^#\s]' /opt/python/requirements.txt; then \
         conda run -n ${CONDA_ENV} python -m pip install --no-cache-dir -r /opt/python/requirements.txt; \

@@ -30,18 +30,8 @@ COPY share /opt/share
 COPY .env.example /fastapi/.env.example
 COPY fastapi/requirements.txt /opt/fastapi
 
-# Copy application code if it exists locally during build
-# This will copy the current directory (app context) into the image
-# We use a conditional check to see if there's anything to copy that isn't just the core directory
-COPY . /home/app/
-# Ensure correct permissions for the default app user (1000)
-RUN if [ -d /home/app ]; then chown -R 1000:1000 /home/app && find /home/app -type d -exec chmod 755 {} + && find /home/app -type f -exec chmod 644 {} +; fi
-# Make sure scripts are executable
-RUN if [ -f /home/app/psql ]; then chmod +x /home/app/psql; fi
-RUN if [ -f /home/app/db_backup ]; then chmod +x /home/app/db_backup; fi
-RUN if [ -f /home/app/db_restore ]; then chmod +x /home/app/db_restore; fi
-RUN if [ -f /home/app/db_cleanup ]; then chmod +x /home/app/db_cleanup; fi
-RUN if [ -f /home/app/fastapi-init ]; then chmod +x /home/app/fastapi-init; fi
+# Do not bake the project source into the image — rely on bind mounts in dev
+# and a separate builder/publisher for production images.
 
 ENV PATH=/opt/conda/envs/chembience/bin:/opt/conda/bin:$PATH
 

@@ -59,6 +59,6 @@ volumes:
 
 networks:
   app-network:
-    name: app-backend
+    {}
   chembience-network:
     name: chembience-network

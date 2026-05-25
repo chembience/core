@@ -15,9 +15,9 @@ RUN if [ -n "${apt_mirror}" ]; then \
     fi && \
     printf 'Acquire::Retries "3";\n' > /etc/apt/apt.conf.d/80-retries && \
     apt-get --allow-releaseinfo-change update && \
-    apt-get -y --no-install-recommends install gosu joe postgresql-client
+    apt-get -y --no-install-recommends install gosu postgresql-client
 
-RUN mkdir -p /home/postgres /opt/python
+RUN mkdir -p /home/postgres /opt/python /opt/postgres
 
 RUN mkdir -p /home/postgres/postgres_data && \
     chown -R ${CHEMBIENCE_UID}:${CHEMBIENCE_GID} /home/postgres
@@ -26,6 +26,7 @@ RUN mkdir -p /home/postgres/postgres_data && \
 COPY postgres/docker-entrypoint.sh /
 COPY postgres/pg_hba.conf /
 COPY postgres/postgresql.conf /
+COPY postgres/environment.yml /opt/postgres/environment.yml
 
 RUN conda config --system --set remote_read_timeout_secs 600.0 && \
     if [ -n "${conda_mirror}" ]; then \
@@ -35,8 +36,12 @@ RUN conda config --system --set remote_read_timeout_secs 600.0 && \
     conda config --system --add channels conda-forge && \
     conda config --system --set channel_priority strict && \
     conda config --system --set show_channel_urls yes && \
-    conda create --verbose --yes -n chembience && \
-    conda run -n chembience conda install --yes rdkit-postgresql && \
+    conda env create --verbose --file /opt/postgres/environment.yml --name chembience && \
+    if [ -n "${conda_py}" ]; then \
+        conda run -n chembience conda install --yes "python=${conda_py}"; \
+    else \
+        true; \
+    fi && \
     conda clean -afy && \
     find /opt/conda/ -follow -type f -name '*.a' -delete && \
     find /opt/conda/ -follow -type f -name '*.pyc' -delete && \

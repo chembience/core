@@ -1,0 +1,8 @@
+name: chembience
+channels:
+  - conda-forge
+dependencies:
+  - python
+  # rdkit is installed in the Dockerfile to honor RDKIT_VERSION from .env
+  # - rdkit
+  - pip

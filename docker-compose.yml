@@ -16,8 +16,10 @@ x-common-environment: &common-env
   DJANGO_DEBUG: ${DJANGO_DEBUG:-False}
   FASTAPI_CONNECTION_PORT: ${FASTAPI_CONNECTION_PORT:-8002}
   JUPYTER_CONNECTION_PORT: ${JUPYTER_CONNECTION_PORT:-8888}
+  # If set, can be used to secure Jupyter; see jupyter service command below.
+  JUPYTER_TOKEN: ${JUPYTER_TOKEN:-}
   GUNICORN_WORKERS: ${GUNICORN_WORKERS:-8}
-  UVICORN_WORKERS: ${UVICORN_WORKERS:-4}
+  UVICORN_WORKERS: ${UVICORN_WORKERS:-2}
   APP_NAME: ${APP_NAME:-}
   POSTGRES_USER: ${POSTGRES_USER:-chembience}
   POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -55,7 +57,7 @@ services:
     command: [ "python" ]
 
   rdkit-app:
-    image: chembience/core-rdkit${APP_NAME}:${CHEMBIENCE_VERSION}
+    image: chembience/core-rdkit${APP_NAME:--app}:${CHEMBIENCE_VERSION}
     build:
       context: rdkit/app
       dockerfile: Dockerfile
@@ -108,7 +110,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 20s
+      start_period: 45s
 
   fastapi:
     image: chembience/core-fastapi:${CHEMBIENCE_VERSION}
@@ -135,13 +137,13 @@ services:
     working_dir: "/home/app/src/"
     restart: unless-stopped
     entrypoint: [ "/docker-entrypoint.sh" ]
-    command: ["sh", "-c", "exec uvicorn src.main:app --host 0.0.0.0 --port 8000 --workers ${UVICORN_WORKERS:-4}"]
+    command: ["sh", "-c", "exec uvicorn main:app --host 0.0.0.0 --port 8000 --workers ${UVICORN_WORKERS:-2}"]
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8000/healthz"]
       interval: 10s
       timeout: 5s
-      retries: 5
-      start_period: 20s
+      retries: 10
+      start_period: 90s
 
   jupyter:
     image: chembience/core-jupyter:${CHEMBIENCE_VERSION}
@@ -168,13 +170,16 @@ services:
     working_dir: "/home/app"
     restart: unless-stopped
     entrypoint: [ "/docker-entrypoint.sh" ]
-    command: ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root", "--ServerApp.token=''"]
+    # Note: Do NOT disable the token by default. If JUPYTER_TOKEN is set,
+    # you may override this command in a compose override file to add
+    # "--ServerApp.token=$JUPYTER_TOKEN".
+    command: ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root"]
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8888/api"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 20s
+      start_period: 45s
 
   postgres:
     image: chembience/core-rdkit-postgres:${CHEMBIENCE_VERSION}
@@ -205,7 +210,11 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+      start_period: 20s
 
 networks:
   app-network:
-    name: app-backend
+    {}
+  chembience-network:
+    name: chembience-network
+    external: true
