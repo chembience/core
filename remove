@@ -14,6 +14,7 @@ fi
 SKIP_CORE=false
 CLEANUP_IMAGES=false
 CUSTOM_DIR=""
+SILENT=false
 POSITIONAL_ARGS=()
 
 while [[ $# -gt 0 ]]; do
@@ -27,13 +28,17 @@ while [[ $# -gt 0 ]]; do
       SKIP_CORE=true
       shift
       ;;
+    --silent|-s)
+      SILENT=true
+      shift
+      ;;
     --dir|-d)
       CUSTOM_DIR="$2"
       shift 2
       ;;
     -*)
       echo "Unknown argument: $1"
-      echo "Supported: --images, -i, --no-core-images, -c, --dir, -d"
+      echo "Supported: --images, -i, --no-core-images, -c, --dir, -d, --silent, -s"
       exit 2
       ;;
     *)
@@ -55,6 +60,11 @@ export APP_NAME="-${APP_ID:-app}"
 # Expand APP_HOME if it starts with ~
 if [[ "$APP_HOME" == "~"* ]]; then
   APP_HOME="${APP_HOME/#\~/$HOME}"
+fi
+
+# If running in silent mode, suppress standard output (keep stderr visible)
+if [ "$SILENT" = true ]; then
+  exec 1>/dev/null
 fi
 
 # Function to check if any chembience-related containers are running
@@ -82,7 +92,7 @@ cleanup_all_chembience() {
   # Remove stopped containers that have 'chembience' in their name or image
   STOPPED_CONTAINERS=$(docker ps -a --format '{{.ID}} {{.Image}}' | grep 'chembience' | awk '{print $1}')
   if [ -n "$STOPPED_CONTAINERS" ]; then
-    echo "$STOPPED_CONTAINERS" | xargs -r docker rm
+    echo "$STOPPED_CONTAINERS" | xargs -r docker rm >/dev/null 2>&1
   fi
 
   if [ "$SKIP_CORE" = true ]; then
@@ -102,7 +112,7 @@ cleanup_all_chembience() {
   fi
 
   if [ -n "$IMAGES" ]; then
-    echo "$IMAGES" | xargs -r docker rmi -f
+    echo "$IMAGES" | xargs -r docker rmi -f >/dev/null 2>&1
   else
     echo "ℹ️ No matching Chembience images found."
   fi
@@ -130,21 +140,31 @@ remove_apps() {
       return 1
     fi
 
-    echo "⚠️  WARNING: You are about to delete the following directory and all its contents:"
-    echo "   - $APP_HOME"
-    echo "   - $APP_HOME/postgres (Database data)"
-    read -p "Are you sure you want to proceed? (y/N): " confirm
-    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
-      echo "Aborted."
-      return 1
+    if [ "$SILENT" != true ]; then
+      echo "⚠️  WARNING: You are about to delete the following directory and all its contents:"
+      echo "   - $APP_HOME"
+      echo "   - $APP_HOME/postgres (Database data)"
+      read -p "Are you sure you want to proceed? (y/N): " confirm
+      if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+        echo "Aborted."
+        return 1
+      fi
     fi
 
     if [ -f "$APP_HOME/docker-compose.yml" ]; then
       echo "🛑 Stopping and removing containers in $APP_HOME..."
-      (cd "$APP_HOME" && APP_NAME="$APP_NAME" docker compose down)
+      if [ "$SILENT" = true ]; then
+        (cd "$APP_HOME" && APP_NAME="$APP_NAME" docker compose down >/dev/null 2>&1)
+      else
+        (cd "$APP_HOME" && APP_NAME="$APP_NAME" docker compose down)
+      fi
     fi
     echo "🗑️ Removing $APP_HOME using Docker..."
-    docker run --rm -v "$(dirname "$APP_HOME")":/cleanup alpine rm -rf "/cleanup/$(basename "$APP_HOME")"
+    if [ "$SILENT" = true ]; then
+      docker run --rm -v "$(dirname "$APP_HOME")":/cleanup alpine rm -rf "/cleanup/$(basename "$APP_HOME")" >/dev/null 2>&1
+    else
+      docker run --rm -v "$(dirname "$APP_HOME")":/cleanup alpine rm -rf "/cleanup/$(basename "$APP_HOME")"
+    fi
   else
     echo "ℹ️ $APP_HOME does not exist or is not a directory."
     return 1
@@ -176,7 +196,7 @@ remove_app_images() {
   echo "$IMAGES"
 
   # Remove each matched image
-  echo "$IMAGES" | awk '{print $2}' | xargs -r docker rmi -f
+  echo "$IMAGES" | awk '{print $2}' | xargs -r docker rmi -f >/dev/null 2>&1
 }
 
 # Execution sequence

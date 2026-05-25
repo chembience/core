@@ -78,16 +78,13 @@ for app in "${APPS[@]}"; do
     else
         echo "❌ $app init failed!"
         # Clean up before exit on failure to release ports
-        (yes y 2>/dev/null | ./remove "$app" -d "$TEST_DIR_ABS" --images >/dev/null 2>&1) || true
+        ./remove "$app" -d "$TEST_DIR_ABS" --images --silent || true
         exit 1
     fi
     
     # 3. Remove the app
-    echo "🗑️ Removing test app: $app"
-    # Use -y for non-interactive remove if it supported it, 
-    # but it doesn't. We'll use yes to bypass the confirmation.
-    # We use a subshell to avoid broken pipe warnings from yes
-    (yes y 2>/dev/null | ./remove "$app" -d "$TEST_DIR_ABS" --images) || true
+    ./remove "$app" -d "$TEST_DIR_ABS" --images --silent || true
+    echo "Removed app"
     
     echo "✅ $app test completed successfully!"
 done
