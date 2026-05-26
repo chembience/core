@@ -11,10 +11,10 @@ This service provides a JupyterLab environment integrated with RDKit and pre-con
 
 ## Getting Started
 
-To start the JupyterLab service along with the rest of the Chembience stack:
+To start the JupyterLab service along with the PostgreSQL database:
 
 ```bash
-docker compose up
+docker compose up -d
 ```
 
 By default, JupyterLab will be available at: [http://localhost:8888](http://localhost:8888)

@@ -19,6 +19,31 @@ Chembience bundles a complete containerized environment for cheminformatics deve
 
 All services are wired together with Docker Compose and share a common application directory mounted into the containers.
 
+## Quick Start
+
+For instance, get a JupyterLab environment with RDKit + PostgreSQL running in a few commands:
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/chembience/core.git chembience
+cd chembience
+
+# 2. Build a Jupyter app (creates ~/myapp by default)
+./build jupyter myapp
+
+# 3. Switch to the generated app directory and start it
+cd ~/myapp
+docker compose up -d
+
+# 4. Get the Jupyter access token from the logs
+docker compose logs -f jupyter
+```
+
+Then open JupyterLab in your browser at
+[http://localhost:8888/](http://localhost:8888/) and paste the token shown in
+the logs. Swap `jupyter` for `django`, `fastapi`, or `rdkit` in step 2 to
+bootstrap a different stack.
+
 ## Prerequisites
 
 - **Docker**: Version 20.10.0 or higher
@@ -108,6 +133,42 @@ The configure script follows a safe two-phase workflow:
    ```
 
 The script automatically handles the Postgres `ALTER USER` statement with the old credentials before switching to the new ones, so no manual SQL is needed.
+
+### Django Superuser Password
+
+`DJANGO_SUPERUSER_PASSWORD` (together with `DJANGO_SUPERUSER_USERNAME` and
+`DJANGO_SUPERUSER_EMAIL`) is read from the project's `.env` and used by the
+Django init flow to create the initial admin user. Treat it as a secret:
+set it in `.env` before running `./build`, never commit it, and rotate it
+via `python manage.py changepassword` inside the `django` container if
+needed.
+
+### JupyterLab Token
+
+JupyterLab is launched with its **default token authentication enabled**
+(no `--ServerApp.token=''` is passed in `docker-compose.yml`). On first
+start, Jupyter generates a random token; retrieve it with:
+
+```bash
+docker compose logs -f jupyter
+```
+
+To pin a stable token, set `JUPYTER_TOKEN` in the project's `.env` **and**
+add a compose override (e.g. `docker-compose.override.yml`) that appends
+`--ServerApp.token=${JUPYTER_TOKEN}` to the `jupyter` service command —
+the default compose file intentionally does not bake this in.
+
+Treat `JUPYTER_TOKEN` as a secret (same as `POSTGRES_PASSWORD` and
+`DJANGO_SECRET_KEY`): never commit it, and rotate it by changing `.env`
+and restarting the `jupyter` service.
+
+### Protecting the Project `.env`
+
+The per-project `.env` (inside `APP_HOME`) ends up holding
+`POSTGRES_PASSWORD`, `DJANGO_SECRET_KEY`, `DJANGO_SUPERUSER_PASSWORD`, and
+optionally `JUPYTER_TOKEN`. Treat the whole file as a secret: keep it out
+of version control, restrict its file permissions, and back it up
+separately from the source tree.
 
 ## Services Overview
 

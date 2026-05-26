@@ -11,6 +11,12 @@ This is the RDKit service for your Chembience project. It provides specialized c
 
 ## Getting Started
 
+To start the stack along with the PostgreSQL database:
+
+```bash
+docker compose up -d
+```
+
 To run a script in the RDKit environment:
 ```bash
 ./run your_script.py

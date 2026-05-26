@@ -11,6 +11,12 @@ This is the async REST API service for your Chembience project. It is built usin
 
 ## Getting Started
 
+To start the FastAPI service along with the PostgreSQL database:
+
+```bash
+docker compose up -d
+```
+
 For initial setup (optional):
 
 ```bash

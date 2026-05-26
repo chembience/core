@@ -12,6 +12,13 @@ This is the web service for your Chembience project. It is built using Django an
 
 ## Getting Started
 
+To start the Django service along with the PostgreSQL database:
+
+```bash
+docker compose up -d
+```
+
+
 For initial setup (optional):
 
 ```bash
