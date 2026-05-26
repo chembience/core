@@ -8,10 +8,14 @@ on:
   workflow_dispatch:
 
 jobs:
-  test-build-all:
-    name: Build and init all apps
+  smoke:
+    name: Build & init (${{ matrix.app }})
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [rdkit, django, fastapi, jupyter]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -31,13 +35,27 @@ jobs:
 
       - name: Make helper scripts executable
         run: |
-          chmod +x build remove psql test-build-all || true
+          chmod +x build remove psql || true
           find . -type f \( -name "*-init" -o -name "*-configure" \
                         -o -name "docker-entrypoint.sh" \) \
             -exec chmod +x {} +
 
-      - name: Run test-build-all
-        run: ./test-build-all
+      - name: Build & init ${{ matrix.app }}
+        run: |
+          set -euo pipefail
+          mkdir -p ./test-builds
+          TEST_DIR_ABS="$(realpath ./test-builds)"
+          ./build "${{ matrix.app }}" "${{ matrix.app }}" -d "$TEST_DIR_ABS"
+          cd "$TEST_DIR_ABS/${{ matrix.app }}"
+          if [ -f "./${{ matrix.app }}-init" ]; then
+            "./${{ matrix.app }}-init"
+          elif [ -f "./src/${{ matrix.app }}-init" ]; then
+            "./src/${{ matrix.app }}-init"
+          else
+            echo "❌ Could not find ${{ matrix.app }}-init"
+            ls -R .
+            exit 1
+          fi
 
       - name: Dump docker state on failure
         if: failure()
