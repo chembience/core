@@ -21,7 +21,7 @@ To access the interactive shell:
 ./shell
 ```
 
-For more information, see the root [README.md](https://github.com/chembience/chembience/blob/main/README.md).
+For more information, see the root [README.md](../../README.md).
 
 ## Configuration
 
