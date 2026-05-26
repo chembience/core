@@ -1,0 +1,27 @@
+name: Compose Validate
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  validate:
+    name: Validate docker-compose
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare .env
+        run: |
+          if [ -f .env.example ]; then
+            cp .env.example .env
+          fi
+
+      - name: Validate base compose file
+        run: docker compose -f docker-compose.yml config --quiet
+
+      - name: Validate dev overlay
+        run: docker compose -f docker-compose.yml -f docker-compose.dev.yml config --quiet

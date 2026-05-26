@@ -1,0 +1,50 @@
+name: Build & Smoke Test
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  test-build-all:
+    name: Build and init all apps
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Free up disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+                      /opt/hostedtoolcache/CodeQL || true
+          docker system prune -af || true
+          df -h
+
+      - name: Prepare .env
+        run: |
+          if [ -f .env.example ]; then
+            cp .env.example .env
+          fi
+
+      - name: Make helper scripts executable
+        run: |
+          chmod +x build remove psql test-build-all || true
+          find . -type f \( -name "*-init" -o -name "*-configure" \
+                        -o -name "docker-entrypoint.sh" \) \
+            -exec chmod +x {} +
+
+      - name: Run test-build-all
+        run: ./test-build-all
+
+      - name: Dump docker state on failure
+        if: failure()
+        run: |
+          docker ps -a || true
+          docker images || true
+          df -h || true

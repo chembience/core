@@ -1,0 +1,64 @@
+name: Lint
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  shellcheck:
+    name: ShellCheck
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run ShellCheck
+        uses: ludeeus/action-shellcheck@master
+        with:
+          severity: warning
+          ignore_paths: test-builds
+        env:
+          SHELLCHECK_OPTS: -e SC1091
+
+  yamllint:
+    name: YAML Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install yamllint
+        run: pip install yamllint
+
+      - name: Run yamllint
+        run: |
+          yamllint -d "{extends: relaxed, rules: {line-length: disable}}" \
+            docker-compose.yml docker-compose.dev.yml .github/
+
+  line-endings:
+    name: Enforce LF line endings
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check for CRLF line endings
+        run: |
+          set -e
+          # Find files with CRLF line endings, excluding binary/runtime artifacts.
+          BAD=$(git ls-files -z | \
+            grep -zZv -E '^(test-builds/|postgres/.*_data/)' | \
+            xargs -0 grep -lI $'\r$' 2>/dev/null || true)
+          if [ -n "$BAD" ]; then
+            echo "::error::The following files contain CRLF line endings:"
+            echo "$BAD"
+            exit 1
+          fi
+          echo "All tracked text files use LF line endings."
