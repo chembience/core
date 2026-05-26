@@ -1,6 +1,10 @@
 # Chembience
 
-Chembience is a Docker-based chemoinformatics platform with prewired RDKit and RDKit-enabled PostgreSQL components. It provides ready-to-use Django, FastAPI, JupyterLab, RDKit, and PostgreSQL services for building chemical informatics applications.
+Chembience is a Docker-based chemoinformatics platform with prewired RDKit and RDKit-enabled PostgreSQL components. 
+It provides ready-to-use Django, FastAPI, JupyterLab, RDKit, and PostgreSQL services for building chemical informatics 
+applications.
+
+
 
 ## What Chembience Provides
 
@@ -26,36 +30,40 @@ All services are wired together with Docker Compose and share a common applicati
 Versions are controlled through `.env` / `.env.example` and Docker build arguments.
 
 - **Python**: 3.14 (configurable via `CONDA_PY`)
-- **RDKit**: 2026.03.2 (configurable via `RDKIT_VERSION`)
-- **PostgreSQL**: 18 (RDKit-cartridge-enabled)
+- **[RDKit](https://github.com/rdkit/rdkit)**: 2026.03.2 (configurable via `RDKIT_VERSION`)- **PostgreSQL**: 18 (RDKit-cartridge-enabled)
 - **Django**: 5.x-compatible
 - **FastAPI**: 0.115+-compatible
 - **SQLAlchemy**: 2.x-compatible
 - **JupyterLab**: 4.x-compatible
-- **django-rdkit**
-- **razi**
+- **[django-rdkit](https://github.com/rdkit/django-rdkit) and [razi](https://github.com/rvianello/razi)**
 
 ## Installation & Setup
 
 1.  **Clone the repository.**
+    ```bash
+    ./git clone https://github.com/chembience/core.git chembience
+    ```
 2.  **Navigate to the project directory.**
-3.  **Build and setup an application:**
+3. ```bash
+    cd chembience
+    ```
+3.  **Build and set up an application:**
     ```bash
     ./build <type> <target>
     ```
     - `<type>`: `django`, `fastapi`, `jupyter` or `rdkit`
     - `<target>`: Name of your application (e.g., `myapp`)
 
-    Example:
-    ```bash
-    ./build django myapp
-    ```
+  Example:
+  ```bash
+  ./build django myapp
+  ```
 
-    By default, the application is created in `~/myapp`. You can specify a custom directory with the `-d` option:
-    ```bash
-    ./build django myapp -d /path/to/parent_dir
-    ```
-    This will create the app in `/path/to/parent_dir/myapp`.
+  By default, the application is created in `~/myapp`. You can specify a custom directory with the `-d` option:
+  ```bash
+  ./build rdkit|django|fastapi|jupyter myapp -d /path/to/parent_dir
+  ```
+  This will create the app in `/path/to/parent_dir/myapp`.
 
 ## Secrets
 
@@ -72,6 +80,35 @@ reset tokens remain valid. Treat that `.env` as a secret.
 - The key is never baked into the Docker image; generation happens at
   container start, inside the bind-mounted volume.
 
+### PostgreSQL Password
+
+`POSTGRES_PASSWORD` must be set in the project's `.env` before running `./build`.
+The `.env.example` file contains a placeholder (`CHANGE_ME_BEFORE_RUNNING`) as a reminder.
+
+**To change the password later**, use the `<appname>-configure` script located inside
+your application directory. Each app type ships its own configure script:
+
+| App type | Script |
+| -------- | ------ |
+| `django`  | `django-configure` |
+| `fastapi` | `fastapi-configure` |
+| `jupyter` | `jupyter-configure` |
+| `rdkit`   | `rdkit-configure` |
+
+The configure script follows a safe two-phase workflow:
+
+1. **First run** — creates a `.env.new` file (a copy of the current `.env`) and asks you to edit it:
+   ```bash
+   ./django-configure
+   ```
+2. **Edit** — open `.env.new` and update `POSTGRES_PASSWORD` to the new value.
+3. **Second run** — detects the password change, rotates it live inside the running Postgres container, then adopts the new `.env`:
+   ```bash
+   ./django-configure
+   ```
+
+The script automatically handles the Postgres `ALTER USER` statement with the old credentials before switching to the new ones, so no manual SQL is needed.
+
 ## Services Overview
 
 Chembience ships several services, all wired together via `docker-compose.yml`:
@@ -82,10 +119,19 @@ Chembience ships several services, all wired together via `docker-compose.yml`:
 | `fastapi`    | `fastapi/`   | Async REST API.                                         |
 | `jupyter`    | `jupyter/`   | JupyterLab environment with RDKit + Postgres pre-wired. |
 | `rdkit`      | `rdkit/`     | RDKit interactive one-shot Python shell.                |
-| `rdkit-app`  | `rdkit/app`  | Long-running sidecar for RDKit-based scripts.           |
 | `postgres`   | `postgres/`  | PostgreSQL 18 with the RDKit cartridge.                 |
 
-## Repository Layout
+For all services, the connection to the database is wired via environment variables, that can
+be imported via the shared chembience python module. The package also let you import a
+readily configured SqlAlchemy engine.
+
+```python
+from chembience import db
+dir(db)
+['Base', 'POSTGRES_HOST', 'POSTGRES_NAME', 'POSTGRES_PASSWORD', 'POSTGRES_PORT', 'POSTGRES_USER', 'SQLALCHEMY_DATABASE_URL', 'SessionLocal', '__builtins__', '__cached__', '__doc__', '__file__', '__loader__', '__name__', '__package__', '__spec__', 'create_engine', 'declarative_base', 'engine', 'get_db', 'init_db', 'os', 'sessionmaker']
+```
+
+### Repository Layout
 
 - `docker-compose.yml`: Authoritative definition of all services and how they interact.
 - `.env.example`: Template for environment configuration.
@@ -104,11 +150,14 @@ Thin Bash wrappers around `docker compose` and the per-service entrypoints.
 - `./psql` — open a `psql` shell on the Postgres container.
 - `./test-build-all` — Test script to build and init all app types.
 
-Per-service init helpers:
-- `django/django-init`, `django/django-manage-py`, `django/psql`
-- `fastapi/app/fastapi-init`, `fastapi/app/db_backup`, `fastapi/app/db_cleanup`, `fastapi/app/db_restore`
-- `jupyter/app/jupyter-init`
-- `rdkit/app/rdkit-init`, `rdkit/app/run`, `rdkit/app/shell`
+Per-app helper scripts located in their app directories:
+
+| App       | Scripts |
+|-----------| ------- |
+| `django`  | `django/django-init`, `django/django-manage-py`, `django/psql` |
+| `fastapi` | `fastapi/app/fastapi-init`, `fastapi/app/db_backup`, `fastapi/app/db_cleanup`, `fastapi/app/db_restore` |
+| `jupyter` | `jupyter/app/jupyter-init` |
+| `rdkit`   | `rdkit/app/rdkit-init`, `rdkit/app/run`, `rdkit/app/shell` |
 
 ## Development
 

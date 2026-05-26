@@ -1,7 +1,7 @@
 # Chembience Development Guide
 
 ## Build & Run Commands
-Run from `core/` unless noted.
+Run from the project root (where `docker-compose.yml` lives) unless noted.
 
 ### Lifecycle
 - Build all images: `docker compose build`
@@ -12,6 +12,13 @@ Run from `core/` unless noted.
 - Start services: `docker compose up -d`
 - Stop services: `docker compose down`
 - Tail logs: `docker compose logs -f [<service>]`
+- Dev overlay: apply `docker-compose.dev.yml` on top of the main compose
+  file when needed, e.g.
+  `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d`.
+- Rotate the Postgres password / reconfigure a project: use the per-app
+  `*-configure` script inside the project directory
+  (`django-configure`, `fastapi-configure`, `jupyter-configure`,
+  `rdkit-configure`). See README §Secrets.
 
 ### Django
 - Manage commands: `docker compose exec django python manage.py <command>`
@@ -19,35 +26,39 @@ Run from `core/` unless noted.
   / `docker compose exec django python manage.py migrate`
 - Run tests: `docker compose exec django python manage.py test <app_name>`
 - Shell: `docker compose exec django /bin/bash`
-- DB shell: `core/django/psql`
+- DB shell: `django/psql`
 
 ### FastAPI
 - Shell: `docker compose exec fastapi /bin/bash`
 - Logs: `docker compose logs -f fastapi`
-- Helpers: `core/fastapi/app/fastapi-init`,
-  `core/fastapi/app/db_backup`,
-  `core/fastapi/app/db_restore`,
-  `core/fastapi/app/db_cleanup`
-- Entry: `uvicorn src.main:app --host 0.0.0.0 --port 8000`
+- Helpers: `fastapi/app/fastapi-init`,
+  `fastapi/app/db_backup`,
+  `fastapi/app/db_restore`,
+  `fastapi/app/db_cleanup`
+- Entry: `uvicorn main:app --host 0.0.0.0 --port 8000` (run from
+  `working_dir=/home/app/src/`, i.e. `src/main.py`)
 
 ### Jupyter
 - Shell: `docker compose exec jupyter /bin/bash`
 - Logs: `docker compose logs -f jupyter`
-- Open the lab: `http://localhost:${JUPYTER_CONNECTION_PORT:-8888}/`
-  (token is disabled by default in `docker-compose.yml`).
+- Open the lab: `http://localhost:${JUPYTER_CONNECTION_PORT:-8888}/`.
+  Token auth is **enabled by default** (no `--ServerApp.token=''` is
+  passed in `docker-compose.yml`); retrieve the random token from
+  `docker compose logs -f jupyter`, or set `JUPYTER_TOKEN` in `.env`
+  and override the command via a compose override file to pin it.
 
 ### RDKit
 - Interactive shell (one-shot): `docker compose run --rm rdkit`
 - Long-running sidecar shell: `docker compose exec rdkit-app /bin/bash`
-- Helpers: `core/rdkit/app/run`, `core/rdkit/app/shell`
+- Helpers: `rdkit/app/run`, `rdkit/app/shell`
 
 ### Postgres
-- `psql` shell: `./psql` (from `core/`)
+- `psql` shell: `./psql` (from the project root)
 - Direct: `docker compose exec postgres psql -U $POSTGRES_USER -d $POSTGRES_NAME`
 
 ## Tuning
 - `GUNICORN_WORKERS` (Django) and `UVICORN_WORKERS` (FastAPI) can be set in
-  `core/.env` to override the defaults baked into `docker-compose.yml`.
+  `.env` to override the defaults baked into `docker-compose.yml`.
 
 ## Code Style Guidelines
 - **Line Endings**: Use Linux line endings (`LF`) for all files. Enforced by
@@ -61,13 +72,18 @@ Run from `core/` unless noted.
 - **Naming**: `snake_case` for variables/functions, `PascalCase` for classes.
 
 ## Project Architecture
-- `core/`: Root of the core platform.
-- `core/django/`: Django service + Dockerfile. Reference test app at
-  `core/django/app/django-rdkit-test-app` (kept intentionally as a
+- Project root: top-level of the Chembience platform (contains
+  `docker-compose.yml`).
+- `django/`: Django service + Dockerfile. Reference test app at
+  `django/app/django-rdkit-test-app` (kept intentionally as a
   RDKit smoke-test app).
-- `core/fastapi/`: FastAPI service + Dockerfile.
-- `core/jupyter/`: JupyterLab service + Dockerfile + notebooks.
-- `core/rdkit/`: RDKit base image and helper scripts.
-- `core/postgres/`: PostgreSQL (RDKit cartridge) image and init scripts.
-- `core/.env`: Global environment configuration (see `.env.example`).
-- `core/docker-compose.yml`: Authoritative service wiring.
+- `fastapi/`: FastAPI service + Dockerfile.
+- `jupyter/`: JupyterLab service + Dockerfile + notebooks.
+- `rdkit/`: RDKit base image and helper scripts.
+- `postgres/`: PostgreSQL (RDKit cartridge) image and init scripts.
+- `share/chembience/`: Shared Python module imported by services
+  (`from chembience import db`) providing a pre-configured SQLAlchemy
+  engine, session factory, and Postgres connection settings.
+- `.env`: Global environment configuration (see `.env.example`).
+- `docker-compose.yml`: Authoritative service wiring.
+- `docker-compose.dev.yml`: Optional development overlay.
