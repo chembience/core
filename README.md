@@ -234,3 +234,8 @@ For more detailed information, see:
 ## License
 
 This project is licensed under the BSD 3-Clause License - see the [LICENSE](LICENSE) file for details.
+
+## Bugs, Comments and anything else
+For any bug reports, comments or suggestion please use the tools here at Github or contact me by email.
+
+Markus Sitzmann, 2026-05-27
