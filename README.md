@@ -2,7 +2,8 @@
 
 Chembience is a Docker-based chemoinformatics platform with prewired RDKit and RDKit-enabled PostgreSQL components. 
 It provides ready-to-use Django, FastAPI, JupyterLab, RDKit, and PostgreSQL services for building chemical informatics 
-applications.
+applications. This repository superceeds the chembience implementation at https://github.com/chembience/chembience (v<=0.4.0)
+and starts at version 0.5.0. It is a full KI-based re-implementation of the original chembience project from the scratch.
 
 [![Release](https://img.shields.io/github/v/release/chembience/core?sort=semver&label=release&style=flat-square&logo=github)](https://github.com/chembience/core/releases/latest)
 [![Build & Smoke Test](https://github.com/chembience/core/actions/workflows/build-test.yml/badge.svg?branch=main)](https://github.com/chembience/core/actions/workflows/build-test.yml)
