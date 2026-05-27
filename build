@@ -69,7 +69,7 @@ export APP_NAME="-$TARGET"
 if [ -n "${CUSTOM_DIR:-}" ]; then
   export APP_HOME="$CUSTOM_DIR/$TARGET"
 else
-  export APP_HOME="~/$TARGET"
+  export APP_HOME="$HOME/$TARGET"
 fi
 
 cleanup() {
@@ -97,7 +97,8 @@ fi
 
 # Ensure APP_HOME exists locally so Docker doesn't create it as root
 mkdir -p "$APP_HOME"
-export APP_HOME=$(cd "$APP_HOME" && pwd)
+APP_HOME=$(cd "$APP_HOME" && pwd)
+export APP_HOME
 
 # posix shell variable expansion for JUPYTER_CONNECTION_PORT if not set
 export JUPYTER_CONNECTION_PORT="${JUPYTER_CONNECTION_PORT:-8888}"

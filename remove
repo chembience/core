@@ -53,7 +53,7 @@ APP_ID="${POSITIONAL_ARGS[0]:-}"
 if [ -n "$CUSTOM_DIR" ]; then
   export APP_HOME="$CUSTOM_DIR/${APP_ID:-app}"
 else
-  export APP_HOME="~/${APP_ID:-app}"
+  export APP_HOME="$HOME/${APP_ID:-app}"
 fi
 export APP_NAME="-${APP_ID:-app}"
 

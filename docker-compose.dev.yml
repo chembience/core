@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   jupyter:
     # Development convenience: disable token. Do NOT use in production.

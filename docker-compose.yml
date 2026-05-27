@@ -1,4 +1,3 @@
-
 x-common-environment: &common-env
   CHEMBIENCE_VERSION: ${CHEMBIENCE_VERSION:-latest}
   APP_HOME: ${APP_HOME}
