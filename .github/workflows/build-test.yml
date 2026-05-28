@@ -91,7 +91,7 @@ jobs:
           # Wait for healthy if possible, or just sleep a bit
           # docker compose up --wait would be better if supported by the version in GA
           # Let's try --wait first
-          docker compose up --wait "$SERVICE_NAME" postgres || sleep 10
+          docker compose up --wait "$SERVICE_NAME" postgres || sleep 20
           
           # Extract expected versions from .env
           EXPECTED_PYTHON=$(grep '^CONDA_PY=' .env | cut -d '=' -f 2 | xargs)
