@@ -57,6 +57,50 @@ jobs:
             exit 1
           fi
 
+      - name: Verify RDKit and Python versions
+        run: |
+          set -euo pipefail
+          TEST_DIR_ABS="$(realpath ./test-builds)"
+          cd "$TEST_DIR_ABS/${{ matrix.app }}"
+          
+          # Extract expected versions from .env
+          EXPECTED_PYTHON=$(grep '^CONDA_PY=' .env | cut -d '=' -f 2)
+          EXPECTED_RDKIT=$(grep '^RDKIT_VERSION=' .env | cut -d '=' -f 2)
+          
+          echo "Expected Python: $EXPECTED_PYTHON"
+          echo "Expected RDKit: $EXPECTED_RDKIT"
+          
+          # Get actual versions from container
+          # The service name is matrix.app (django, fastapi, jupyter, rdkit)
+          # but for rdkit we use rdkit-app as the long-running sidecar
+          SERVICE_NAME="${{ matrix.app }}"
+          if [ "$SERVICE_NAME" == "rdkit" ]; then
+            SERVICE_NAME="rdkit-app"
+          fi
+          
+          # Load APP_NAME from .env if it exists, or use default
+          # The build script sets APP_NAME to -$TARGET
+          # In build-test.yml, TARGET is ${{ matrix.app }}
+          export APP_NAME="-${{ matrix.app }}"
+          
+          ACTUAL_PYTHON=$(docker compose exec -T "$SERVICE_NAME" python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
+          ACTUAL_RDKIT=$(docker compose exec -T "$SERVICE_NAME" python -c "import rdkit; print(rdkit.__version__)")
+          
+          echo "Actual Python: $ACTUAL_PYTHON"
+          echo "Actual RDKit: $ACTUAL_RDKIT"
+          
+          if [ "$ACTUAL_PYTHON" != "$EXPECTED_PYTHON" ]; then
+            echo "❌ Python version mismatch! Expected $EXPECTED_PYTHON, got $ACTUAL_PYTHON"
+            exit 1
+          fi
+          
+          if [ "$ACTUAL_RDKIT" != "$EXPECTED_RDKIT" ]; then
+            echo "❌ RDKit version mismatch! Expected $EXPECTED_RDKIT, got $ACTUAL_RDKIT"
+            exit 1
+          fi
+          
+          echo "✅ Versions match!"
+
       - name: Dump docker state on failure
         if: failure()
         run: |
