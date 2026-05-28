@@ -86,7 +86,11 @@ jobs:
           # Determine the main service and postgres to start
           SERVICE_NAME="${{ matrix.app }}"
           
+          echo "1!!! Service name: $SERVICE_NAME"
+          
           docker compose up -d "$SERVICE_NAME" postgres
+          
+          echo "2!!! Service name: $SERVICE_NAME"
           
           # Wait for healthy if possible, or just sleep a bit
           # docker compose up --wait would be better if supported by the version in GA
