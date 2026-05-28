@@ -40,11 +40,30 @@ jobs:
                         -o -name "docker-entrypoint.sh" \) \
             -exec chmod +x {} +
 
-      - name: Build & init ${{ matrix.app }}
+      - name: Build, init & verify ${{ matrix.app }}
         run: |
           set -euo pipefail
           mkdir -p ./test-builds
           TEST_DIR_ABS="$(realpath ./test-builds)"
+          
+          # We run the build and init. 
+          # Note: the build script has a trap that runs 'docker compose down' on exit.
+          # To verify versions while containers are running, we need to do it 
+          # before the build script finishes, OR we move the verification 
+          # logic into a wrapper or just run it here if we can keep them alive.
+          # However, the easiest way is to run the verification right after 
+          # the build script but in a way that doesn't trigger the trap yet.
+          # Actually, the trap is in the 'build' bash script. 
+          # If we run 'build' and it finishes, containers are DOWN.
+          
+          # To keep them alive, we can use --no-quit, but then it blocks.
+          # Better: Extract the verification logic and run it within the same 
+          # subshell or just before the build script completes? No, we can't 
+          # easily inject into the build script.
+          
+          # Alternative: Modify the build script to optionally skip cleanup,
+          # or just restart them here. Restarting is easier.
+          
           ./build "${{ matrix.app }}" "${{ matrix.app }}" -d "$TEST_DIR_ABS"
           cd "$TEST_DIR_ABS/${{ matrix.app }}"
           if [ -f "./${{ matrix.app }}-init" ]; then
@@ -56,33 +75,33 @@ jobs:
             ls -R .
             exit 1
           fi
-
-      - name: Verify RDKit and Python versions
-        run: |
-          set -euo pipefail
-          TEST_DIR_ABS="$(realpath ./test-builds)"
-          cd "$TEST_DIR_ABS/${{ matrix.app }}"
           
-          # Extract expected versions from .env
+          echo "🔍 Verifying RDKit and Python versions..."
+          # Restart containers because the build script cleaned them up
+          # We use -d to run in background
           
-          EXPECTED_PYTHON=$(grep '^CONDA_PY=' .env | cut -d '=' -f 2 | xargs)
-          EXPECTED_RDKIT=$(grep '^RDKIT_VERSION=' .env | cut -d '=' -f 2 | xargs)
+          # Set APP_NAME for docker compose
+          export APP_NAME="-${{ matrix.app }}"
           
-          echo "Expected Python: '$EXPECTED_PYTHON'"
-          echo "Expected RDKit: '$EXPECTED_RDKIT'"
-          
-          # Get actual versions from container
-          # The service name is matrix.app (django, fastapi, jupyter, rdkit)
-          # but for rdkit we use rdkit-app as the long-running sidecar
+          # Determine the main service and postgres to start
           SERVICE_NAME="${{ matrix.app }}"
           if [ "$SERVICE_NAME" == "rdkit" ]; then
             SERVICE_NAME="rdkit-app"
           fi
           
-          # Load APP_NAME from .env if it exists, or use default
-          # The build script sets APP_NAME to -$TARGET
-          # In build-test.yml, TARGET is ${{ matrix.app }}
-          export APP_NAME="-${{ matrix.app }}"
+          docker compose up -d "$SERVICE_NAME" postgres
+          
+          # Wait for healthy if possible, or just sleep a bit
+          # docker compose up --wait would be better if supported by the version in GA
+          # Let's try --wait first
+          docker compose up --wait "$SERVICE_NAME" postgres || sleep 10
+          
+          # Extract expected versions from .env
+          EXPECTED_PYTHON=$(grep '^CONDA_PY=' .env | cut -d '=' -f 2 | xargs)
+          EXPECTED_RDKIT=$(grep '^RDKIT_VERSION=' .env | cut -d '=' -f 2 | xargs)
+          
+          echo "Expected Python: '$EXPECTED_PYTHON'"
+          echo "Expected RDKit: '$EXPECTED_RDKIT'"
           
           ACTUAL_PYTHON=$(docker compose exec -T "$SERVICE_NAME" python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
           ACTUAL_RDKIT=$(docker compose exec -T "$SERVICE_NAME" python -c "import rdkit; print(rdkit.__version__)")
@@ -101,6 +120,9 @@ jobs:
           fi
           
           echo "✅ Versions match!"
+          
+          # Cleanup after verification
+          docker compose down
 
       - name: Dump docker state on failure
         if: failure()
