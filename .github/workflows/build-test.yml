@@ -95,7 +95,7 @@ jobs:
           # Wait for healthy if possible, or just sleep a bit
           # docker compose up --wait would be better if supported by the version in GA
           # Let's try --wait first
-          docker compose up --wait "$SERVICE_NAME" postgres || sleep 20
+          docker compose up --wait "$SERVICE_NAME" postgres || (echo "⚠️ Wait failed, sleeping 30s..."; sleep 30)
           
           # Extract expected versions from .env
           EXPECTED_PYTHON=$(grep '^CONDA_PY=' .env | cut -d '=' -f 2 | xargs)
@@ -104,8 +104,8 @@ jobs:
           echo "Expected Python: '$EXPECTED_PYTHON'"
           echo "Expected RDKit: '$EXPECTED_RDKIT'"
           
-          ACTUAL_PYTHON=$(docker compose exec -T "$SERVICE_NAME" python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
-          ACTUAL_RDKIT=$(docker compose exec -T "$SERVICE_NAME" python -c "import rdkit; print(rdkit.__version__)")
+          ACTUAL_PYTHON=$(docker compose exec -T "$SERVICE_NAME" python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" | tr -d '\r' | xargs)
+          ACTUAL_RDKIT=$(docker compose exec -T "$SERVICE_NAME" python -c "import rdkit; print(rdkit.__version__)" | tr -d '\r' | xargs)
           
           echo "Actual Python: $ACTUAL_PYTHON"
           echo "Actual RDKit: $ACTUAL_RDKIT"
