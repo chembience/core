@@ -85,9 +85,6 @@ jobs:
           
           # Determine the main service and postgres to start
           SERVICE_NAME="${{ matrix.app }}"
-          if [ "$SERVICE_NAME" == "rdkit" ]; then
-            SERVICE_NAME="rdkit-app"
-          fi
           
           docker compose up -d "$SERVICE_NAME" postgres
           
