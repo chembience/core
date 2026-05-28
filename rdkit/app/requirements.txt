@@ -1,2 +1,3 @@
-# Add additional conda packages for your rdkit app here
-psycopg2
+# Add additional Python packages for your RDKit app here
+# Use the prebuilt wheel to avoid requiring build toolchains in the dev image
+psycopg2-binary

@@ -1,6 +1,5 @@
-ARG conda_package=condaforge/miniforge3
-ARG conda_tag=latest
-FROM ${conda_package}:${conda_tag}
+ARG mamba_image=mambaorg/micromamba:1.5.8
+FROM ${mamba_image}
 
 ARG conda_py
 ARG rdkit_version
@@ -9,27 +8,28 @@ ARG conda_mirror
 
 LABEL maintainer="markus.sitzmann@gmail.com"
 
-ENV DEBIAN_FRONTEND=noninteractive
+ENV DEBIAN_FRONTEND=noninteractive \
+    MAMBA_ROOT_PREFIX=/opt/conda \
+    CONDA_ENV=chembience \
+    PATH=/opt/conda/envs/chembience/bin:/opt/conda/bin:/home/app:$PATH
 
+# System packages (run as root inside micromamba image)
+USER root
 RUN if [ -n "${apt_mirror}" ]; then \
-        sed -i "s|http://archive.ubuntu.com/ubuntu/|${apt_mirror}|g" /etc/apt/sources.list && \
-        sed -i "s|http://security.ubuntu.com/ubuntu/|${apt_mirror}|g" /etc/apt/sources.list; \
+        sed -i "s|http://deb.debian.org/debian|${apt_mirror}|g" /etc/apt/sources.list || true; \
     fi && \
     printf 'Acquire::Retries "3";\n' > /etc/apt/apt.conf.d/80-retries && \
-    apt-get --allow-releaseinfo-change update && \
+    apt-get update && \
     apt-get -y --no-install-recommends install \
       gosu \
       postgresql-client \
-      libpq-dev \
-      build-essential \
-      python3-dev \
-      curl && \
-    rm -rf /var/lib/apt/lists/*
+      libpq5 \
+      curl \
+      git \
+      ca-certificates && \
+    rm -rf /var/lib/apt/lists/* /var/cache/apt/*
 
 RUN mkdir -p /home/app /opt/python /opt/rdkit
-
-ENV CONDA_ENV=chembience
-ENV PATH=/opt/conda/envs/${CONDA_ENV}/bin:/opt/conda/bin:/home/app:$PATH
 
 COPY rdkit/requirements.txt /opt/python/requirements.txt
 COPY rdkit/docker-entrypoint.sh /docker-entrypoint.sh
@@ -46,33 +46,34 @@ COPY psql /opt/rdkit/psql
 COPY .env.example /opt/rdkit/.env.example
 COPY share /opt/share
 
-RUN conda config --system --set remote_read_timeout_secs 600.0 && \
-    if [ -n "${conda_mirror}" ]; then \
-        conda config --system --set channel_alias "${conda_mirror}"; \
-    fi && \
-    conda config --system --remove-key channels || true && \
-    conda config --system --add channels conda-forge && \
-    conda config --system --set channel_priority strict && \
-    conda config --system --set show_channel_urls yes && \
-    conda env create --verbose --file /opt/rdkit/environment.yml --name ${CONDA_ENV} && \
+# Ensure editable install target is writable by non-root user
+USER root
+RUN chown -R mambauser:mambauser /opt/share
+
+# Switch back to non-root user for micromamba operations (micromamba image uses 'mambauser')
+USER mambauser
+# Configure conda-forge channel and create env
+RUN micromamba config append channels conda-forge && \
+    micromamba create -y -n ${CONDA_ENV} -f /opt/rdkit/environment.yml && \
     if [ -n "${conda_py}" ]; then \
-        conda run -n ${CONDA_ENV} conda install --yes "python=${conda_py}"; \
-    else \
-        true; \
+        micromamba install -y -n ${CONDA_ENV} "python=${conda_py}"; \
     fi && \
     if [ -n "${rdkit_version}" ]; then \
-        conda run -n ${CONDA_ENV} conda install --yes "rdkit=${rdkit_version}"; \
-    else \
-        true; \
+        micromamba install -y -n ${CONDA_ENV} "rdkit=${rdkit_version}"; \
     fi && \
     if grep -qE '^\s*[^#\s]' /opt/python/requirements.txt; then \
-        conda run -n ${CONDA_ENV} python -m pip install --no-cache-dir -r /opt/python/requirements.txt; \
+        micromamba run -n ${CONDA_ENV} python -m pip install --no-cache-dir -r /opt/python/requirements.txt; \
     else \
         echo "requirements.txt is empty; skipping pip install"; \
     fi && \
-    conda run -n ${CONDA_ENV} python -m pip install -e /opt/share && \
-    conda clean -afy && \
+    micromamba run -n ${CONDA_ENV} python -m pip install -e /opt/share && \
+    micromamba clean -a -y && \
     find /opt/conda/ -follow -type f -name '*.a' -delete && \
     find /opt/conda/ -follow -type f -name '*.pyc' -delete && \
     find /opt/conda/ -follow -type f -name '*.js.map' -delete
+
+## Ensure the runtime entrypoint runs with necessary privileges
+USER root
+# Make sure entrypoint is executable (line endings are LF per .gitattributes)
+RUN chmod +x /docker-entrypoint.sh
 

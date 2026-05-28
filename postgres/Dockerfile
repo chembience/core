@@ -1,6 +1,5 @@
-ARG conda_package=condaforge/miniforge3
-ARG conda_tag=latest
-FROM $conda_package:$conda_tag
+ARG mamba_image=mambaorg/micromamba:1.5.8
+FROM ${mamba_image}
 ARG conda_py
 ARG apt_mirror
 ARG conda_mirror
@@ -9,13 +8,14 @@ ARG CHEMBIENCE_GID=1000
 
 LABEL maintainer="markussitzmann@gmail.com "
 
+USER root
 RUN if [ -n "${apt_mirror}" ]; then \
-        sed -i "s|http://archive.ubuntu.com/ubuntu/|${apt_mirror}|g" /etc/apt/sources.list && \
-        sed -i "s|http://security.ubuntu.com/ubuntu/|${apt_mirror}|g" /etc/apt/sources.list; \
+        sed -i "s|http://deb.debian.org/debian|${apt_mirror}|g" /etc/apt/sources.list || true; \
     fi && \
     printf 'Acquire::Retries "3";\n' > /etc/apt/apt.conf.d/80-retries && \
-    apt-get --allow-releaseinfo-change update && \
-    apt-get -y --no-install-recommends install gosu postgresql-client
+    apt-get update && \
+    apt-get -y --no-install-recommends install gosu postgresql-client && \
+    rm -rf /var/lib/apt/lists/* /var/cache/apt/*
 
 RUN mkdir -p /home/postgres /opt/python /opt/postgres
 
@@ -28,24 +28,23 @@ COPY postgres/pg_hba.conf /
 COPY postgres/postgresql.conf /
 COPY postgres/environment.yml /opt/postgres/environment.yml
 
-RUN conda config --system --set remote_read_timeout_secs 600.0 && \
-    if [ -n "${conda_mirror}" ]; then \
-        conda config --system --set channel_alias "${conda_mirror}"; \
-    fi && \
-    conda config --system --remove-key channels || true && \
-    conda config --system --add channels conda-forge && \
-    conda config --system --set channel_priority strict && \
-    conda config --system --set show_channel_urls yes && \
-    conda env create --verbose --file /opt/postgres/environment.yml --name chembience && \
+# Switch back to non-root for micromamba operations (micromamba image uses 'mambauser')
+USER mambauser
+ENV MAMBA_ROOT_PREFIX=/opt/conda
+RUN micromamba config append channels conda-forge && \
+    micromamba create -y -n chembience -f /opt/postgres/environment.yml && \
     if [ -n "${conda_py}" ]; then \
-        conda run -n chembience conda install --yes "python=${conda_py}"; \
-    else \
-        true; \
+        micromamba install -y -n chembience "python=${conda_py}"; \
     fi && \
-    conda clean -afy && \
+    micromamba clean -a -y && \
     find /opt/conda/ -follow -type f -name '*.a' -delete && \
     find /opt/conda/ -follow -type f -name '*.pyc' -delete && \
     find /opt/conda/ -follow -type f -name '*.js.map' -delete
 
 ENV PATH=/opt/conda/envs/chembience/bin:/opt/conda/bin:$PATH
+
+# Ensure the runtime entrypoint has the privileges it needs to prepare the data dir
+USER root
+# Make sure entrypoint is executable (can be lost on some checkouts)
+RUN chmod +x /docker-entrypoint.sh
 

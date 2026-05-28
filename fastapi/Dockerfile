@@ -36,17 +36,13 @@ COPY fastapi/requirements.txt /opt/fastapi
 
 ENV PATH=/opt/conda/envs/chembience/bin:/opt/conda/bin:$PATH
 
-RUN conda config --system --set remote_read_timeout_secs 600.0 && \
-    if [ -n "${conda_mirror}" ]; then \
-        conda config --system --set channel_alias "${conda_mirror}"; \
-    fi && \
-    if grep -qE '^\s*[^#\s]' /opt/fastapi/requirements.txt; then \
-        conda run -n chembience python -m pip install --no-cache-dir -r /opt/fastapi/requirements.txt; \
+RUN if grep -qE '^\s*[^#\s]' /opt/fastapi/requirements.txt; then \
+        micromamba run -n chembience python -m pip install --no-cache-dir -r /opt/fastapi/requirements.txt; \
     else \
         echo "requirements.txt is empty; skipping pip install"; \
     fi && \
-    conda run -n chembience python -m pip install -e /opt/share && \
-    conda clean -afy && \
+    micromamba run -n chembience python -m pip install -e /opt/share && \
+    micromamba clean -a -y && \
     find /opt/conda/ -follow -type f -name '*.a' -delete && \
     find /opt/conda/ -follow -type f -name '*.pyc' -delete && \
     find /opt/conda/ -follow -type f -name '*.js.map' -delete
