@@ -64,11 +64,12 @@ jobs:
           cd "$TEST_DIR_ABS/${{ matrix.app }}"
           
           # Extract expected versions from .env
-          EXPECTED_PYTHON=$(grep '^CONDA_PY=' .env | cut -d '=' -f 2)
-          EXPECTED_RDKIT=$(grep '^RDKIT_VERSION=' .env | cut -d '=' -f 2)
           
-          echo "Expected Python: $EXPECTED_PYTHON"
-          echo "Expected RDKit: $EXPECTED_RDKIT"
+          EXPECTED_PYTHON=$(grep '^CONDA_PY=' .env | cut -d '=' -f 2 | xargs)
+          EXPECTED_RDKIT=$(grep '^RDKIT_VERSION=' .env | cut -d '=' -f 2 | xargs)
+          
+          echo "Expected Python: '$EXPECTED_PYTHON'"
+          echo "Expected RDKit: '$EXPECTED_RDKIT'"
           
           # Get actual versions from container
           # The service name is matrix.app (django, fastapi, jupyter, rdkit)
@@ -90,12 +91,12 @@ jobs:
           echo "Actual RDKit: $ACTUAL_RDKIT"
           
           if [ "$ACTUAL_PYTHON" != "$EXPECTED_PYTHON" ]; then
-            echo "❌ Python version mismatch! Expected $EXPECTED_PYTHON, got $ACTUAL_PYTHON"
+            echo "❌ Python version mismatch! Expected '$EXPECTED_PYTHON', got '$ACTUAL_PYTHON'"
             exit 1
           fi
           
           if [ "$ACTUAL_RDKIT" != "$EXPECTED_RDKIT" ]; then
-            echo "❌ RDKit version mismatch! Expected $EXPECTED_RDKIT, got $ACTUAL_RDKIT"
+            echo "❌ RDKit version mismatch! Expected '$EXPECTED_RDKIT', got '$ACTUAL_RDKIT'"
             exit 1
           fi
           
