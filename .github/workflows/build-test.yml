@@ -65,6 +65,13 @@ jobs:
           # or just restart them here. Restarting is easier.
           
           ./build "${{ matrix.app }}" "${{ matrix.app }}" -d "$TEST_DIR_ABS"
+          
+          echo "🔍 Verifying RDKit and Python versions..."
+          
+          # Extract expected versions from ROOT .env before moving to test dir
+          EXPECTED_PYTHON=$(grep '^CONDA_PY=' .env | cut -d '=' -f 2 | xargs)
+          EXPECTED_RDKIT=$(grep '^RDKIT_VERSION=' .env | cut -d '=' -f 2 | xargs)
+          
           cd "$TEST_DIR_ABS/${{ matrix.app }}"
           if [ -f "./${{ matrix.app }}-init" ]; then
             "./${{ matrix.app }}-init"
@@ -76,7 +83,6 @@ jobs:
             exit 1
           fi
           
-          echo "🔍 Verifying RDKit and Python versions..."
           # Restart containers because the build script cleaned them up
           # We use -d to run in background
           
@@ -86,20 +92,14 @@ jobs:
           # Determine the main service and postgres to start
           SERVICE_NAME="${{ matrix.app }}"
           
-          echo "1!!! Service name: $SERVICE_NAME"
+          echo "Service name for verification: $SERVICE_NAME"
           
           docker compose up -d "$SERVICE_NAME" postgres
-          
-          echo "2!!! Service name: $SERVICE_NAME"
           
           # Wait for healthy if possible, or just sleep a bit
           # docker compose up --wait would be better if supported by the version in GA
           # Let's try --wait first
           docker compose up --wait "$SERVICE_NAME" postgres || (echo "⚠️ Wait failed, sleeping 30s..."; sleep 30)
-          
-          # Extract expected versions from .env
-          EXPECTED_PYTHON=$(grep '^CONDA_PY=' .env | cut -d '=' -f 2 | xargs)
-          EXPECTED_RDKIT=$(grep '^RDKIT_VERSION=' .env | cut -d '=' -f 2 | xargs)
           
           echo "Expected Python: '$EXPECTED_PYTHON'"
           echo "Expected RDKit: '$EXPECTED_RDKIT'"
