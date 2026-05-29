@@ -32,3 +32,16 @@ init_db()
 print('✅ Database schema recreated successfully.')
 "
 fi
+
+# --- Final info: print the web URL ---
+# Load .env if present to get the connection port; fall back to defaults
+if [ -f .env ]; then
+  set -o allexport
+  source .env
+  set +o allexport
+fi
+
+FASTAPI_CONNECTION_PORT=${FASTAPI_CONNECTION_PORT:-8002}
+echo
+echo "🌐 FastAPI is available at: http://localhost:${FASTAPI_CONNECTION_PORT}/"
+echo "   Interactive docs:       http://localhost:${FASTAPI_CONNECTION_PORT}/docs"

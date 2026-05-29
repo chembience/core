@@ -16,3 +16,18 @@ fi
 ./django-manage-py createsuperuser --noinput || true
 ./django-manage-py collectstatic --noinput || true
 ./django-manage-py test
+
+# --- Final info: print the web URL ---
+# Load .env if present to get the connection port; fall back to defaults
+if [ -f .env ]; then
+  set -o allexport
+  source .env
+  set +o allexport
+fi
+
+DJANGO_CONNECTION_PORT=${DJANGO_CONNECTION_PORT:-8001}
+DJANGO_VIRTUAL_HOSTNAME=${DJANGO_VIRTUAL_HOSTNAME:-localhost}
+
+echo
+echo "🌐 Django is available at: http://${DJANGO_VIRTUAL_HOSTNAME}:${DJANGO_CONNECTION_PORT}/"
+echo "   Admin (once superuser is active): http://${DJANGO_VIRTUAL_HOSTNAME}:${DJANGO_CONNECTION_PORT}/admin/"

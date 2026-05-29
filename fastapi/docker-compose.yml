@@ -51,8 +51,7 @@ services:
       - ./postgres:/home/postgres
     environment:
       <<: *common-env
-    ports:
-      - "${POSTGRES_PORT:-5433}:5432"
+    # No host port is published; connect via internal network on 5432.
     networks:
       - app-network
     working_dir: "/home/postgres/"

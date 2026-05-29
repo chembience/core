@@ -66,7 +66,7 @@ for app in "${APPS[@]}"; do
 
     # 1. Build the app using the build script
     # We pass 'app' as the target name so it's created in $TEST_DIR_ABS/$app
-    ./build "$app" "$app" -d "$TEST_DIR_ABS"
+    ./build "$app" "$app" -d "$TEST_DIR_ABS" --no-prompt
     
     APP_PATH="$TEST_DIR_ABS/$app"
     

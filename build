@@ -9,13 +9,17 @@ else
   # Check if .env.example is newer and different
   if [ .env.example -nt .env ] && ! cmp -s .env.example .env; then
     echo "⚠️  The template .env.example is newer than your current .env and contains changes."
-    read -p "Do you want to overwrite your .env with the new template? (y/N) " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-      cp .env.example .env
-      echo "✅ .env updated from template."
+    if [ "${NO_PROMPT:-false}" = true ]; then
+      echo "⏩ Non-interactive mode: leaving your existing .env unchanged."
     else
-      echo "⏩ Skipping .env update."
+      read -p "Do you want to overwrite your .env with the new template? (y/N) " -n 1 -r
+      echo
+      if [[ $REPLY =~ ^[Yy]$ ]]; then
+        cp .env.example .env
+        echo "✅ .env updated from template."
+      else
+        echo "⏩ Skipping .env update."
+      fi
     fi
   fi
 fi
@@ -41,6 +45,7 @@ export CHEMBIENCE_GID="${CHEMBIENCE_GID:-$(id -g)}"
 BUILD_FLAGS=()
 QUIT_AFTER_SETUP=true
 POSITIONAL_ARGS=()
+NO_PROMPT=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -52,13 +57,18 @@ while [[ $# -gt 0 ]]; do
       QUIT_AFTER_SETUP=false
       shift
       ;;
+    --no-prompt|-y)
+      NO_PROMPT=true
+      export NO_PROMPT
+      shift
+      ;;
     --dir|-d)
       CUSTOM_DIR="$2"
       shift 2
       ;;
     -*)
       echo "Unknown argument: $1"
-      echo "Supported: --no-cache, --pull, --progress=plain, --no-quit, --dir, -d"
+      echo "Supported: --no-cache, --pull, --progress=plain, --no-quit, --no-prompt|-y, --dir|-d"
       exit 2
       ;;
     *)

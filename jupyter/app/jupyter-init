@@ -17,3 +17,48 @@ else
     # We are on the host
     docker compose exec jupyter python notebooks/check_env.py
 fi
+
+# --- Final info: print the web URL (with token if available) ---
+# Load .env if present to get port/token defaults
+if [ -f .env ]; then
+  set -o allexport
+  source .env
+  set +o allexport
+fi
+
+JUPYTER_CONNECTION_PORT=${JUPYTER_CONNECTION_PORT:-8888}
+
+# Prefer explicit token from env; otherwise try to query the running server
+TOKEN_VALUE="${JUPYTER_TOKEN:-}"
+
+if [ -z "$TOKEN_VALUE" ]; then
+  if [ -f /.dockerenv ]; then
+    # inside container
+    JSON_LINE="$(jupyter server list --json 2>/dev/null | head -n1)"
+  else
+    # on host
+    JSON_LINE="$(docker compose exec jupyter jupyter server list --json 2>/dev/null | head -n1)"
+  fi
+  if [ -n "$JSON_LINE" ]; then
+    TOKEN_VALUE="$(printf '%s' "$JSON_LINE" | python - "$JSON_LINE" <<'PY'
+import sys, json
+data=sys.stdin.read().strip()
+try:
+    j=json.loads(data)
+    print(j.get('token',''))
+except Exception:
+    print("")
+PY
+)"
+  fi
+fi
+
+BASE_URL="http://localhost:${JUPYTER_CONNECTION_PORT}/"
+if [ -n "$TOKEN_VALUE" ] && [ "$TOKEN_VALUE" != "''" ]; then
+  echo
+  echo "🌐 JupyterLab is available at: ${BASE_URL}?token=${TOKEN_VALUE}"
+else
+  echo
+  echo "🌐 JupyterLab is available at: ${BASE_URL}"
+  echo "   Note: No token detected here. If Jupyter auto-generated one, check 'docker compose logs -f jupyter'."
+fi

@@ -24,8 +24,6 @@ x-common-environment: &common-env
   POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
   POSTGRES_NAME: ${POSTGRES_NAME:-chembience}
   POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
-  # Host-side published port (the one exposed on the Docker host).
-  POSTGRES_HOST_PORT: ${POSTGRES_HOST_PORT:-${POSTGRES_PORT:-5433}}
   # In-network port used by services to connect to the postgres container.
   POSTGRES_PORT: 5432
   # Backwards-compatible alias kept for code that still reads POSTGRES_INTERNAL_PORT.
@@ -195,8 +193,7 @@ services:
       - ${APP_HOME}/postgres:/home/postgres
     environment:
       <<: *common-env
-    ports:
-      - "${POSTGRES_HOST_PORT:-${POSTGRES_PORT:-5433}}:5432"
+    # Note: No host port is published; services connect via the internal network on 5432.
     networks:
       - app-network
     working_dir: "/home/postgres/"
