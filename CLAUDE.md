@@ -68,7 +68,8 @@ Run from the project root (where `docker-compose.yml` lives) unless noted.
   `src/src/settings.py` inside the bind-mounted `${APP_HOME}`.
 - **FastAPI**: Entry module is `src/main.py` (`app = FastAPI(...)`).
 - **Docker**: Use environment variables for configuration. Multi-stage builds
-  are preferred. Never bake secrets into images.
+  are preferred. All Python-based images utilize **micromamba** (mamba) for
+  dependency management and to keep image sizes small. Never bake secrets into images.
 - **Naming**: `snake_case` for variables/functions, `PascalCase` for classes.
 
 ## Project Architecture

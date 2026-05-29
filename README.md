@@ -12,7 +12,8 @@ and starts at version 0.5.0. It is a full KI-based re-implementation of the orig
 
 ## What Chembience Provides
 
-Chembience bundles a complete containerized environment for cheminformatics development:
+Chembience bundles a complete containerized environment for cheminformatics development. 
+All images are built with **micromamba** to ensure minimal image size and fast build times.
 
 - **RDKit** for molecular representation, descriptors, fingerprints, similarity search, and chemical data processing.
 - **PostgreSQL with the RDKit cartridge** for storing, indexing, and querying chemical structures.
@@ -59,7 +60,8 @@ bootstrap a different stack.
 Versions are controlled through `.env` / `.env.example` and Docker build arguments.
 
 - **Python**: 3.14 (configurable via `CONDA_PY`)
-- **[RDKit](https://github.com/rdkit/rdkit)**: 2026.03.2 (configurable via `RDKIT_VERSION`)- **PostgreSQL**: 18 (RDKit-cartridge-enabled)
+- **[RDKit](https://github.com/rdkit/rdkit)**: 2026.03.2 (configurable via `RDKIT_VERSION`)
+- **PostgreSQL**: 18 (RDKit-cartridge-enabled)
 - **Django**: 5.x-compatible
 - **FastAPI**: 0.115+-compatible
 - **SQLAlchemy**: 2.x-compatible

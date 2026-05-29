@@ -39,8 +39,7 @@ services:
       context: .
       dockerfile: rdkit/Dockerfile
       args:
-        conda_package: 'condaforge/miniforge3'
-        conda_tag: 'latest'
+        mamba_image: 'mambaorg/micromamba:1.5.8'
         conda_py: ${CONDA_PY:-3.14}
         rdkit_version: ${RDKIT_VERSION:-2026.03.2}
         apt_mirror: ${APT_MIRROR:-}

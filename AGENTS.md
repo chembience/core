@@ -22,7 +22,7 @@ optional cross-stack wiring.
   `/home/app/src/` and the entrypoint runs `uvicorn main:app` from there
   (i.e. `src/main.py`). Same `src/` layout convention as Django.
 - **Jupyter (`jupyter/`)**: JupyterLab pre-wired with RDKit + Postgres.
-- **RDKit (`rdkit/`)**: Conda-based RDKit image. Two compose services use it:
+- **RDKit (`rdkit/`)**: Micromamba-based RDKit image. Two compose services use it:
   - `rdkit`: interactive one-shot Python shell (`tty: true`, `command: python`).
   - `rdkit-app`: long-running sidecar (`tail -f /dev/null`) that keeps an
     RDKit environment alive with `${APP_HOME}` mounted, for ad-hoc scripts.
@@ -63,8 +63,8 @@ optional cross-stack wiring.
 - Dependencies:
   - Django/FastAPI: pip-based, declared inside their respective images and the
     per-project `src/` directory.
-  - RDKit and Postgres images: dependencies are **conda-driven** via
-    `condaforge/miniforge3` and the `rdkit_version` build arg in
+  - RDKit and Postgres images: dependencies are **mamba-driven** via
+    `mambaorg/micromamba` and the `rdkit_version` build arg in
     `docker-compose.yml`, not a pip `requirements.txt`.
 - `django/Dockerfile`: Django container image. The host entrypoint
   source lives at `django/docker-entrypoint.sh` and is installed in
