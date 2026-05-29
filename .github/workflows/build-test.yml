@@ -122,6 +122,52 @@ jobs:
           
           echo "✅ Versions match!"
           
+          # --- Basic HTTP smoke check when applicable ---
+          echo "🌐 Running HTTP smoke check for $SERVICE_NAME (if applicable)"
+
+          # Default ports (match .env.example)
+          DJANGO_PORT=${DJANGO_CONNECTION_PORT:-8001}
+          FASTAPI_PORT=${FASTAPI_CONNECTION_PORT:-8002}
+          JUPYTER_PORT=${JUPYTER_CONNECTION_PORT:-8888}
+
+          HTTP_URL=""
+          case "$SERVICE_NAME" in
+            django)
+              HTTP_URL="http://localhost:${DJANGO_PORT}/" ;;
+            fastapi)
+              HTTP_URL="http://localhost:${FASTAPI_PORT}/healthz" ;;
+            jupyter)
+              # Without token, Jupyter typically serves a login page (200) or redirects (3xx)
+              HTTP_URL="http://localhost:${JUPYTER_PORT}/" ;;
+            *)
+              HTTP_URL="" ;;
+          esac
+
+          if [ -n "$HTTP_URL" ]; then
+            echo "Probing URL: $HTTP_URL"
+            # Retry loop: accept any 2xx/3xx as positive
+            success=0
+            for i in $(seq 1 30); do
+              code=$(curl -sS -o /dev/null -w "%{http_code}" "$HTTP_URL" || true)
+              if [ -n "$code" ] && [ "$code" -ge 200 ] && [ "$code" -lt 400 ]; then
+                echo "✅ HTTP check passed with status $code"
+                success=1
+                break
+              else
+                echo "Attempt $i/30: got status '${code:-N/A}', retrying in 3s..."
+                sleep 3
+              fi
+            done
+            if [ "$success" -ne 1 ]; then
+              echo "❌ HTTP smoke check failed for $SERVICE_NAME at $HTTP_URL"
+              # Show last few lines of logs for debugging
+              docker compose logs --tail=200 "$SERVICE_NAME" || true
+              exit 1
+            fi
+          else
+            echo "ℹ️  No HTTP endpoint defined for $SERVICE_NAME; skipping HTTP check."
+          fi
+
           # Cleanup after verification
           docker compose down
 
