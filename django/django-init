@@ -27,7 +27,8 @@ fi
 
 DJANGO_CONNECTION_PORT=${DJANGO_CONNECTION_PORT:-8001}
 DJANGO_VIRTUAL_HOSTNAME=${DJANGO_VIRTUAL_HOSTNAME:-localhost}
+FIRST_HOSTNAME=$(echo "${DJANGO_VIRTUAL_HOSTNAME}" | cut -d',' -f1)
 
 echo
-echo "🌐 Django is available at: http://${DJANGO_VIRTUAL_HOSTNAME}:${DJANGO_CONNECTION_PORT}/"
+echo "🌐 Django is available at: http://${FIRST_HOSTNAME}:${DJANGO_CONNECTION_PORT}/admin"
 echo "   Admin (once superuser is active): http://${DJANGO_VIRTUAL_HOSTNAME}:${DJANGO_CONNECTION_PORT}/admin/"

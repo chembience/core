@@ -133,7 +133,7 @@ jobs:
           HTTP_URL=""
           case "$SERVICE_NAME" in
             django)
-              HTTP_URL="http://localhost:${DJANGO_PORT}/" ;;
+              HTTP_URL="http://localhost:${DJANGO_PORT}/healthz" ;;
             fastapi)
               HTTP_URL="http://localhost:${FASTAPI_PORT}/healthz" ;;
             jupyter)
