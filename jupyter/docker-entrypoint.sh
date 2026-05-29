@@ -91,6 +91,25 @@ ensure_kv() {
     fi
 }
 
+gen_token() {
+    # Prefer Python's secrets for a strong, URL-safe token; fallback to openssl; last resort: hexdump
+    local tok=""
+    if command -v python >/dev/null 2>&1; then
+        tok="$(python - <<'PY'
+import secrets
+print(secrets.token_urlsafe(32))
+PY
+)"
+    fi
+    if [ -z "$tok" ] && command -v openssl >/dev/null 2>&1; then
+        tok="$(openssl rand -hex 32 2>/dev/null || true)"
+    fi
+    if [ -z "$tok" ]; then
+        tok="$(hexdump -n 32 -v -e '/1 "%02x"' /dev/urandom 2>/dev/null || date +%s)"
+    fi
+    echo "$tok"
+}
+
 if [ ! -f "/home/app/.env" ]; then
     echo "📝 Creating minimal .env for Jupyter in /home/app..."
     {
@@ -111,9 +130,15 @@ if [ ! -f "/home/app/.env" ]; then
         echo "POSTGRES_PORT=${POSTGRES_PORT:-5433}"
     } > "/home/app/.env"
 
-    # Persist a pinned Jupyter token if provided on first init
+    # Persist a pinned Jupyter token: use inbound env if provided, else auto-generate a strong one
     if [ -n "${JUPYTER_TOKEN}" ]; then
         echo "JUPYTER_TOKEN=${JUPYTER_TOKEN}" >> "/home/app/.env"
+    else
+        gen="$(gen_token)" || gen=""
+        if [ -n "$gen" ]; then
+            echo "JUPYTER_TOKEN=${gen}" >> "/home/app/.env"
+            echo "🔐 Generated JUPYTER_TOKEN and persisted to /home/app/.env"
+        fi
     fi
 
     # Ensure LF line endings
@@ -122,9 +147,15 @@ else
     # Non-destructive reconciliation: ensure critical keys exist
     echo "🔁 Reconciling required keys in existing .env..."
     ensure_kv "/home/app/.env" "JUPYTER_CONNECTION_PORT" "${JUPYTER_CONNECTION_PORT:-8888}"
-    # If a token is provided via env and not present in .env, add it to persist across restarts
+    # Ensure a token exists: prefer inbound env; else, generate if missing
     if [ -n "${JUPYTER_TOKEN}" ]; then
         ensure_kv "/home/app/.env" "JUPYTER_TOKEN" "${JUPYTER_TOKEN}"
+    elif ! grep -E "^JUPYTER_TOKEN=" "/home/app/.env" >/dev/null 2>&1; then
+        gen="$(gen_token)" || gen=""
+        if [ -n "$gen" ]; then
+            echo "JUPYTER_TOKEN=${gen}" >> "/home/app/.env"
+            echo "🔐 Generated missing JUPYTER_TOKEN and persisted to /home/app/.env"
+        fi
     fi
 fi
 
@@ -132,6 +163,16 @@ fi
 if [ -d "/jupyter/app/notebooks" ] && [ ! -d "/home/app/notebooks" ]; then
     echo "📄 Syncing notebooks to /home/app/notebooks..."
     cp -r "/jupyter/app/notebooks" "/home/app/notebooks"
+fi
+
+# If no JUPYTER_TOKEN is present in the container env, but we have one persisted
+# in the per-app .env, export it so the running Jupyter honors the pinned token.
+if [ -z "${JUPYTER_TOKEN}" ] && [ -f "/home/app/.env" ]; then
+    file_tok="$(grep -E '^JUPYTER_TOKEN=' /home/app/.env | head -n1 | cut -d= -f2- || true)"
+    if [ -n "$file_tok" ]; then
+        export JUPYTER_TOKEN="$file_tok"
+        echo "🔑 Applied JUPYTER_TOKEN from /home/app/.env for this session."
+    fi
 fi
 
 # Final ownership check

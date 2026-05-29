@@ -108,4 +108,12 @@ docker compose --env-file ./.env up -d --force-recreate jupyter
 echo "🚀 Ensuring Jupyter (and Postgres) are up..."
 docker compose --env-file ./.env up -d postgres jupyter
 
+# Show effective token for convenience
+EFFECTIVE_TOKEN="$(get_var_from_file .env JUPYTER_TOKEN)"
+if [[ -z "${EFFECTIVE_TOKEN}" ]]; then
+  echo "🔓 Active Jupyter token: <empty> (authentication disabled)"
+else
+  echo "🔐 Active Jupyter token: ${EFFECTIVE_TOKEN}"
+fi
+
 echo "✅ jupyter-configure completed."

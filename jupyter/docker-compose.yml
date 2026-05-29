@@ -4,6 +4,9 @@ x-common-environment: &common-env
   CHEMBIENCE_UID: ${CHEMBIENCE_UID:-1000}
   CHEMBIENCE_GID: ${CHEMBIENCE_GID:-1000}
   JUPYTER_CONNECTION_PORT: ${JUPYTER_CONNECTION_PORT:-8888}
+  # If provided, this token will be honored by Jupyter. If unset, Jupyter will
+  # auto-generate a token (and our entrypoint will persist one for stability).
+  JUPYTER_TOKEN: ${JUPYTER_TOKEN:-}
   POSTGRES_USER: ${POSTGRES_USER:-chembience}
   POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure-password-here}
   POSTGRES_NAME: ${POSTGRES_NAME:-chembience}
@@ -35,7 +38,7 @@ services:
       - app-network
     working_dir: "/home/app"
     entrypoint: [ "/docker-entrypoint.sh" ]
-    command: ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root", "--ServerApp.token=''"]
+    command: ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root"]
 
   postgres:
     image: chembience/core-rdkit-postgres:${CHEMBIENCE_VERSION:-latest}
