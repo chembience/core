@@ -136,18 +136,18 @@ NEW_DSU_PW="$(get_var_from_file "$NEW_ENV_FILE" DJANGO_SUPERUSER_PASSWORD)"
 
 if [[ $REBUILD -eq 1 ]]; then
   echo "🔨 Rebuilding images (rdkit, postgres, django)..."
-  docker compose build --no-cache rdkit postgres django
+  docker compose --env-file ./.env build --no-cache rdkit postgres django
 fi
 
 echo "🚀 Starting Postgres and Django..."
-docker compose up -d postgres
-docker compose up -d django
+docker compose --env-file ./.env up -d postgres
+docker compose --env-file ./.env up -d django
 
 # Wait for postgres healthy (reuse healthcheck logic)
 echo "⏳ Waiting for Postgres to be healthy..."
 for i in {1..30}; do
-  if docker compose ps --format json postgres 2>/dev/null | grep -q '"State":"running"'; then
-    if docker compose exec -T postgres pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_NAME" -p 5432 >/dev/null 2>&1; then
+  if docker compose --env-file ./.env ps --format json postgres 2>/dev/null | grep -q '"State":"running"'; then
+    if docker compose --env-file ./.env exec -T postgres pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_NAME" -p 5432 >/dev/null 2>&1; then
       break
     fi
   fi
@@ -173,7 +173,7 @@ if [[ $DB_PW_CHANGE -eq 1 ]]; then
     echo "Cannot rotate DB password: old password is unknown. Ensure ./.env contains the current POSTGRES_PASSWORD or run interactively." >&2
     exit 2
   fi
-  PGPASSWORD="$OLD_DB_PASSWORD" docker compose exec -T -e PGPASSWORD="$OLD_DB_PASSWORD" postgres psql \
+  PGPASSWORD="$OLD_DB_PASSWORD" docker compose --env-file ./.env exec -T -e PGPASSWORD="$OLD_DB_PASSWORD" postgres psql \
     -U "$POSTGRES_USER" -p 5432 -d "$POSTGRES_NAME" <<SQL
 ALTER USER $POSTGRES_USER WITH PASSWORD '$NEW_DB_PASSWORD';
 SQL
@@ -204,7 +204,7 @@ manage_exec() {
   local -a extra
   # If stdin is a TTY, allow interactive; else, disable TTY (-T)
   if [ -t 0 ]; then extra=(); else extra=(-T); fi
-  docker compose exec "${extra[@]}" \
+  docker compose --env-file ./.env exec "${extra[@]}" \
     -e POSTGRES_USER="$EFFECTIVE_DB_USER" \
     -e POSTGRES_PASSWORD="$EFFECTIVE_DB_PASS" \
     -e POSTGRES_NAME="$EFFECTIVE_DB_NAME" \
@@ -241,7 +241,7 @@ fi
 # After possible config changes, (re)create the Django container so it picks up
 # updated app .env values before running manage.py commands.
 echo "🔁 Refreshing Django service to pick up latest .env..."
-docker compose up -d --force-recreate django
+docker compose --env-file ./.env up -d --force-recreate django
 
 # Give the container a brief moment to start up before running manage.py
 sleep 1
@@ -304,6 +304,6 @@ PY
 
 # Final ensure: bring services up so the app is ready to serve requests
 echo "🚀 Ensuring Django (and Postgres) are up..."
-docker compose up -d postgres django
+docker compose --env-file ./.env up -d postgres django
 
 echo "✅ django-configure completed."

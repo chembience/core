@@ -121,16 +121,16 @@ NEW_POSTGRES_NAME="$(get_var_from_file "$NEW_ENV_FILE" POSTGRES_NAME)"; NEW_POST
 
 if [[ $REBUILD -eq 1 ]]; then
   echo "🔨 Rebuilding images (rdkit, postgres, fastapi)..."
-  docker compose build --no-cache rdkit postgres fastapi
+  docker compose --env-file ./.env build --no-cache rdkit postgres fastapi
 fi
 
 echo "🚀 Starting Postgres and FastAPI..."
-docker compose up -d postgres
-docker compose up -d fastapi
+docker compose --env-file ./.env up -d postgres
+docker compose --env-file ./.env up -d fastapi
 
 echo "⏳ Waiting for Postgres to be healthy..."
 for i in {1..30}; do
-  if docker compose exec -T postgres pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_NAME" -p 5432 >/dev/null 2>&1; then
+  if docker compose --env-file ./.env exec -T postgres pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_NAME" -p 5432 >/dev/null 2>&1; then
     break
   fi
   sleep 2
@@ -151,7 +151,7 @@ if [[ $DB_PW_CHANGE -eq 1 ]]; then
     echo "Cannot rotate DB password: old password is unknown. Ensure ./.env contains the current POSTGRES_PASSWORD or run interactively." >&2
     exit 2
   fi
-  PGPASSWORD="$OLD_DB_PASSWORD" docker compose exec -T -e PGPASSWORD="$OLD_DB_PASSWORD" postgres psql \
+  PGPASSWORD="$OLD_DB_PASSWORD" docker compose --env-file ./.env exec -T -e PGPASSWORD="$OLD_DB_PASSWORD" postgres psql \
     -U "$POSTGRES_USER" -p 5432 -d "$POSTGRES_NAME" <<SQL
 ALTER USER $POSTGRES_USER WITH PASSWORD '$NEW_DB_PASSWORD';
 SQL
@@ -162,9 +162,12 @@ fi
 tmp_env=".env.next.$$"
 cp -f "$NEW_ENV_FILE" "$tmp_env" && mv -f "$tmp_env" .env
 
+# Re-source the newly adopted environment to ensure local process env matches
+set -a; source ./.env; set +a
+
 # Refresh FastAPI to pick up the updated env
 echo "🔁 Refreshing FastAPI service to pick up latest .env..."
-docker compose up -d --force-recreate fastapi
+docker compose --env-file ./.env up -d --force-recreate fastapi
 
 # Optional health check
 if command -v curl >/dev/null 2>&1; then
@@ -176,6 +179,6 @@ fi
 
 # Final ensure services are up
 echo "🚀 Ensuring FastAPI (and Postgres) are up..."
-docker compose up -d postgres fastapi
+docker compose --env-file ./.env up -d postgres fastapi
 
 echo "✅ fastapi-configure completed."

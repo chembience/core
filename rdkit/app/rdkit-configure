@@ -77,23 +77,23 @@ NEW_DB_PASSWORD="$(get_var_from_file "$NEW_ENV_FILE" POSTGRES_PASSWORD)"
 
 if [[ $REBUILD -eq 1 ]]; then
   echo "🔨 Rebuilding images (rdkit, postgres)..."
-  docker compose build --no-cache rdkit postgres
+  docker compose --env-file ./.env build --no-cache rdkit postgres
 fi
 
 echo "🚀 Starting Postgres and rdkit..."
-docker compose up -d postgres || true
-docker compose up -d rdkit || true
+docker compose --env-file ./.env up -d postgres || true
+docker compose --env-file ./.env up -d rdkit || true
 
 echo "⏳ Waiting for Postgres to be healthy..."
 for i in {1..30}; do
-  if docker compose exec -T postgres pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_NAME" -p 5432 >/dev/null 2>&1; then break; fi; sleep 2
+  if docker compose --env-file ./.env exec -T postgres pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_NAME" -p 5432 >/dev/null 2>&1; then break; fi; sleep 2
 done
 
 if [[ -n "$NEW_DB_PASSWORD" && "$NEW_DB_PASSWORD" != "$OLD_DB_PASSWORD" ]]; then
   echo "🔐 Detected DB password change in '$NEW_ENV_FILE'. Rotating inside Postgres..."
   if [[ -z "$OLD_DB_PASSWORD" && -t 1 ]]; then read -r -s -p "Enter CURRENT (old) Postgres password for user $POSTGRES_USER: " OLD_DB_PASSWORD; echo; fi
   if [[ -z "$OLD_DB_PASSWORD" ]]; then echo "Cannot rotate DB password: old password unknown." >&2; exit 2; fi
-  PGPASSWORD="$OLD_DB_PASSWORD" docker compose exec -T -e PGPASSWORD="$OLD_DB_PASSWORD" postgres psql -U "$POSTGRES_USER" -p 5432 -d "$POSTGRES_NAME" <<SQL
+  PGPASSWORD="$OLD_DB_PASSWORD" docker compose --env-file ./.env exec -T -e PGPASSWORD="$OLD_DB_PASSWORD" postgres psql -U "$POSTGRES_USER" -p 5432 -d "$POSTGRES_NAME" <<SQL
 ALTER USER $POSTGRES_USER WITH PASSWORD '$NEW_DB_PASSWORD';
 SQL
   echo "✅ Postgres password rotated."
@@ -102,11 +102,11 @@ fi
 tmp_env=".env.next.$$"; cp -f "$NEW_ENV_FILE" "$tmp_env" && mv -f "$tmp_env" .env
 
 echo "🔁 Refreshing rdkit service to pick up updated .env (if defined)..."
-docker compose up -d --force-recreate rdkit || true
+docker compose --env-file ./.env up -d --force-recreate rdkit || true
 
 echo "🧪 RDKit smoke test..."
 set +e
-docker compose run --rm rdkit python - <<'PY'
+docker compose --env-file ./.env run --rm rdkit python - <<'PY'
 import rdkit
 from rdkit import Chem
 print('RDKit:', rdkit.__version__, 'Benzene OK:', bool(Chem.MolFromSmiles('c1ccccc1')))
@@ -118,6 +118,6 @@ if [[ $status -ne 0 ]]; then
 fi
 
 echo "🚀 Ensuring rdkit (and Postgres) are up..."
-docker compose up -d postgres rdkit || true
+docker compose --env-file ./.env up -d postgres rdkit || true
 
 echo "✅ rdkit-configure completed."
