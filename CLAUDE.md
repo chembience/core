@@ -41,11 +41,14 @@ Run from the project root (where `docker-compose.yml` lives) unless noted.
 ### Jupyter
 - Shell: `docker compose exec jupyter /bin/bash`
 - Logs: `docker compose logs -f jupyter`
-- Open the lab: `http://localhost:${JUPYTER_CONNECTION_PORT:-8888}/`.
-  Token auth is **enabled by default** (no `--ServerApp.token=''` is
-  passed in `docker-compose.yml`); retrieve the random token from
-  `docker compose logs -f jupyter`, or set `JUPYTER_TOKEN` in `.env`
-  and override the command via a compose override file to pin it.
+- Open the lab: prefer running the per-app init helper, which prints the
+  access URL (with token when available): `./jupyter-init` from inside a
+  generated app directory.
+- Token auth is enabled by default. To disable it in development, apply the
+  provided overlay: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d`.
+- To pin a stable token, set `JUPYTER_TOKEN` in `.env` and add a small compose
+  override that appends `--ServerApp.token=${JUPYTER_TOKEN}` to the `jupyter`
+  command.
 
 ### RDKit
 - Interactive shell (one-shot): `docker compose run --rm rdkit`
@@ -55,6 +58,9 @@ Run from the project root (where `docker-compose.yml` lives) unless noted.
 ### Postgres
 - `psql` shell: `./psql` (from the project root)
 - Direct: `docker compose exec postgres psql -U $POSTGRES_USER -d $POSTGRES_NAME`
+- Note: No host port is published by default; connect over the internal
+  network on `postgres:5432` or create your own compose override if you need
+  host access.
 
 ## Tuning
 - `GUNICORN_WORKERS` (Django) and `UVICORN_WORKERS` (FastAPI) can be set in

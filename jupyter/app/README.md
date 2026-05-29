@@ -17,9 +17,14 @@ To start the JupyterLab service along with the PostgreSQL database:
 docker compose up -d
 ```
 
-By default, JupyterLab will be available at: [http://localhost:8888](http://localhost:8888)
+Then print the access URL (with token when available):
 
-(Note: The port can be changed via `JUPYTER_CONNECTION_PORT` in your `.env` file.)
+```bash
+./jupyter-init
+```
+
+Open the printed URL in your browser. The default port is 8888 and can be
+changed via `JUPYTER_CONNECTION_PORT` in your `.env` file.
 
 ## Directory Structure
 
@@ -58,3 +63,16 @@ The environment is pre-configured with the following variables for database acce
   - First run creates `./.env.new` from the current `./.env` and prints edit instructions.
   - After editing, rerun with the same file to apply changes and refresh the service.
   - Add `--rebuild` to force a rebuild/restart after applying changes.
+
+### Token behavior
+
+- Token auth is enabled by default. If Jupyter auto-generates a token,
+  `./jupyter-init` will query the server and print a URL like
+  `http://localhost:8888/?token=<...>`.
+- To disable the token in development, use the provided overlay:
+  ```bash
+  docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+  ```
+- To pin a stable token, set `JUPYTER_TOKEN` in `.env` and pass it via a small
+  compose override that appends `--ServerApp.token=${JUPYTER_TOKEN}` to the
+  `jupyter` service command.

@@ -76,6 +76,16 @@ optional cross-stack wiring.
   can cause issues in Docker containers and shell scripts.
 - **Docker is the primary execution environment.** Assume commands should be
   run via `docker compose exec <service> ...` from the project root.
+- **Jupyter token behavior**: Token auth is enabled by default. Prefer
+  running `jupyter/app/jupyter-init` inside a generated app; it prints the
+  access URL and, when available, the token. Use the provided
+  `docker-compose.dev.yml` overlay to disable the token in development
+  (`--ServerApp.token=''`). To pin a stable token, set `JUPYTER_TOKEN` in the
+  app's `.env` and pass it via a small compose override that appends
+  `--ServerApp.token=${JUPYTER_TOKEN}` to the `jupyter` command.
+- **Postgres networking**: The Postgres service is not published on a host
+  port by default. All services connect over the internal Docker network at
+  `postgres:5432`. Use your own compose override if host access is needed.
 - **Django migrations**: When modifying Django models, generate and commit
   migrations:
   `docker compose exec django python manage.py makemigrations`
