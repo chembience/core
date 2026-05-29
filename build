@@ -5,6 +5,19 @@ set -euo pipefail
 if [ ! -f .env ]; then
   cp .env.example .env
   echo "Created .env from template (.env.example)."
+else
+  # Check if .env.example is newer and different
+  if [ .env.example -nt .env ] && ! cmp -s .env.example .env; then
+    echo "⚠️  The template .env.example is newer than your current .env and contains changes."
+    read -p "Do you want to overwrite your .env with the new template? (y/N) " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+      cp .env.example .env
+      echo "✅ .env updated from template."
+    else
+      echo "⏩ Skipping .env update."
+    fi
+  fi
 fi
 
 # Load environment variables from .env
@@ -14,11 +27,10 @@ set +o allexport
 
 # Check if the published Postgres host port is already in use
 PORT_TO_CHECK="${POSTGRES_HOST_PORT:-${POSTGRES_PORT:-5433}}"
-PORT_BUSY=false
 if netstat -tuln | grep -q ":$PORT_TO_CHECK "; then
-  echo "⚠️ Warning: Port $PORT_TO_CHECK is already in use."
-  echo "The build will continue, but starting containers might fail if they can't bind to this port."
-  PORT_BUSY=true
+  echo "❌ Error: Postgres port $PORT_TO_CHECK is already in use."
+  echo "Please stop the service using this port or change POSTGRES_HOST_PORT in .env"
+  exit 1
 fi
 
 # Match container UID/GID to current user (WSL2/macOS/Linux)
@@ -105,6 +117,25 @@ export JUPYTER_CONNECTION_PORT="${JUPYTER_CONNECTION_PORT:-8888}"
 
 echo "📂 Using APP_HOME: $APP_HOME for target: $TARGET (type: $TYPE)"
 
+# Check if the application port is already in use
+if [ "$TYPE" = "django" ]; then
+    APP_PORT="${DJANGO_CONNECTION_PORT:-8001}"
+elif [ "$TYPE" = "fastapi" ]; then
+    APP_PORT="${FASTAPI_CONNECTION_PORT:-8002}"
+elif [ "$TYPE" = "jupyter" ]; then
+    APP_PORT="${JUPYTER_CONNECTION_PORT:-8888}"
+else
+    APP_PORT=""
+fi
+
+if [ -n "$APP_PORT" ]; then
+    if netstat -tuln | grep -q ":$APP_PORT "; then
+        echo "❌ Error: Application port $APP_PORT (type: $TYPE) is already in use."
+        echo "Please stop the service using this port or change the corresponding *_CONNECTION_PORT in .env"
+        exit 1
+    fi
+fi
+
 # Build base images first, then images that depend on them
 if [ "$TYPE" = "rdkit" ]; then
     docker compose build "${BUILD_FLAGS[@]}" rdkit postgres
@@ -122,50 +153,24 @@ fi
 
 if [ "$QUIT_AFTER_SETUP" = true ]; then
   echo "🚀 Starting containers in setup mode (will quit once healthy)..."
-  if [ "$PORT_BUSY" = true ]; then
-    # Fail-safe mode: try to start, but don't exit if it fails
-    if [ "$TYPE" = "rdkit" ]; then
-      APP_NAME="$APP_NAME" docker compose up --wait rdkit-app postgres || echo "⚠️ Warning: Failed to start containers (likely due to port conflict)."
-    elif [ "$TYPE" = "fastapi" ]; then
-      APP_NAME="$APP_NAME" docker compose up --wait fastapi postgres || echo "⚠️ Warning: Failed to start containers (likely due to port conflict)."
-    elif [ "$TYPE" = "jupyter" ]; then
-      APP_NAME="$APP_NAME" docker compose up --wait jupyter postgres || echo "⚠️ Warning: Failed to start containers (likely due to port conflict)."
-    else
-      APP_NAME="$APP_NAME" docker compose up --wait django postgres || echo "⚠️ Warning: Failed to start containers (likely due to port conflict)."
-    fi
+  if [ "$TYPE" = "rdkit" ]; then
+    APP_NAME="$APP_NAME" docker compose up --wait rdkit-app postgres
+  elif [ "$TYPE" = "fastapi" ]; then
+    APP_NAME="$APP_NAME" docker compose up --wait fastapi postgres
+  elif [ "$TYPE" = "jupyter" ]; then
+    APP_NAME="$APP_NAME" docker compose up --wait jupyter postgres
   else
-    if [ "$TYPE" = "rdkit" ]; then
-      APP_NAME="$APP_NAME" docker compose up --wait rdkit-app postgres
-    elif [ "$TYPE" = "fastapi" ]; then
-      APP_NAME="$APP_NAME" docker compose up --wait fastapi postgres
-    elif [ "$TYPE" = "jupyter" ]; then
-      APP_NAME="$APP_NAME" docker compose up --wait jupyter postgres
-    else
-      APP_NAME="$APP_NAME" docker compose up --wait django postgres
-    fi
+    APP_NAME="$APP_NAME" docker compose up --wait django postgres
   fi
   echo "✅ Everything is setup. Exiting..."
 else
-  if [ "$PORT_BUSY" = true ]; then
-    # Fail-safe mode: try to start, but don't exit if it fails
-    if [ "$TYPE" = "rdkit" ]; then
-      APP_NAME="$APP_NAME" docker compose up --abort-on-container-exit rdkit-app postgres || echo "⚠️ Warning: Failed to start containers."
-    elif [ "$TYPE" = "fastapi" ]; then
-      APP_NAME="$APP_NAME" docker compose up --abort-on-container-exit fastapi postgres || echo "⚠️ Warning: Failed to start containers."
-    elif [ "$TYPE" = "jupyter" ]; then
-      APP_NAME="$APP_NAME" docker compose up --abort-on-container-exit jupyter postgres || echo "⚠️ Warning: Failed to start containers."
-    else
-      APP_NAME="$APP_NAME" docker compose up --abort-on-container-exit django postgres || echo "⚠️ Warning: Failed to start containers."
-    fi
+  if [ "$TYPE" = "rdkit" ]; then
+    APP_NAME="$APP_NAME" docker compose up --abort-on-container-exit rdkit-app postgres
+  elif [ "$TYPE" = "fastapi" ]; then
+    APP_NAME="$APP_NAME" docker compose up --abort-on-container-exit fastapi postgres
+  elif [ "$TYPE" = "jupyter" ]; then
+    APP_NAME="$APP_NAME" docker compose up --abort-on-container-exit jupyter postgres
   else
-    if [ "$TYPE" = "rdkit" ]; then
-      APP_NAME="$APP_NAME" docker compose up --abort-on-container-exit rdkit-app postgres
-    elif [ "$TYPE" = "fastapi" ]; then
-      APP_NAME="$APP_NAME" docker compose up --abort-on-container-exit fastapi postgres
-    elif [ "$TYPE" = "jupyter" ]; then
-      APP_NAME="$APP_NAME" docker compose up --abort-on-container-exit jupyter postgres
-    else
-      APP_NAME="$APP_NAME" docker compose up --abort-on-container-exit django postgres
-    fi
+    APP_NAME="$APP_NAME" docker compose up --abort-on-container-exit django postgres
   fi
 fi
