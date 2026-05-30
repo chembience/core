@@ -122,6 +122,24 @@ mkdir -p "$APP_HOME"
 APP_HOME=$(cd "$APP_HOME" && pwd)
 export APP_HOME
 
+# Create .chembience marker for a Chembience app with metadata
+cat <<EOF > "$APP_HOME/.chembience"
+CHEMBIENCE_VERSION=${CHEMBIENCE_VERSION:-unknown}
+INSTALLATION_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+INSTALLATION_ID=$(LC_ALL=C tr -dc 'a-zA-Z0-9' < /dev/urandom | head -c 32)
+GIT_REVISION=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
+EOF
+
+# Copy .gitignore to app directory and add postgres/ to it
+if [ -f .gitignore ]; then
+  cp .gitignore "$APP_HOME/.gitignore"
+  if ! grep -q "^postgres/" "$APP_HOME/.gitignore"; then
+    echo "" >> "$APP_HOME/.gitignore"
+    echo "# Added by build script" >> "$APP_HOME/.gitignore"
+    echo "postgres/" >> "$APP_HOME/.gitignore"
+  fi
+fi
+
 # posix shell variable expansion for JUPYTER_CONNECTION_PORT if not set
 export JUPYTER_CONNECTION_PORT="${JUPYTER_CONNECTION_PORT:-8888}"
 

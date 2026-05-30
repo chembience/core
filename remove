@@ -124,7 +124,8 @@ is_chembience_app() {
     return 1
   fi
   # Check for specific files that define a chembience app
-  if [ -f "$APP_HOME/docker-compose.yml" ] && [ -f "$APP_HOME/.env" ]; then
+  # We now check for .chembience which contains metadata
+  if [ -f "$APP_HOME/.chembience" ] && [ -f "$APP_HOME/docker-compose.yml" ]; then
     return 0
   else
     return 1
@@ -135,7 +136,7 @@ is_chembience_app() {
 remove_apps() {
   if [ -d "$APP_HOME" ]; then
     if ! is_chembience_app; then
-      echo "❌ Error: $APP_HOME does not look like a chembience app (missing docker-compose.yml or .env)."
+      echo "❌ Error: $APP_HOME does not look like a chembience app (missing .chembience or docker-compose.yml)."
       echo "Aborting removal of $APP_HOME."
       return 1
     fi
