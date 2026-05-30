@@ -105,6 +105,14 @@ sync_script "/django/django-init"        "/home/app/django-init"
 sync_script "/django/django-manage-py"   "/home/app/django-manage-py"
 sync_script "/django/django-configure"   "/home/app/django-configure"
 [ -f "/.gitignore" ] && cp "/.gitignore" "/home/app/.gitignore"
+[ -f "/.gitattributes" ] && cp "/.gitattributes" "/home/app/.gitattributes"
+if [ -f "/home/app/.gitignore" ]; then
+    if ! grep -Eq "^postgres/?([[:space:]]|#|$)" "/home/app/.gitignore"; then
+        echo "" >> "/home/app/.gitignore"
+        echo "# Added by entrypoint" >> "/home/app/.gitignore"
+        echo "postgres/" >> "/home/app/.gitignore"
+    fi
+fi
 
 # Create .env from example if it doesn't exist
 if [ ! -f "/home/app/.env" ] && [ -f "/django/.env.example" ]; then

@@ -86,6 +86,14 @@ sync_script "/fastapi/db_cleanup"                  "/home/app/db_cleanup"
 sync_script "/fastapi/fastapi-init"                "/home/app/fastapi-init"
 sync_script "/fastapi/fastapi-configure"           "/home/app/fastapi-configure"
 [ -f "/.gitignore" ] && cp "/.gitignore" "/home/app/.gitignore"
+[ -f "/.gitattributes" ] && cp "/.gitattributes" "/home/app/.gitattributes"
+if [ -f "/home/app/.gitignore" ]; then
+    if ! grep -Eq "^postgres/?([[:space:]]|#|$)" "/home/app/.gitignore"; then
+        echo "" >> "/home/app/.gitignore"
+        echo "# Added by entrypoint" >> "/home/app/.gitignore"
+        echo "postgres/" >> "/home/app/.gitignore"
+    fi
+fi
 
 # Create/reconcile the per-app .env (source of truth for this app)
 ensure_kv() {

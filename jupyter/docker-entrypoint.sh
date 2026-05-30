@@ -81,6 +81,14 @@ sync_script "/jupyter/psql"                  "/home/app/psql"
 sync_script "/jupyter/jupyter-init"          "/home/app/jupyter-init"
 sync_script "/jupyter/jupyter-configure"      "/home/app/jupyter-configure"
 [ -f "/.gitignore" ] && cp "/.gitignore" "/home/app/.gitignore"
+[ -f "/.gitattributes" ] && cp "/.gitattributes" "/home/app/.gitattributes"
+if [ -f "/home/app/.gitignore" ]; then
+    if ! grep -Eq "^postgres/?([[:space:]]|#|$)" "/home/app/.gitignore"; then
+        echo "" >> "/home/app/.gitignore"
+        echo "# Added by entrypoint" >> "/home/app/.gitignore"
+        echo "postgres/" >> "/home/app/.gitignore"
+    fi
+fi
 
 # Create/reconcile the per-app .env (source of truth for this app)
 ensure_kv() {

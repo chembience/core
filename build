@@ -133,7 +133,9 @@ EOF
 # Copy .gitignore to app directory and add postgres/ to it
 if [ -f .gitignore ]; then
   cp .gitignore "$APP_HOME/.gitignore"
-  if ! grep -q "^postgres/" "$APP_HOME/.gitignore"; then
+  [ -f .gitattributes ] && cp .gitattributes "$APP_HOME/.gitattributes"
+  # Use a more robust check that handles potential whitespace and avoids partial matches
+  if ! grep -Eq "^postgres/?([[:space:]]|#|$)" "$APP_HOME/.gitignore"; then
     echo "" >> "$APP_HOME/.gitignore"
     echo "# Added by build script" >> "$APP_HOME/.gitignore"
     echo "postgres/" >> "$APP_HOME/.gitignore"

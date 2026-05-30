@@ -53,6 +53,15 @@ if [ ! -f "/home/app/.rdkit-init" ] || [ -d "/home/app/src" ]; then
         cp /opt/rdkit/docker-compose.yml /home/app/docker-compose.yml
         cp /opt/rdkit/Dockerfile /home/app/Dockerfile
         cp /opt/rdkit/README.md /home/app/README.md
+        [ -f "/.gitignore" ] && cp "/.gitignore" "/home/app/.gitignore"
+        [ -f "/.gitattributes" ] && cp "/.gitattributes" "/home/app/.gitattributes"
+        if [ -f "/home/app/.gitignore" ]; then
+            if ! grep -Eq "^postgres/?([[:space:]]|#|$)" "/home/app/.gitignore"; then
+                echo "" >> "/home/app/.gitignore"
+                echo "# Added by entrypoint" >> "/home/app/.gitignore"
+                echo "postgres/" >> "/home/app/.gitignore"
+            fi
+        fi
         
     # Create .env file in /home/app
     if [ ! -f "/home/app/.env" ]; then
