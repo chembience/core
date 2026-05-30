@@ -62,7 +62,7 @@ for app in "${APPS[@]}"; do
         docker stop "$PG_CONTAINER" >/dev/null 2>&1 || true
         docker rm "$PG_CONTAINER" >/dev/null 2>&1 || true
     fi
-    APP_NAME="-$app" docker compose down -v --remove-orphans >/dev/null 2>&1 || true
+    APP_NAME="$app" docker compose down -v --remove-orphans >/dev/null 2>&1 || true
 
     # 1. Build the app using the build script
     # We pass 'app' as the target name so it's created in $TEST_DIR_ABS/$app

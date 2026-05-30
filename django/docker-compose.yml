@@ -17,7 +17,7 @@ x-common-environment: &common-env
 
 services:
   django:
-    image: chembience/core-django${APP_NAME}:${CHEMBIENCE_IMAGE_TAG:-latest}
+    image: chembience/core-django-${APP_NAME:-app}:${CHEMBIENCE_IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: Dockerfile
@@ -27,7 +27,7 @@ services:
         conda_py: ${CONDA_PY:-3.14}
     environment:
       <<: *common-env
-      APP_NAME: ${APP_NAME:--app}
+      APP_NAME: ${APP_NAME:-app}
     depends_on:
       postgres:
         condition: service_healthy

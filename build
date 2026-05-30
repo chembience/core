@@ -87,7 +87,7 @@ if [ "$TYPE" != "django" ] && [ "$TYPE" != "rdkit" ] && [ "$TYPE" != "fastapi" ]
 fi
 
 export APP_ID="$TARGET"
-export APP_NAME="-$TARGET"
+export APP_NAME="$TARGET"
 if [ -n "${CUSTOM_DIR:-}" ]; then
   export APP_HOME="$CUSTOM_DIR/$TARGET"
 else

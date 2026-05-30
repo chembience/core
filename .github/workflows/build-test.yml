@@ -86,8 +86,8 @@ jobs:
           # Restart containers because the build script cleaned them up
           # We use -d to run in background
           
-          # Set APP_NAME for docker compose
-          export APP_NAME="-${{ matrix.app }}"
+          # Set APP_NAME for docker compose (dashless; compose adds dash where needed)
+          export APP_NAME="${{ matrix.app }}"
           
           # Determine the main service and postgres to start
           SERVICE_NAME="${{ matrix.app }}"

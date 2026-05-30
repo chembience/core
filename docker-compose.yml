@@ -53,7 +53,7 @@ services:
     command: [ "python" ]
 
   rdkit-app:
-    image: chembience/core-rdkit${APP_NAME:--app}:${CHEMBIENCE_VERSION}
+    image: chembience/core-rdkit-${APP_NAME:-app}:${CHEMBIENCE_VERSION}
     build:
       context: rdkit/app
       dockerfile: Dockerfile
@@ -62,7 +62,7 @@ services:
         app_name: ${APP_NAME:-}
     environment:
       <<: *common-env
-      APP_NAME: ${APP_NAME:--app}
+      APP_NAME: ${APP_NAME:-app}
     depends_on:
       postgres:
         condition: service_healthy
@@ -87,7 +87,7 @@ services:
         conda_mirror: ${CONDA_MIRROR:-}
     environment:
       <<: *common-env
-      APP_NAME: ${APP_NAME:--app}
+      APP_NAME: ${APP_NAME:-app}
     depends_on:
       postgres:
         condition: service_healthy
@@ -120,7 +120,7 @@ services:
         conda_mirror: ${CONDA_MIRROR:-}
     environment:
       <<: *common-env
-      APP_NAME: ${APP_NAME:--app}
+      APP_NAME: ${APP_NAME:-app}
     depends_on:
       postgres:
         condition: service_healthy
@@ -153,7 +153,7 @@ services:
         conda_mirror: ${CONDA_MIRROR:-}
     environment:
       <<: *common-env
-      APP_NAME: ${APP_NAME:--app}
+      APP_NAME: ${APP_NAME:-app}
     depends_on:
       postgres:
         condition: service_healthy

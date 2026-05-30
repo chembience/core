@@ -104,7 +104,7 @@ if [ ! -f "/home/app/.env" ]; then
         echo ""
         echo "CHEMBIENCE_VERSION=${CHEMBIENCE_VERSION:-latest}"
         echo "CHEMBIENCE_IMAGE_TAG=${CHEMBIENCE_VERSION:-latest}"
-        echo "APP_NAME=${APP_NAME:--app}"
+        echo "APP_NAME=${APP_NAME:-app}"
         echo "APP_HOME=."
         echo "CHEMBIENCE_UID=${CHEMBIENCE_UID}"
         echo "CHEMBIENCE_GID=${CHEMBIENCE_GID}"

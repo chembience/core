@@ -55,7 +55,7 @@ if [ -n "$CUSTOM_DIR" ]; then
 else
   export APP_HOME="$HOME/${APP_ID:-app}"
 fi
-export APP_NAME="-${APP_ID:-app}"
+export APP_NAME="${APP_ID:-app}"
 
 # Expand APP_HOME if it starts with ~
 if [[ "$APP_HOME" == "~"* ]]; then
