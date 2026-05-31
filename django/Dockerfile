@@ -37,7 +37,7 @@ RUN if grep -qE '^\s*[^#\s]' /opt/django/requirements.txt; then \
     else \
         echo "requirements.txt is empty; skipping pip install"; \
     fi && \
-    micromamba run -n chembience python -m pip install -e /opt/share && \
+    micromamba run -n chembience python -m pip install -e /opt/share --config-settings editable-mode=compat && \
     micromamba run -n chembience python -c "import django_rdkit" && \
     micromamba clean -a -y && \
     find /opt/conda/ -follow -type f -name '*.a' -delete && \

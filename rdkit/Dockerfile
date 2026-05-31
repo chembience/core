@@ -66,7 +66,7 @@ RUN micromamba config append channels conda-forge && \
     else \
         echo "requirements.txt is empty; skipping pip install"; \
     fi && \
-    micromamba run -n ${CONDA_ENV} python -m pip install -e /opt/share && \
+    micromamba run -n ${CONDA_ENV} python -m pip install -e /opt/share --config-settings editable-mode=compat && \
     micromamba clean -a -y && \
     find /opt/conda/ -follow -type f -name '*.a' -delete && \
     find /opt/conda/ -follow -type f -name '*.pyc' -delete && \

@@ -35,7 +35,7 @@ RUN if grep -qE '^\s*[^#\s]' /jupyter/requirements.txt; then \
     else \
         echo "requirements.txt is empty; skipping pip install"; \
     fi && \
-    micromamba run -n chembience python -m pip install -e /opt/share && \
+    micromamba run -n chembience python -m pip install -e /opt/share --config-settings editable-mode=compat && \
     micromamba clean -a -y && \
     find /opt/conda/ -follow -type f -name '*.a' -delete && \
     find /opt/conda/ -follow -type f -name '*.pyc' -delete && \
