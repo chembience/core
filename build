@@ -130,15 +130,24 @@ INSTALLATION_ID=$(LC_ALL=C tr -dc 'a-zA-Z0-9' < /dev/urandom | head -c 32)
 GIT_REVISION=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
 EOF
 
-# Copy .gitignore to app directory and add postgres/ to it
+# Copy .gitignore and .dockerignore to app directory and add postgres/ to them
 if [ -f .gitignore ]; then
   cp .gitignore "$APP_HOME/.gitignore"
   [ -f .gitattributes ] && cp .gitattributes "$APP_HOME/.gitattributes"
   # Use a more robust check that handles potential whitespace and avoids partial matches
-  if ! grep -Eq "^postgres/?([[:space:]]|#|$)" "$APP_HOME/.gitignore"; then
+  if ! grep -Eq "^postgres/postgres_data/?([[:space:]]|#|$)" "$APP_HOME/.gitignore"; then
     echo "" >> "$APP_HOME/.gitignore"
     echo "# Added by build script" >> "$APP_HOME/.gitignore"
-    echo "postgres/" >> "$APP_HOME/.gitignore"
+    echo "postgres/postgres_data" >> "$APP_HOME/.gitignore"
+  fi
+fi
+
+if [ -f .dockerignore ]; then
+  cp .dockerignore "$APP_HOME/.dockerignore"
+  if ! grep -Eq "^postgres/postgres_data/?([[:space:]]|#|$)" "$APP_HOME/.dockerignore"; then
+    echo "" >> "$APP_HOME/.dockerignore"
+    echo "# Added by build script" >> "$APP_HOME/.dockerignore"
+    echo "postgres/postgres_data" >> "$APP_HOME/.dockerignore"
   fi
 fi
 

@@ -105,12 +105,20 @@ sync_script "/django/django-init"        "/home/app/django-init"
 sync_script "/django/django-manage-py"   "/home/app/django-manage-py"
 sync_script "/django/django-configure"   "/home/app/django-configure"
 [ -f "/.gitignore" ] && cp "/.gitignore" "/home/app/.gitignore"
+[ -f "/.dockerignore" ] && cp "/.dockerignore" "/home/app/.dockerignore"
 [ -f "/.gitattributes" ] && cp "/.gitattributes" "/home/app/.gitattributes"
 if [ -f "/home/app/.gitignore" ]; then
-    if ! grep -Eq "^postgres/?([[:space:]]|#|$)" "/home/app/.gitignore"; then
+    if ! grep -Eq "^postgres/postgres_data/?([[:space:]]|#|$)" "/home/app/.gitignore"; then
         echo "" >> "/home/app/.gitignore"
         echo "# Added by entrypoint" >> "/home/app/.gitignore"
-        echo "postgres/" >> "/home/app/.gitignore"
+        echo "postgres/postgres_data" >> "/home/app/.gitignore"
+    fi
+fi
+if [ -f "/home/app/.dockerignore" ]; then
+    if ! grep -Eq "^postgres/postgres_data/?([[:space:]]|#|$)" "/home/app/.dockerignore"; then
+        echo "" >> "/home/app/.dockerignore"
+        echo "# Added by entrypoint" >> "/home/app/.dockerignore"
+        echo "postgres/postgres_data" >> "/home/app/.dockerignore"
     fi
 fi
 

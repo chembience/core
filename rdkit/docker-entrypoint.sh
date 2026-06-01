@@ -54,12 +54,20 @@ if [ ! -f "/home/app/.rdkit-init" ] || [ -d "/home/app/src" ]; then
         cp /opt/rdkit/Dockerfile /home/app/Dockerfile
         cp /opt/rdkit/README.md /home/app/README.md
         [ -f "/.gitignore" ] && cp "/.gitignore" "/home/app/.gitignore"
+        [ -f "/.dockerignore" ] && cp "/.dockerignore" "/home/app/.dockerignore"
         [ -f "/.gitattributes" ] && cp "/.gitattributes" "/home/app/.gitattributes"
         if [ -f "/home/app/.gitignore" ]; then
-            if ! grep -Eq "^postgres/?([[:space:]]|#|$)" "/home/app/.gitignore"; then
+            if ! grep -Eq "^postgres/postgres_data/?([[:space:]]|#|$)" "/home/app/.gitignore"; then
                 echo "" >> "/home/app/.gitignore"
                 echo "# Added by entrypoint" >> "/home/app/.gitignore"
-                echo "postgres/" >> "/home/app/.gitignore"
+                echo "postgres/postgres_data" >> "/home/app/.gitignore"
+            fi
+        fi
+        if [ -f "/home/app/.dockerignore" ]; then
+            if ! grep -Eq "^postgres/postgres_data/?([[:space:]]|#|$)" "/home/app/.dockerignore"; then
+                echo "" >> "/home/app/.dockerignore"
+                echo "# Added by entrypoint" >> "/home/app/.dockerignore"
+                echo "postgres/postgres_data" >> "/home/app/.dockerignore"
             fi
         fi
         

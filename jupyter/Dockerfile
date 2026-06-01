@@ -15,6 +15,7 @@ RUN mkdir -p /jupyter
 COPY jupyter/docker-entrypoint.sh /
 RUN chmod +x /docker-entrypoint.sh
 COPY .gitignore /
+COPY .dockerignore /
 COPY jupyter/docker-compose.yml /jupyter/docker-compose.yml
 COPY jupyter/requirements.txt /jupyter/requirements.txt
 COPY jupyter/app/Dockerfile /jupyter/Dockerfile

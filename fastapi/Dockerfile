@@ -15,6 +15,7 @@ RUN mkdir -p /opt/fastapi
 COPY fastapi/docker-entrypoint.sh /
 RUN chmod +x /docker-entrypoint.sh
 COPY .gitignore /
+COPY .dockerignore /
 COPY fastapi/docker-compose.yml /fastapi/docker-compose.yml
 COPY fastapi/app/docker-compose.override.yml /fastapi/docker-compose.override.yml
 COPY fastapi/app/Dockerfile /fastapi/Dockerfile

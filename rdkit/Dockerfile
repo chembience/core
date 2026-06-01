@@ -43,6 +43,8 @@ COPY rdkit/app/rdkit-configure /opt/rdkit/rdkit-configure
 COPY rdkit/app/README.md /opt/rdkit/README.md
 COPY rdkit/environment.yml /opt/rdkit/environment.yml
 COPY psql /opt/rdkit/psql
+COPY .gitignore /
+COPY .dockerignore /
 COPY .env.example /opt/rdkit/.env.example
 COPY share /opt/share
 
