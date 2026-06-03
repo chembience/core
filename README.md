@@ -7,7 +7,6 @@ and starts at version 0.5.0. It is a full KI-based re-implementation of the orig
 
 [![Release](https://img.shields.io/github/v/release/chembience/core?sort=semver&label=release&style=flat-square&logo=github)](https://github.com/chembience/core/releases/latest)
 [![Build & Smoke Test](https://github.com/chembience/core/actions/workflows/build-test.yml/badge.svg?branch=main)](https://github.com/chembience/core/actions/workflows/build-test.yml)
-[![Lint](https://github.com/chembience/core/actions/workflows/lint.yml/badge.svg?branch=main)](https://github.com/chembience/core/actions/workflows/lint.yml)
 [![Compose Validate](https://github.com/chembience/core/actions/workflows/compose-validate.yml/badge.svg?branch=main)](https://github.com/chembience/core/actions/workflows/compose-validate.yml)
 
 ## What Chembience Provides
@@ -72,8 +71,8 @@ Versions are controlled through `.env` / `.env.example` and Docker build argumen
 
 | Release | Date       | Notes                                                               |
 |---------|------------|---------------------------------------------------------------------|
-| 0.5.1   | 2026-06-03 | Smaller Docker images, switch to mamba as build system, many minor improvements and bug fixes |
-| 0.5.0   | 2026-05-27 | Initial release of the re-implemented core architecture             |
+| 0.5.1   | 2026‑06‑03 | Smaller Docker images, switch to mamba as build system, many minor improvements and bug fixes |
+| 0.5.0   | 2026‑05‑27 | Initial release of the re-implemented core architecture |
 
 Release older than 0.5.0 are no longer supported but are still available in the [archive](https://github.com/chembience/chembience/releases).
 
