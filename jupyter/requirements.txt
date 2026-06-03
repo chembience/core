@@ -2,6 +2,8 @@
 # Bump intentionally; do not change to "latest" — see core/README.md.
 jupyterlab>=4.2,<5
 sqlalchemy>=2.0,<3
+psycopg>=3.3,<4
+psycopg-binary>=3.3,<4
 psycopg2-binary>=2.9,<3
 rdkit
 git+https://github.com/rvianello/razi.git
