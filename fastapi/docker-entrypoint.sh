@@ -59,8 +59,8 @@ sync_config() {
         cp "$src" "$dst"
         sed -i 's/\r$//' "$dst" 2>/dev/null || true
     fi
-    cp "$src" "${dst}.dist"
-    sed -i 's/\r$//' "${dst}.dist" 2>/dev/null || true
+#    cp "$src" "${dst}.dist"
+#    sed -i 's/\r$//' "${dst}.dist" 2>/dev/null || true
 }
 
 # sync_script: always refresh helper scripts, strip CRLF, mark executable.
@@ -85,9 +85,9 @@ sync_script "/fastapi/db_cleanup"                  "/home/app/db_cleanup"
 # fastapi-init is now expected to be in /fastapi/fastapi-init (synced from fastapi/app/fastapi-init in Dockerfile)
 sync_script "/fastapi/fastapi-init"                "/home/app/fastapi-init"
 sync_script "/fastapi/fastapi-configure"           "/home/app/fastapi-configure"
-[ -f "/.gitignore" ] && cp "/.gitignore" "/home/app/.gitignore"
-[ -f "/.dockerignore" ] && cp "/.dockerignore" "/home/app/.dockerignore"
-[ -f "/.gitattributes" ] && cp "/.gitattributes" "/home/app/.gitattributes"
+[ -f "/.gitignore" ] && [ ! -f "/home/app/.gitignore" ] && cp "/.gitignore" "/home/app/.gitignore"
+[ -f "/.dockerignore" ] && [ ! -f "/home/app/.dockerignore" ] && cp "/.dockerignore" "/home/app/.dockerignore"
+[ -f "/.gitattributes" ] && [ ! -f "/home/app/.gitattributes" ] && cp "/.gitattributes" "/home/app/.gitattributes"
 if [ -f "/home/app/.gitignore" ]; then
     if ! grep -Eq "^postgres/postgres_data/?([[:space:]]|#|$)" "/home/app/.gitignore"; then
         echo "" >> "/home/app/.gitignore"

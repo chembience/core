@@ -81,8 +81,8 @@ sync_config() {
         cp "$src" "$dst"
         sed -i 's/\r$//' "$dst" 2>/dev/null || true
     fi
-    cp "$src" "${dst}.dist"
-    sed -i 's/\r$//' "${dst}.dist" 2>/dev/null || true
+#    cp "$src" "${dst}.dist"
+#    sed -i 's/\r$//' "${dst}.dist" 2>/dev/null || true
 }
 
 # sync_script: always refresh helper scripts (they must stay in sync with the
@@ -104,9 +104,9 @@ sync_script "/django/psql"               "/home/app/psql"
 sync_script "/django/django-init"        "/home/app/django-init"
 sync_script "/django/django-manage-py"   "/home/app/django-manage-py"
 sync_script "/django/django-configure"   "/home/app/django-configure"
-[ -f "/.gitignore" ] && cp "/.gitignore" "/home/app/.gitignore"
-[ -f "/.dockerignore" ] && cp "/.dockerignore" "/home/app/.dockerignore"
-[ -f "/.gitattributes" ] && cp "/.gitattributes" "/home/app/.gitattributes"
+[ -f "/.gitignore" ] && [ ! -f "/home/app/.gitignore" ] && cp "/.gitignore" "/home/app/.gitignore"
+[ -f "/.dockerignore" ] && [ ! -f "/home/app/.dockerignore" ] && cp "/.dockerignore" "/home/app/.dockerignore"
+[ -f "/.gitattributes" ] && [ ! -f "/home/app/.gitattributes" ] && cp "/.gitattributes" "/home/app/.gitattributes"
 if [ -f "/home/app/.gitignore" ]; then
     if ! grep -Eq "^postgres/postgres_data/?([[:space:]]|#|$)" "/home/app/.gitignore"; then
         echo "" >> "/home/app/.gitignore"

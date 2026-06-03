@@ -50,12 +50,12 @@ if [ ! -f "/home/app/.rdkit-init" ] || [ -d "/home/app/src" ]; then
         cp /opt/rdkit/rdkit-init /home/app/rdkit-init
         cp /opt/rdkit/rdkit-configure /home/app/rdkit-configure
         cp /opt/rdkit/psql /home/app/psql
-        cp /opt/rdkit/docker-compose.yml /home/app/docker-compose.yml
-        cp /opt/rdkit/Dockerfile /home/app/Dockerfile
-        cp /opt/rdkit/README.md /home/app/README.md
-        [ -f "/.gitignore" ] && cp "/.gitignore" "/home/app/.gitignore"
-        [ -f "/.dockerignore" ] && cp "/.dockerignore" "/home/app/.dockerignore"
-        [ -f "/.gitattributes" ] && cp "/.gitattributes" "/home/app/.gitattributes"
+        [ ! -f "/home/app/docker-compose.yml" ] && cp /opt/rdkit/docker-compose.yml /home/app/docker-compose.yml
+        [ ! -f "/home/app/Dockerfile" ] && cp /opt/rdkit/Dockerfile /home/app/Dockerfile
+        [ ! -f "/home/app/README.md" ] && cp /opt/rdkit/README.md /home/app/README.md
+        [ -f "/.gitignore" ] && [ ! -f "/home/app/.gitignore" ] && cp "/.gitignore" "/home/app/.gitignore"
+        [ -f "/.dockerignore" ] && [ ! -f "/home/app/.dockerignore" ] && cp "/.dockerignore" "/home/app/.dockerignore"
+        [ -f "/.gitattributes" ] && [ ! -f "/home/app/.gitattributes" ] && cp "/.gitattributes" "/home/app/.gitattributes"
         if [ -f "/home/app/.gitignore" ]; then
             if ! grep -Eq "^postgres/postgres_data/?([[:space:]]|#|$)" "/home/app/.gitignore"; then
                 echo "" >> "/home/app/.gitignore"
