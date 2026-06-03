@@ -8,8 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.5.1] - 2026-06-03
 
 ### Changed
-- Switched to `mamba` as the primary build system for faster image builds.
-- Reduced Docker image sizes by optimizing layers and dependencies.
+- Switched to `mamba` as the primary build system for faster image builds, including the PostgreSQL image.
+- Reduced Docker image sizes by optimizing layers and dependencies across all services.
+- Updated installed `psycopg` and `psycopg-binary` dependencies to asynchrosus version 3.
 - Modified container entrypoints to prevent overwriting user-edited configuration files (e.g., `.gitignore`, `.dockerignore`, `docker-compose.yml`) in `APP_HOME`.
 - Disabled automatic generation of `.dist` configuration files during container startup.
 
