@@ -263,4 +263,4 @@ This project is licensed under the BSD 3-Clause License - see the [LICENSE](LICE
 ## Bugs, Comments and anything else
 For any bug reports, comments or suggestion please use the tools here at Github or contact me by email.
 
-Markus Sitzmann, 2026-05-27
+Markus Sitzmann, 2026-06-03
