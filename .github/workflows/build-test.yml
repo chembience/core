@@ -2,9 +2,9 @@ name: Build & Smoke Test
 
 on:
   push:
-    branches: [ main, 'dev/*']
+    branches: [ main, develop, 'dev/*']
   pull_request:
-    branches: [main, 'dev/*']
+    branches: [main, develop, 'dev/*']
   workflow_dispatch:
 
 jobs:

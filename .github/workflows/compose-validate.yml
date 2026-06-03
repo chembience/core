@@ -2,9 +2,9 @@ name: Compose Validate
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, develop]
   pull_request:
-    branches: [main, master]
+    branches: [main, develop]
 
 jobs:
   validate:
