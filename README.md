@@ -51,7 +51,7 @@ different stack.
 
 - **Docker**: Version 20.10.0 or higher
 - **Docker Compose**: Version 2.0.0 or higher
-- **Bash**: Linux, macOS, or WSL2
+- **Bash**: Linux, Windows with WSL2/Ubuntu (docker in Ubuntu), macOS is in works (it works kind of, but not smoothly yet)
 
 ## Major Software Components
 
