@@ -67,6 +67,16 @@ Versions are controlled through `.env` / `.env.example` and Docker build argumen
 - **JupyterLab**: 4.x-compatible
 - **[django-rdkit](https://github.com/rdkit/django-rdkit) and [razi](https://github.com/rvianello/razi)**
 
+
+## Releases
+
+| Release | Date       | Notes                                                               |
+|---------|------------|---------------------------------------------------------------------|
+| 0.5.1   | 2026-06-03 | Smaller Docker images, switch to mamba as build system, many minor improvements and bug fixes |
+| 0.5.0   | 2026-05-27 | Initial release of the re-implemented core architecture             |
+
+Release older than 0.5.0 are no longer supported but are still available in the [archive](https://github.com/chembience/chembience/releases).
+
 ## Installation & Setup
 
 1.  **Clone the repository.**
