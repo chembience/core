@@ -62,13 +62,15 @@ sync_config() {
 #    sed -i 's/\r$//' "${dst}.dist" 2>/dev/null || true
 }
 
-# sync_script: always refresh helper scripts, strip CRLF, mark executable.
+# sync_script: copy helper scripts into APP_HOME only if missing.
 sync_script() {
     src="$1"; dst="$2"
     [ -f "$src" ] || return 0
-    cp "$src" "$dst"
-    chmod +x "$dst"
-    sed -i 's/\r$//' "$dst"
+    if [ ! -f "$dst" ]; then
+        cp "$src" "$dst"
+        chmod +x "$dst"
+        sed -i 's/\r$//' "$dst"
+    fi
 }
 
 echo "📄 Syncing internal configuration files to /home/app..."

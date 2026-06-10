@@ -63,13 +63,15 @@ sync_config() {
 #    sed -i 's/\r$//' "${dst}.dist" 2>/dev/null || true
 }
 
-# sync_script: always refresh helper scripts, strip CRLF, mark executable.
+# sync_script: copy helper scripts into APP_HOME only if missing.
 sync_script() {
     src="$1"; dst="$2"
     [ -f "$src" ] || return 0
-    cp "$src" "$dst"
-    chmod +x "$dst"
-    sed -i 's/\r$//' "$dst"
+    if [ ! -f "$dst" ]; then
+        cp "$src" "$dst"
+        chmod +x "$dst"
+        sed -i 's/\r$//' "$dst"
+    fi
 }
 
 echo "📄 Syncing internal configuration files to /home/app..."
@@ -152,10 +154,19 @@ fix_ownership
 if [ -d "/fastapi/src" ]; then
     echo "📄 Syncing src to /home/app/src (preserving existing files)..."
     mkdir -p /home/app/src
-    cp -rn /fastapi/src/. /home/app/src/
-
-    # Ensure LF line endings for src files
-    find /home/app/src -type f -name "*.py" -exec sed -i 's/\r$//' {} +
+    
+    # Use find to copy missing files and fix line endings only for those files
+    find /fastapi/src -type f | while read -r src_file; do
+        rel_path="${src_file#/fastapi/src/}"
+        dst_file="/home/app/src/$rel_path"
+        if [ ! -f "$dst_file" ]; then
+            mkdir -p "$(dirname "$dst_file")"
+            cp "$src_file" "$dst_file"
+            if [[ "$dst_file" == *.py ]]; then
+                sed -i 's/\r$//' "$dst_file"
+            fi
+        fi
+    done
 fi
 
 # Final ownership check

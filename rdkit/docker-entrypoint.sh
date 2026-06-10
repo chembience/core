@@ -35,6 +35,30 @@ fi
 # Safety check: don't try gosu if user still doesn't exist
 id app >/dev/null 2>&1
 
+# Helpers ---------------------------------------------------------------------
+# sync_config: copy a baked-in config file into APP_HOME only if it does NOT
+# already exist there. User edits on the bind mount are preserved across
+# restarts; missing files are restored.
+sync_config() {
+    src="$1"; dst="$2"
+    [ -f "$src" ] || return 0
+    if [ ! -f "$dst" ]; then
+        cp "$src" "$dst"
+        sed -i 's/\r$//' "$dst" 2>/dev/null || true
+    fi
+}
+
+# sync_script: copy helper scripts into APP_HOME only if missing.
+sync_script() {
+    src="$1"; dst="$2"
+    [ -f "$src" ] || return 0
+    if [ ! -f "$dst" ]; then
+        cp "$src" "$dst"
+        chmod +x "$dst"
+        sed -i 's/\r$//' "$dst"
+    fi
+}
+
 export PYTHONPATH=/home/app:/share:$PYTHONPATH
 
 # Initialize app context if missing or if it looks like a django app
@@ -45,14 +69,16 @@ if [ ! -f "/home/app/.rdkit-init" ] || [ -d "/home/app/src" ]; then
         echo "✅ Django container detected, skipping rdkit initialization."
     else
         echo "🚀 Initializing /home/app for rdkit app..."
-        cp /opt/rdkit/run /home/app/run
-        cp /opt/rdkit/shell /home/app/shell
-        cp /opt/rdkit/rdkit-init /home/app/rdkit-init
-        cp /opt/rdkit/rdkit-configure /home/app/rdkit-configure
-        cp /opt/rdkit/psql /home/app/psql
-        [ ! -f "/home/app/docker-compose.yml" ] && cp /opt/rdkit/docker-compose.yml /home/app/docker-compose.yml
-        [ ! -f "/home/app/Dockerfile" ] && cp /opt/rdkit/Dockerfile /home/app/Dockerfile
-        [ ! -f "/home/app/README.md" ] && cp /opt/rdkit/README.md /home/app/README.md
+        sync_script "/opt/rdkit/run"             "/home/app/run"
+        sync_script "/opt/rdkit/shell"           "/home/app/shell"
+        sync_script "/opt/rdkit/rdkit-init"      "/home/app/rdkit-init"
+        sync_script "/opt/rdkit/rdkit-configure" "/home/app/rdkit-configure"
+        sync_script "/opt/rdkit/psql"            "/home/app/psql"
+        
+        sync_config "/opt/rdkit/docker-compose.yml" "/home/app/docker-compose.yml"
+        sync_config "/opt/rdkit/Dockerfile"         "/home/app/Dockerfile"
+        sync_config "/opt/rdkit/README.md"          "/home/app/README.md"
+        
         [ -f "/.gitignore" ] && [ ! -f "/home/app/.gitignore" ] && cp "/.gitignore" "/home/app/.gitignore"
         [ -f "/.dockerignore" ] && [ ! -f "/home/app/.dockerignore" ] && cp "/.dockerignore" "/home/app/.dockerignore"
         [ -f "/.gitattributes" ] && [ ! -f "/home/app/.gitattributes" ] && cp "/.gitattributes" "/home/app/.gitattributes"
@@ -95,11 +121,7 @@ if [ ! -f "/home/app/.rdkit-init" ] || [ -d "/home/app/src" ]; then
         sed -i 's/\r$//' "/home/app/.env"
     fi
 
-        chmod +x /home/app/run /home/app/shell /home/app/rdkit-init /home/app/rdkit-configure /home/app/psql
-        
-        # Clean up django-specific files if they exist
-        rm -rf /home/app/appsite /home/app/apisite /home/app/src /home/app/django-init /home/app/django-manage-py
-        
+        # Finalize
         touch /home/app/.rdkit-init
     fi
 fi
