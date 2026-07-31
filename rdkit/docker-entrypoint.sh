@@ -88,7 +88,7 @@ if [ ! -f "/home/app/.rdkit-init" ] || [ -d "/home/app/src" ]; then
             echo "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}"
             echo "POSTGRES_NAME=${POSTGRES_NAME:-chembience}"
             echo "POSTGRES_HOST=${POSTGRES_HOST:-postgres}"
-            echo "POSTGRES_PORT=\${POSTGRES_PORT:-5433}"
+            echo "POSTGRES_PORT=\${POSTGRES_PORT:-5432}"
         } > /home/app/.env
         
         # Ensure LF line endings

@@ -30,7 +30,7 @@ source .env
 set +o allexport
 
 # Check if the published Postgres host port is already in use
-PORT_TO_CHECK="${POSTGRES_HOST_PORT:-${POSTGRES_PORT:-5433}}"
+PORT_TO_CHECK="${POSTGRES_HOST_PORT:-${POSTGRES_PORT:-5432}}"
 if netstat -tuln | grep -q ":$PORT_TO_CHECK "; then
   echo "❌ Error: Postgres port $PORT_TO_CHECK is already in use."
   echo "Please stop the service using this port or change POSTGRES_HOST_PORT in .env"

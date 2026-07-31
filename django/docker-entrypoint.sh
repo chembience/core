@@ -475,7 +475,7 @@ EOF
         echo "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}"
         echo "POSTGRES_NAME=${POSTGRES_NAME}"
         echo "POSTGRES_HOST=${POSTGRES_HOST}"
-        echo "POSTGRES_HOST_PORT=${POSTGRES_HOST_PORT:-${POSTGRES_PORT:-5433}}"
+        echo "POSTGRES_HOST_PORT=${POSTGRES_HOST_PORT:-${POSTGRES_PORT:-5432}}"
     } > /home/app/.env
     chown app:"$APP_GROUP" /home/app/.env
 

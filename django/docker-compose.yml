@@ -12,7 +12,7 @@ x-common-environment: &common-env
   POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure-password-here}
   POSTGRES_NAME: ${POSTGRES_NAME:-chembience}
   POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
-  POSTGRES_PORT: ${POSTGRES_PORT:-5433}
+  POSTGRES_PORT: ${POSTGRES_PORT:-5432}
   POSTGRES_INTERNAL_PORT: 5432
 
 services:

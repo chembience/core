@@ -56,8 +56,8 @@ for app in "${APPS[@]}"; do
     # (though build should handle it, this is extra safe for sequential tests)
     docker stop core-postgres-1 >/dev/null 2>&1 || true
     docker rm core-postgres-1 >/dev/null 2>&1 || true
-    # Also stop any container that might be using the postgres port (5433)
-    PG_CONTAINER=$(docker ps -q --filter "publish=5433")
+    # Also stop any container that might be using the postgres port (5432)
+    PG_CONTAINER=$(docker ps -q --filter "publish=5432")
     if [ -n "$PG_CONTAINER" ]; then
         docker stop "$PG_CONTAINER" >/dev/null 2>&1 || true
         docker rm "$PG_CONTAINER" >/dev/null 2>&1 || true
