@@ -29,7 +29,7 @@ COPY fastapi/app/fastapi-configure /fastapi/fastapi-configure
 COPY fastapi/app/src /fastapi/src
 COPY psql /fastapi/psql
 COPY share /opt/share
-COPY .env.example /fastapi/.env.example
+COPY .env.template /fastapi/.env.template
 COPY fastapi/requirements.txt /opt/fastapi
 
 # Do not bake the project source into the image — rely on bind mounts in dev

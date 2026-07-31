@@ -25,7 +25,7 @@ COPY jupyter/app/jupyter-configure /jupyter/jupyter-configure
 COPY jupyter/app/notebooks /jupyter/app/notebooks
 COPY psql /jupyter/psql
 COPY share /opt/share
-COPY .env.example /jupyter/.env.example
+COPY .env.template /jupyter/.env.template
 
 # Do not copy the entire repository into the image; rely on bind mounts for dev
 

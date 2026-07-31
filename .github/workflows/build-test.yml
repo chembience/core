@@ -29,8 +29,8 @@ jobs:
 
       - name: Prepare .env
         run: |
-          if [ -f .env.example ]; then
-            cp .env.example .env
+          if [ -f .env.template ]; then
+            cp .env.template .env
           fi
 
       - name: Make helper scripts executable
@@ -125,7 +125,7 @@ jobs:
           # --- Basic HTTP smoke check when applicable ---
           echo "🌐 Running HTTP smoke check for $SERVICE_NAME (if applicable)"
 
-          # Default ports (match .env.example)
+          # Default ports (match .env.template)
           DJANGO_PORT=${DJANGO_CONNECTION_PORT:-8001}
           FASTAPI_PORT=${FASTAPI_CONNECTION_PORT:-8002}
           JUPYTER_PORT=${JUPYTER_CONNECTION_PORT:-8888}

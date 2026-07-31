@@ -25,7 +25,7 @@ COPY django/app/README.md /django/README.md
 COPY django/psql /django/psql
 COPY django/app/django-rdkit-test-app /django/django-rdkit-test-app/
 COPY share /opt/share
-COPY .env.example /django/.env.example
+COPY .env.template /django/.env.template
 COPY django/requirements.txt /opt/django
 
 # Do not bake the project source into the image — rely on bind mounts in dev

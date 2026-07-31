@@ -37,7 +37,7 @@ optional cross-stack wiring.
 - `docker-compose.dev.yml`: Development overlay applied on top of the
   main compose file.
 - `llms.txt`: Project metadata for LLM-based tooling.
-- `.env` (and `.env.example`): Central configuration. Check these
+- `.env` (and `.env.template`): Central configuration. Check these
   for environment variables (`DJANGO_*`, `FASTAPI_*`, `JUPYTER_*`,
   `POSTGRES_*`, `CHEMBIENCE_*`, `APP_HOME`, etc.). Additional build-time
   args used by `docker-compose.yml` include `CONDA_PY`, `RDKIT_VERSION`,

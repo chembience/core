@@ -55,7 +55,7 @@ different stack.
 
 ## Major Software Components
 
-Versions are controlled through `.env` / `.env.example` and Docker build arguments.
+Versions are controlled through `.env` / `.env.template` and Docker build arguments.
 
 - **Python**: 3.14 (configurable via `CONDA_PY`)
 - **[RDKit](https://github.com/rdkit/rdkit)**: 2026.03.2 (configurable via `RDKIT_VERSION`)
@@ -71,6 +71,7 @@ Versions are controlled through `.env` / `.env.example` and Docker build argumen
 
 | Release | Date       | Notes                                                               |
 |---------|------------|---------------------------------------------------------------------|
+| 0.6.0   | 2026‑08‑01 | Renamed environment template to `.env.template` and updated project references |
 | 0.5.1   | 2026‑06‑03 | Smaller Docker images, switch to mamba as build system, many minor improvements and bug fixes |
 | 0.5.0   | 2026‑05‑27 | Initial release of the re-implemented core architecture |
 
@@ -122,7 +123,7 @@ reset tokens remain valid. Treat that `.env` as a secret.
 ### PostgreSQL Password
 
 `POSTGRES_PASSWORD` must be set in the project's `.env` before running `./build`.
-The `.env.example` file contains a placeholder (`CHANGE_ME_BEFORE_RUNNING`) as a reminder.
+The `.env.template` file contains a placeholder (`CHANGE_ME_BEFORE_RUNNING`) as a reminder.
 
 **To change the password later**, use the `<appname>-configure` script located inside
 your application directory. Each app type ships its own configure script:
@@ -223,7 +224,7 @@ dir(db)
 ### Repository Layout
 
 - `docker-compose.yml`: Authoritative definition of all services and how they interact.
-- `.env.example`: Template for environment configuration.
+- `.env.template`: Template for environment configuration.
 - `build`: Script to bootstrap a new project.
 - `remove`: Script to tear down a project and optionally remove images.
 - `psql`: Helper script to open a `psql` shell.

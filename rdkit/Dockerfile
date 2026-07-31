@@ -45,7 +45,7 @@ COPY rdkit/environment.yml /opt/rdkit/environment.yml
 COPY psql /opt/rdkit/psql
 COPY .gitignore /
 COPY .dockerignore /
-COPY .env.example /opt/rdkit/.env.example
+COPY .env.template /opt/rdkit/.env.template
 COPY share /opt/share
 
 # Ensure editable install target is writable by non-root user

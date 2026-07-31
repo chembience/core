@@ -91,6 +91,6 @@ Run from the project root (where `docker-compose.yml` lives) unless noted.
 - `share/chembience/`: Shared Python module imported by services
   (`from chembience import db`) providing a pre-configured SQLAlchemy
   engine, session factory, and Postgres connection settings.
-- `.env`: Global environment configuration (see `.env.example`).
+- `.env`: Global environment configuration (see `.env.template`).
 - `docker-compose.yml`: Authoritative service wiring.
 - `docker-compose.dev.yml`: Optional development overlay.

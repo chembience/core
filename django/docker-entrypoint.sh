@@ -123,9 +123,9 @@ if [ -f "/home/app/.dockerignore" ]; then
 fi
 
 # Create .env from example if it doesn't exist
-if [ ! -f "/home/app/.env" ] && [ -f "/django/.env.example" ]; then
+if [ ! -f "/home/app/.env" ] && [ -f "/django/.env.template" ]; then
     echo "📄 Creating initial .env from template..."
-    cp "/django/.env.example" "/home/app/.env"
+    cp "/django/.env.template" "/home/app/.env"
     
     # Customize .env with current application settings
     sed -i "s|^APP_HOME=.*|APP_HOME=./|g" "/home/app/.env"

@@ -3,19 +3,19 @@ set -euo pipefail
 
 # Create .env once from template; don't overwrite local settings
 if [ ! -f .env ]; then
-  cp .env.example .env
-  echo "Created .env from template (.env.example)."
+  cp .env.template .env
+  echo "Created .env from template (.env.template)."
 else
-  # Check if .env.example is newer and different
-  if [ .env.example -nt .env ] && ! cmp -s .env.example .env; then
-    echo "⚠️  The template .env.example is newer than your current .env and contains changes."
+  # Check if .env.template is newer and different
+  if [ .env.template -nt .env ] && ! cmp -s .env.template .env; then
+    echo "⚠️  The template .env.template is newer than your current .env and contains changes."
     if [ "${NO_PROMPT:-false}" = true ]; then
       echo "⏩ Non-interactive mode: leaving your existing .env unchanged."
     else
       read -p "Do you want to overwrite your .env with the new template? (y/N) " -n 1 -r
       echo
       if [[ $REPLY =~ ^[Yy]$ ]]; then
-        cp .env.example .env
+        cp .env.template .env
         echo "✅ .env updated from template."
       else
         echo "⏩ Skipping .env update."
