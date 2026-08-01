@@ -3,6 +3,10 @@ set -e
 
 CHEMBIENCE_UID="${CHEMBIENCE_UID:-1000}"
 CHEMBIENCE_GID="${CHEMBIENCE_GID:-1000}"
+CHEMBIENCE_RUNTIME_MODE="$(echo "${CHEMBIENCE_RUNTIME_MODE:-dev}" | tr '[:upper:]' '[:lower:]')"
+if [ "${CHEMBIENCE_RUNTIME_MODE}" = "production" ]; then
+    CHEMBIENCE_RUNTIME_MODE="prod"
+fi
 
 # Generate a cryptographically strong Django SECRET_KEY.
 # Prefer openssl; fall back to Python's secrets module (always present in this image).
@@ -58,6 +62,11 @@ id app >/dev/null 2>&1
 # on large bind-mounted APP_HOME volumes.
 echo "🔧 Ensuring correct ownership of /home/app..."
 fix_ownership() {
+    if [ "${CHEMBIENCE_RUNTIME_MODE}" = "prod" ]; then
+        [ -d /home/app ] && chown app:"$APP_GROUP" /home/app 2>/dev/null || true
+        [ -d /home/app/src ] && chown app:"$APP_GROUP" /home/app/src 2>/dev/null || true
+        return 0
+    fi
     find /home/app -not -user app -print0 2>/dev/null \
         | xargs -0 -r chown "app:$APP_GROUP" 2>/dev/null || true
 }
@@ -65,9 +74,23 @@ cleanup_ownership() {
     echo "🧹 Finalizing ownership of /home/app..."
     fix_ownership
 }
-trap cleanup_ownership EXIT
+if [ "${CHEMBIENCE_RUNTIME_MODE}" != "prod" ]; then
+    trap cleanup_ownership EXIT
+fi
 
 fix_ownership
+
+if [ "${CHEMBIENCE_RUNTIME_MODE}" = "prod" ]; then
+    echo "🚀 Running in production mode: skipping bootstrap and file sync mutations."
+    if [ -f "/home/app/src/manage.py" ]; then
+        cd /home/app/src
+    else
+        echo "❌ Production mode requires an initialized Django project (missing /home/app/src/manage.py)." >&2
+        exit 1
+    fi
+
+    exec gosu app "$@"
+fi
 
 # Helpers ---------------------------------------------------------------------
 # sync_config: copy a baked-in config file into APP_HOME only if it does NOT

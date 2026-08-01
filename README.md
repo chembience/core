@@ -105,6 +105,17 @@ Release older than 0.5.0 are no longer supported but are still available in the 
   ```
   This will create the app in `/path/to/parent_dir/myapp`.
 
+### Runtime Modes (`CHEMBIENCE_RUNTIME_MODE`)
+
+- `dev` (default): keeps current bootstrap behavior (sync helper files, scaffold app content when missing).
+- `prod`: minimizes entrypoint side effects for immutable runtime usage (skip scaffold sync and runtime file mutation).
+
+Set it in your project `.env`:
+
+```bash
+CHEMBIENCE_RUNTIME_MODE=prod
+```
+
 ## Secrets
 
 `DJANGO_SECRET_KEY` is auto-generated on first `./build` and persisted in the

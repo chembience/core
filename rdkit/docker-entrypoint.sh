@@ -3,6 +3,10 @@ set -e
 
 CHEMBIENCE_UID="${CHEMBIENCE_UID:-1000}"
 CHEMBIENCE_GID="${CHEMBIENCE_GID:-1000}"
+CHEMBIENCE_RUNTIME_MODE="$(echo "${CHEMBIENCE_RUNTIME_MODE:-dev}" | tr '[:upper:]' '[:lower:]')"
+if [ "${CHEMBIENCE_RUNTIME_MODE}" = "production" ]; then
+    CHEMBIENCE_RUNTIME_MODE="prod"
+fi
 
 # Pick a group to use:
 # - Prefer an existing "app" group
@@ -37,8 +41,17 @@ id app >/dev/null 2>&1
 
 export PYTHONPATH=/home/app:/share:$PYTHONPATH
 
+fix_ownership() {
+    if [ "${CHEMBIENCE_RUNTIME_MODE}" = "prod" ]; then
+        [ -d /home/app ] && chown app:"${APP_GROUP}" /home/app 2>/dev/null || true
+        return 0
+    fi
+    find /home/app -not -user app -print0 2>/dev/null \
+        | xargs -0 -r chown "app:${APP_GROUP}" 2>/dev/null || true
+}
+
 # Initialize app context if missing or if it looks like a django app
-if [ ! -f "/home/app/.rdkit-init" ] || [ -d "/home/app/src" ]; then
+if [ "${CHEMBIENCE_RUNTIME_MODE}" != "prod" ] && { [ ! -f "/home/app/.rdkit-init" ] || [ -d "/home/app/src" ]; }; then
     # ONLY initialize if we are NOT in a django container.
     # We can check for existence of /django (copied in django/Dockerfile)
     if [ -d "/django" ]; then
@@ -109,8 +122,7 @@ if [ ! -f "/home/app/requirements.txt" ]; then
 fi
 
 # Ensure all files in /home/app are owned by the app user (selective).
-find /home/app -not -user app -print0 2>/dev/null \
-    | xargs -0 -r chown "app:${APP_GROUP}" 2>/dev/null || true
+fix_ownership
 
 exec gosu app "$@"
 

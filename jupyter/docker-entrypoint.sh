@@ -3,6 +3,10 @@ set -e
 
 CHEMBIENCE_UID="${CHEMBIENCE_UID:-1000}"
 CHEMBIENCE_GID="${CHEMBIENCE_GID:-1000}"
+CHEMBIENCE_RUNTIME_MODE="$(echo "${CHEMBIENCE_RUNTIME_MODE:-dev}" | tr '[:upper:]' '[:lower:]')"
+if [ "${CHEMBIENCE_RUNTIME_MODE}" = "production" ]; then
+    CHEMBIENCE_RUNTIME_MODE="prod"
+fi
 
 # Pick a group to use:
 # - Prefer an existing "app" group
@@ -37,6 +41,11 @@ id app >/dev/null 2>&1
 # Selective chown to avoid a slow full -R sweep on large bind-mounted volumes.
 echo "🔧 Ensuring correct ownership of /home/app..."
 fix_ownership() {
+    if [ "${CHEMBIENCE_RUNTIME_MODE}" = "prod" ]; then
+        [ -d /home/app ] && chown app:"$APP_GROUP" /home/app 2>/dev/null || true
+        [ -d /home/app/notebooks ] && chown app:"$APP_GROUP" /home/app/notebooks 2>/dev/null || true
+        return 0
+    fi
     find /home/app -not -user app -print0 2>/dev/null \
         | xargs -0 -r chown "app:$APP_GROUP" 2>/dev/null || true
 }
@@ -44,7 +53,9 @@ cleanup_ownership() {
     echo "🧹 Finalizing ownership of /home/app..."
     fix_ownership
 }
-trap cleanup_ownership EXIT
+if [ "${CHEMBIENCE_RUNTIME_MODE}" != "prod" ]; then
+    trap cleanup_ownership EXIT
+fi
 
 fix_ownership
 
@@ -71,30 +82,32 @@ sync_script() {
     sed -i 's/\r$//' "$dst"
 }
 
-echo "📄 Syncing internal configuration files to /home/app..."
-sync_config "/jupyter/docker-compose.yml"    "/home/app/docker-compose.yml"
-sync_config "/jupyter/Dockerfile"            "/home/app/Dockerfile"
-sync_config "/jupyter/requirements.txt"      "/home/app/requirements.txt"
-sync_config "/jupyter/app-requirements.txt"  "/home/app/app-requirements.txt"
-sync_config "/jupyter/README.md"             "/home/app/README.md"
-sync_script "/jupyter/psql"                  "/home/app/psql"
-sync_script "/jupyter/jupyter-init"          "/home/app/jupyter-init"
-sync_script "/jupyter/jupyter-configure"      "/home/app/jupyter-configure"
-[ -f "/.gitignore" ] && [ ! -f "/home/app/.gitignore" ] && cp "/.gitignore" "/home/app/.gitignore"
-[ -f "/.dockerignore" ] && [ ! -f "/home/app/.dockerignore" ] && cp "/.dockerignore" "/home/app/.dockerignore"
-[ -f "/.gitattributes" ] && [ ! -f "/home/app/.gitattributes" ] && cp "/.gitattributes" "/home/app/.gitattributes"
-if [ -f "/home/app/.gitignore" ]; then
-    if ! grep -Eq "^postgres/postgres_data/?([[:space:]]|#|$)" "/home/app/.gitignore"; then
-        echo "" >> "/home/app/.gitignore"
-        echo "# Added by entrypoint" >> "/home/app/.gitignore"
-        echo "postgres/postgres_data" >> "/home/app/.gitignore"
+if [ "${CHEMBIENCE_RUNTIME_MODE}" != "prod" ]; then
+    echo "📄 Syncing internal configuration files to /home/app..."
+    sync_config "/jupyter/docker-compose.yml"    "/home/app/docker-compose.yml"
+    sync_config "/jupyter/Dockerfile"            "/home/app/Dockerfile"
+    sync_config "/jupyter/requirements.txt"      "/home/app/requirements.txt"
+    sync_config "/jupyter/app-requirements.txt"  "/home/app/app-requirements.txt"
+    sync_config "/jupyter/README.md"             "/home/app/README.md"
+    sync_script "/jupyter/psql"                  "/home/app/psql"
+    sync_script "/jupyter/jupyter-init"          "/home/app/jupyter-init"
+    sync_script "/jupyter/jupyter-configure"      "/home/app/jupyter-configure"
+    [ -f "/.gitignore" ] && [ ! -f "/home/app/.gitignore" ] && cp "/.gitignore" "/home/app/.gitignore"
+    [ -f "/.dockerignore" ] && [ ! -f "/home/app/.dockerignore" ] && cp "/.dockerignore" "/home/app/.dockerignore"
+    [ -f "/.gitattributes" ] && [ ! -f "/home/app/.gitattributes" ] && cp "/.gitattributes" "/home/app/.gitattributes"
+    if [ -f "/home/app/.gitignore" ]; then
+        if ! grep -Eq "^postgres/postgres_data/?([[:space:]]|#|$)" "/home/app/.gitignore"; then
+            echo "" >> "/home/app/.gitignore"
+            echo "# Added by entrypoint" >> "/home/app/.gitignore"
+            echo "postgres/postgres_data" >> "/home/app/.gitignore"
+        fi
     fi
-fi
-if [ -f "/home/app/.dockerignore" ]; then
-    if ! grep -Eq "^postgres/postgres_data/?([[:space:]]|#|$)" "/home/app/.dockerignore"; then
-        echo "" >> "/home/app/.dockerignore"
-        echo "# Added by entrypoint" >> "/home/app/.dockerignore"
-        echo "postgres/postgres_data" >> "/home/app/.dockerignore"
+    if [ -f "/home/app/.dockerignore" ]; then
+        if ! grep -Eq "^postgres/postgres_data/?([[:space:]]|#|$)" "/home/app/.dockerignore"; then
+            echo "" >> "/home/app/.dockerignore"
+            echo "# Added by entrypoint" >> "/home/app/.dockerignore"
+            echo "postgres/postgres_data" >> "/home/app/.dockerignore"
+        fi
     fi
 fi
 
@@ -126,7 +139,7 @@ PY
     echo "$tok"
 }
 
-if [ ! -f "/home/app/.env" ]; then
+if [ "${CHEMBIENCE_RUNTIME_MODE}" != "prod" ] && [ ! -f "/home/app/.env" ]; then
     echo "📝 Creating minimal .env for Jupyter in /home/app..."
     {
         echo "# ⚠️ AUTO-GENERATED FILE - INITIAL TEMPLATE"
@@ -159,7 +172,7 @@ if [ ! -f "/home/app/.env" ]; then
 
     # Ensure LF line endings
     sed -i 's/\r$//' "/home/app/.env"
-else
+elif [ "${CHEMBIENCE_RUNTIME_MODE}" != "prod" ]; then
     # Non-destructive reconciliation: ensure critical keys exist
     echo "🔁 Reconciling required keys in existing .env..."
     ensure_kv "/home/app/.env" "JUPYTER_CONNECTION_PORT" "${JUPYTER_CONNECTION_PORT:-8888}"
@@ -176,14 +189,14 @@ else
 fi
 
 # Sync app if it exists in /jupyter/app
-if [ -d "/jupyter/app/notebooks" ] && [ ! -d "/home/app/notebooks" ]; then
+if [ "${CHEMBIENCE_RUNTIME_MODE}" != "prod" ] && [ -d "/jupyter/app/notebooks" ] && [ ! -d "/home/app/notebooks" ]; then
     echo "📄 Syncing notebooks to /home/app/notebooks..."
     cp -r "/jupyter/app/notebooks" "/home/app/notebooks"
 fi
 
 # If no JUPYTER_TOKEN is present in the container env, but we have one persisted
 # in the per-app .env, export it so the running Jupyter honors the pinned token.
-if [ -z "${JUPYTER_TOKEN}" ] && [ -f "/home/app/.env" ]; then
+if [ "${CHEMBIENCE_RUNTIME_MODE}" != "prod" ] && [ -z "${JUPYTER_TOKEN}" ] && [ -f "/home/app/.env" ]; then
     file_tok="$(grep -E '^JUPYTER_TOKEN=' /home/app/.env | head -n1 | cut -d= -f2- || true)"
     if [ -n "$file_tok" ]; then
         export JUPYTER_TOKEN="$file_tok"
