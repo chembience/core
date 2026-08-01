@@ -22,6 +22,7 @@ COPY jupyter/app/Dockerfile /jupyter/Dockerfile
 COPY jupyter/app/requirements.txt /jupyter/app-requirements.txt
 COPY jupyter/app/jupyter-init /jupyter/jupyter-init
 COPY jupyter/app/jupyter-configure /jupyter/jupyter-configure
+COPY jupyter/app/jupyter-prepare-prod /jupyter/jupyter-prepare-prod
 COPY jupyter/app/notebooks /jupyter/app/notebooks
 COPY psql /jupyter/psql
 COPY share /opt/share

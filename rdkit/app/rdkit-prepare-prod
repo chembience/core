@@ -1,0 +1,51 @@
+#!/bin/bash
+set -euo pipefail
+
+APP_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$APP_DIR"
+
+REBUILD=0
+KEEP_ENV_PROD=0
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --rebuild) REBUILD=1; shift ;;
+    --keep-env-prod) KEEP_ENV_PROD=1; shift ;;
+    -*) echo "Unknown option: $1" >&2; exit 2 ;;
+    *) echo "Unexpected argument: $1" >&2; exit 2 ;;
+  esac
+done
+
+if [[ ! -f .env ]]; then
+  echo "Missing ./.env in $APP_DIR. Aborting." >&2
+  exit 1
+fi
+
+if [[ $KEEP_ENV_PROD -eq 0 ]]; then
+  cp -f .env .env.prod
+fi
+
+if grep -q '^CHEMBIENCE_RUNTIME_MODE=' .env.prod; then
+  sed -i 's/^CHEMBIENCE_RUNTIME_MODE=.*/CHEMBIENCE_RUNTIME_MODE=prod/' .env.prod
+else
+  echo 'CHEMBIENCE_RUNTIME_MODE=prod' >> .env.prod
+fi
+
+echo "🚀 Promoting RDKit app to production runtime mode..."
+if [[ $REBUILD -eq 1 ]]; then
+  ./rdkit-configure --rebuild ./.env.prod
+else
+  ./rdkit-configure ./.env.prod
+fi
+
+echo "🔎 Validating compose configuration..."
+docker compose --env-file ./.env config >/dev/null
+
+echo "🧪 Running RDKit smoke check..."
+docker compose --env-file ./.env run --rm rdkit python - <<'PY'
+from rdkit import Chem
+print('MolFromSmiles OK:', bool(Chem.MolFromSmiles('c1ccccc1')))
+PY
+
+echo "✅ rdkit-prepare-prod completed."
+echo "ℹ️  Current mode: $(grep -E '^CHEMBIENCE_RUNTIME_MODE=' .env | tail -n1)"

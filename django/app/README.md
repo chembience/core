@@ -48,3 +48,36 @@ For more information, see the root [README.md](../../README.md).
   - First run creates `./.env.new` from the current `./.env` and prints edit instructions.
   - After editing, rerun with the same file to apply changes (handles password rotation, migrations, superuser check).
   - Add `--rebuild` to force a rebuild/restart after applying changes.
+
+## Dev-to-Prod Promotion
+
+Use this workflow when your project is ready to run with `CHEMBIENCE_RUNTIME_MODE=prod`.
+
+1. Keep developing in `dev` mode until your app is stable.
+2. Run the promotion helper:
+
+```bash
+./django-prepare-prod
+```
+
+What the script does:
+- Creates a fresh `./.env.prod` from `./.env`.
+- Forces `CHEMBIENCE_RUNTIME_MODE=prod` in `./.env.prod`.
+- Applies it through `./django-configure ./.env.prod` (DB password rotation, service refresh, migrations, superuser check).
+- Runs `docker compose config` and a lightweight `/healthz` probe.
+
+Optional flags:
+- `--rebuild` → passes through to `django-configure --rebuild`.
+- `--keep-env-prod` → reuses existing `./.env.prod` instead of recreating it.
+
+Recommended checks after promotion:
+
+```bash
+docker compose --env-file ./.env ps
+docker compose --env-file ./.env exec -T django python manage.py showmigrations
+curl -fsS "http://localhost:${DJANGO_CONNECTION_PORT:-8001}/healthz"
+```
+
+Important caveat for current Phase 2 state:
+- In `prod`, Django entrypoint no longer bootstraps project files and fails fast when `/home/app/src/manage.py` is missing.
+- Keep `src/` fully initialized before promotion, or use a production image workflow that bakes project code.

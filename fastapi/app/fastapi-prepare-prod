@@ -1,0 +1,54 @@
+#!/bin/bash
+set -euo pipefail
+
+APP_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$APP_DIR"
+
+REBUILD=0
+KEEP_ENV_PROD=0
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --rebuild) REBUILD=1; shift ;;
+    --keep-env-prod) KEEP_ENV_PROD=1; shift ;;
+    -*) echo "Unknown option: $1" >&2; exit 2 ;;
+    *) echo "Unexpected argument: $1" >&2; exit 2 ;;
+  esac
+done
+
+if [[ ! -f .env ]]; then
+  echo "Missing ./.env in $APP_DIR. Aborting." >&2
+  exit 1
+fi
+
+if [[ $KEEP_ENV_PROD -eq 0 ]]; then
+  cp -f .env .env.prod
+fi
+
+if grep -q '^CHEMBIENCE_RUNTIME_MODE=' .env.prod; then
+  sed -i 's/^CHEMBIENCE_RUNTIME_MODE=.*/CHEMBIENCE_RUNTIME_MODE=prod/' .env.prod
+else
+  echo 'CHEMBIENCE_RUNTIME_MODE=prod' >> .env.prod
+fi
+
+echo "🚀 Promoting FastAPI app to production runtime mode..."
+if [[ $REBUILD -eq 1 ]]; then
+  ./fastapi-configure --rebuild ./.env.prod
+else
+  ./fastapi-configure ./.env.prod
+fi
+
+echo "🔎 Validating compose configuration..."
+docker compose --env-file ./.env config >/dev/null
+
+FASTAPI_PORT="${FASTAPI_CONNECTION_PORT:-8002}"
+if command -v curl >/dev/null 2>&1; then
+  if curl -fsS "http://localhost:${FASTAPI_PORT}/healthz" >/dev/null 2>&1; then
+    echo "✅ FastAPI health check passed on port ${FASTAPI_PORT}."
+  else
+    echo "⚠️ FastAPI health check failed on port ${FASTAPI_PORT}." >&2
+  fi
+fi
+
+echo "✅ fastapi-prepare-prod completed."
+echo "ℹ️  Current mode: $(grep -E '^CHEMBIENCE_RUNTIME_MODE=' .env | tail -n1)"

@@ -64,6 +64,39 @@ The environment is pre-configured with the following variables for database acce
   - After editing, rerun with the same file to apply changes and refresh the service.
   - Add `--rebuild` to force a rebuild/restart after applying changes.
 
+## Dev-to-Prod Promotion
+
+Use this workflow when your project is ready to run with `CHEMBIENCE_RUNTIME_MODE=prod`.
+
+1. Keep developing in `dev` mode.
+2. Run:
+
+```bash
+./jupyter-prepare-prod
+```
+
+What the script does:
+- Creates `./.env.prod` from your current `./.env`.
+- Sets `CHEMBIENCE_RUNTIME_MODE=prod` in `./.env.prod`.
+- Applies it through `./jupyter-configure ./.env.prod`.
+- Runs `docker compose config` and prints token guidance.
+
+Optional flags:
+- `--rebuild` → passes through to `jupyter-configure --rebuild`.
+- `--keep-env-prod` → reuses existing `./.env.prod`.
+
+Recommended post-promotion checks:
+
+```bash
+docker compose --env-file ./.env ps
+./jupyter-init
+docker compose --env-file ./.env exec -T jupyter python notebooks/check_env.py
+```
+
+Current Phase 2 caveats:
+- In `prod`, Jupyter skips most helper file sync and `.env` mutation.
+- Ensure your notebooks/config are already present and your token strategy is explicit (`JUPYTER_TOKEN` set or intentionally empty for disabled auth).
+
 ### Token behavior
 
 - Token auth is enabled by default. If Jupyter auto-generates a token,

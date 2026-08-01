@@ -26,6 +26,7 @@ COPY fastapi/app/db_restore /fastapi/db_restore
 COPY fastapi/app/db_cleanup /fastapi/db_cleanup
 COPY fastapi/app/fastapi-init /fastapi/fastapi-init
 COPY fastapi/app/fastapi-configure /fastapi/fastapi-configure
+COPY fastapi/app/fastapi-prepare-prod /fastapi/fastapi-prepare-prod
 COPY fastapi/app/src /fastapi/src
 COPY psql /fastapi/psql
 COPY share /opt/share

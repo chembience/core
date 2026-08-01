@@ -16,6 +16,7 @@ COPY django/docker-entrypoint.sh /
 COPY django/django-init /django/django-init
 COPY django/django-manage-py /django/django-manage-py
 COPY django/app/django-configure /django/django-configure
+COPY django/app/django-prepare-prod /django/django-prepare-prod
 COPY .gitignore /
 COPY .dockerignore /
 COPY django/docker-compose.yml /django/docker-compose.yml
