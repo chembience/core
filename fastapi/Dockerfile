@@ -19,6 +19,7 @@ COPY .dockerignore /
 COPY fastapi/docker-compose.yml /fastapi/docker-compose.yml
 COPY fastapi/app/docker-compose.override.yml /fastapi/docker-compose.override.yml
 COPY fastapi/app/Dockerfile /fastapi/Dockerfile
+COPY fastapi/app/Dockerfile.prod /fastapi/Dockerfile.prod
 COPY fastapi/app/requirements.txt /fastapi/requirements.txt
 COPY fastapi/app/README.md /fastapi/README.md
 COPY fastapi/app/db_backup /fastapi/db_backup

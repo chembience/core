@@ -36,6 +36,7 @@ COPY rdkit/docker-entrypoint.sh /docker-entrypoint.sh
 COPY rdkit/app/run /opt/rdkit/run
 COPY rdkit/app/shell /opt/rdkit/shell
 COPY rdkit/app/Dockerfile /opt/rdkit/Dockerfile
+COPY rdkit/app/Dockerfile.prod /opt/rdkit/Dockerfile.prod
 COPY rdkit/app/docker-compose.yml /opt/rdkit/docker-compose.yml
 COPY rdkit/app/requirements.txt /opt/rdkit/app-requirements.txt
 COPY rdkit/app/rdkit-init /opt/rdkit/rdkit-init

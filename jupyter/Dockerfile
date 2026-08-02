@@ -19,6 +19,7 @@ COPY .dockerignore /
 COPY jupyter/docker-compose.yml /jupyter/docker-compose.yml
 COPY jupyter/requirements.txt /jupyter/requirements.txt
 COPY jupyter/app/Dockerfile /jupyter/Dockerfile
+COPY jupyter/app/Dockerfile.prod /jupyter/Dockerfile.prod
 COPY jupyter/app/requirements.txt /jupyter/app-requirements.txt
 COPY jupyter/app/jupyter-init /jupyter/jupyter-init
 COPY jupyter/app/jupyter-configure /jupyter/jupyter-configure

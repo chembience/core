@@ -121,6 +121,7 @@ sync_script() {
 echo "📄 Syncing internal configuration files to /home/app..."
 sync_config "/django/docker-compose.yml" "/home/app/docker-compose.yml"
 sync_config "/django/Dockerfile"         "/home/app/Dockerfile"
+sync_config "/django/Dockerfile.prod"    "/home/app/Dockerfile.prod"
 sync_config "/django/requirements.txt"   "/home/app/requirements.txt"
 sync_config "/django/README.md"          "/home/app/README.md"
 sync_script "/django/psql"               "/home/app/psql"

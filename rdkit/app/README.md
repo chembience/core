@@ -36,38 +36,48 @@ For more information, see the root [README.md](../../README.md).
   - After editing, rerun with the same file to apply changes and refresh the environment.
   - Add `--rebuild` to force a rebuild/restart after applying changes.
 
-## Dev-to-Prod Promotion
+## Dev-to-Prod Image Freeze
 
-Use this workflow when your project is ready to run with `CHEMBIENCE_RUNTIME_MODE=prod`.
+Use this workflow when you want a fully self-contained production image for RDKit scripts and runtime tooling.
 
-1. Finalize your RDKit scripts and dependencies in `dev` mode.
-2. Run:
+Prerequisite:
+- The base core image must exist locally: `chembience/core-rdkit:${CHEMBIENCE_VERSION}` from your app `.env` (for example, run `./build` from repository root first).
 
 ```bash
 ./rdkit-prepare-prod
 ```
 
 What the script does:
-- Creates a fresh `./.env.prod` from `./.env`.
-- Sets `CHEMBIENCE_RUNTIME_MODE=prod` in `./.env.prod`.
-- Applies it through `./rdkit-configure ./.env.prod`.
-- Runs compose validation and an RDKit smoke check (`MolFromSmiles`).
+- Creates/reuses `./.env.prod` from `./.env` and forces `CHEMBIENCE_RUNTIME_MODE=prod` there.
+- Builds a dedicated source-baked production image via `Dockerfile.prod`.
+- Uses a clear production image name: `chembience/core-rdkit-prod-<app_name>:<tag>`.
+- Runs an RDKit smoke check from the built image (`MolFromSmiles`).
+- Does **not** run `rdkit-configure`, does **not** restart compose services, and does **not** mutate your active dev `.env`.
 
 Optional flags:
-- `--rebuild` → passes through to `rdkit-configure --rebuild`.
 - `--keep-env-prod` → reuses existing `./.env.prod`.
+- `--image-tag <tag>` → release tag for the produced image.
+- `--image-name <name>` → override default production image repository/name.
+- `--skip-build` → skip the build step (metadata prep only).
 
-Recommended post-promotion checks:
+Examples:
 
 ```bash
-docker compose --env-file ./.env ps
-./run your_script.py
-docker compose --env-file ./.env run --rm rdkit python - <<'PY'
+# Repeatable release image build
+./rdkit-prepare-prod --image-tag 0.6.0-rdkit.1
+
+# Custom production image repository/name
+./rdkit-prepare-prod --image-name registry.example.com/chem/rdkit-prod --image-tag 0.6.0-rdkit.1
+```
+
+Run the produced image (example):
+
+```bash
+docker run --rm --entrypoint /opt/conda/envs/chembience/bin/python chembience/core-rdkit-prod-app:0.6.0-rdkit.1 - <<'PY'
 from rdkit import Chem
 print(bool(Chem.MolFromSmiles('CCO')))
 PY
 ```
 
-Current Phase 2 caveats:
-- In `prod`, RDKit skips app-context bootstrap (`run`, `shell`, `rdkit-init`, `.env` generation).
-- Ensure these files already exist in your app directory before switching to `prod`.
+Repeatability note:
+- Running the script again with the same `--image-name` and `--image-tag` rebuilds/replaces the same image tag deterministically from the current source state.

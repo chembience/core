@@ -37,35 +37,46 @@ For more information, see the root [README.md](../../README.md).
   - After editing, rerun with the same file to apply changes.
   - Add `--rebuild` to force a rebuild/restart after applying changes.
 
-## Dev-to-Prod Promotion
+## Dev-to-Prod Image Freeze
 
-Use this workflow when your project is ready to run with `CHEMBIENCE_RUNTIME_MODE=prod`.
+Use this workflow when you want a fully self-contained production image that does not depend on bind mounts.
 
-1. Keep developing and testing in `dev` mode.
-2. Run:
+Prerequisite:
+- The base core image must exist locally: `chembience/core-fastapi:${CHEMBIENCE_VERSION}` from your app `.env` (for example, run `./build` from repository root first).
 
 ```bash
 ./fastapi-prepare-prod
 ```
 
 What the script does:
-- Creates a fresh `./.env.prod` from `./.env`.
-- Forces `CHEMBIENCE_RUNTIME_MODE=prod` in `./.env.prod`.
-- Applies it through `./fastapi-configure ./.env.prod` (password rotation + service refresh when needed).
-- Validates compose config and checks `http://localhost:${FASTAPI_CONNECTION_PORT:-8002}/healthz`.
+- Creates/reuses `./.env.prod` from `./.env` and forces `CHEMBIENCE_RUNTIME_MODE=prod` there.
+- Builds a dedicated source-baked production image via `Dockerfile.prod`.
+- Uses a clear production image name: `chembience/core-fastapi-prod-<app_name>:<tag>`.
+- Verifies the image contains `/home/app/src/main.py`.
+- Does **not** run `fastapi-configure`, does **not** restart compose services, and does **not** mutate your active dev `.env`.
 
 Optional flags:
-- `--rebuild` → passes through to `fastapi-configure --rebuild`.
 - `--keep-env-prod` → reuses existing `./.env.prod`.
+- `--image-tag <tag>` → release tag for the produced image.
+- `--image-name <name>` → override default production image repository/name.
+- `--skip-build` → skip the build step (metadata prep only).
 
-Recommended post-promotion checks:
+Examples:
 
 ```bash
-docker compose --env-file ./.env ps
-curl -fsS "http://localhost:${FASTAPI_CONNECTION_PORT:-8002}/healthz"
-docker compose --env-file ./.env exec -T fastapi python -c "import main; print('main import ok')"
+# Repeatable release image build
+./fastapi-prepare-prod --image-tag 0.6.0-fastapi.1
+
+# Custom production image repository/name
+./fastapi-prepare-prod --image-name registry.example.com/chem/fastapi-prod --image-tag 0.6.0-fastapi.1
 ```
 
-Current Phase 2 caveat:
-- FastAPI is the most production-friendly service right now, including a fallback to baked `/fastapi/src` if `/home/app/src/main.py` is absent in `prod`.
-- For strict immutability, prefer a dedicated release image with your final app code and pinned tags.
+Run the produced image (example):
+
+```bash
+docker run --rm -p 8002:8000 chembience/core-fastapi-prod-app:0.6.0-fastapi.1 \
+  sh -c "exec uvicorn main:app --host 0.0.0.0 --port 8000 --workers 2"
+```
+
+Repeatability note:
+- Running the script again with the same `--image-name` and `--image-tag` rebuilds/replaces the same image tag deterministically from the current source state.

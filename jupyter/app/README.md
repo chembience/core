@@ -64,38 +64,49 @@ The environment is pre-configured with the following variables for database acce
   - After editing, rerun with the same file to apply changes and refresh the service.
   - Add `--rebuild` to force a rebuild/restart after applying changes.
 
-## Dev-to-Prod Promotion
+## Dev-to-Prod Image Freeze
 
-Use this workflow when your project is ready to run with `CHEMBIENCE_RUNTIME_MODE=prod`.
+Use this workflow when you want a fully self-contained production image that includes your notebooks and app dependencies.
 
-1. Keep developing in `dev` mode.
-2. Run:
+Prerequisite:
+- The base core image must exist locally: `chembience/core-jupyter:${CHEMBIENCE_VERSION}` from your app `.env` (for example, run `./build` from repository root first).
 
 ```bash
 ./jupyter-prepare-prod
 ```
 
 What the script does:
-- Creates `./.env.prod` from your current `./.env`.
-- Sets `CHEMBIENCE_RUNTIME_MODE=prod` in `./.env.prod`.
-- Applies it through `./jupyter-configure ./.env.prod`.
-- Runs `docker compose config` and prints token guidance.
+- Creates/reuses `./.env.prod` from `./.env` and forces `CHEMBIENCE_RUNTIME_MODE=prod` there.
+- Builds a dedicated source-baked production image via `Dockerfile.prod`.
+- Uses a clear production image name: `chembience/core-jupyter-prod-<app_name>:<tag>`.
+- Verifies the image contains `/home/app/notebooks`.
+- Does **not** run `jupyter-configure`, does **not** restart compose services, and does **not** mutate your active dev `.env`.
 
 Optional flags:
-- `--rebuild` → passes through to `jupyter-configure --rebuild`.
 - `--keep-env-prod` → reuses existing `./.env.prod`.
+- `--image-tag <tag>` → release tag for the produced image.
+- `--image-name <name>` → override default production image repository/name.
+- `--skip-build` → skip the build step (metadata prep only).
 
-Recommended post-promotion checks:
+Examples:
 
 ```bash
-docker compose --env-file ./.env ps
-./jupyter-init
-docker compose --env-file ./.env exec -T jupyter python notebooks/check_env.py
+# Repeatable release image build
+./jupyter-prepare-prod --image-tag 0.6.0-jupyter.1
+
+# Custom production image repository/name
+./jupyter-prepare-prod --image-name registry.example.com/chem/jupyter-prod --image-tag 0.6.0-jupyter.1
 ```
 
-Current Phase 2 caveats:
-- In `prod`, Jupyter skips most helper file sync and `.env` mutation.
-- Ensure your notebooks/config are already present and your token strategy is explicit (`JUPYTER_TOKEN` set or intentionally empty for disabled auth).
+Run the produced image (example):
+
+```bash
+docker run --rm -p 8888:8888 chembience/core-jupyter-prod-app:0.6.0-jupyter.1 \
+  jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root
+```
+
+Repeatability note:
+- Running the script again with the same `--image-name` and `--image-tag` rebuilds/replaces the same image tag deterministically from the current source state.
 
 ### Token behavior
 

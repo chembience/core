@@ -49,35 +49,46 @@ For more information, see the root [README.md](../../README.md).
   - After editing, rerun with the same file to apply changes (handles password rotation, migrations, superuser check).
   - Add `--rebuild` to force a rebuild/restart after applying changes.
 
-## Dev-to-Prod Promotion
+## Dev-to-Prod Image Freeze
 
-Use this workflow when your project is ready to run with `CHEMBIENCE_RUNTIME_MODE=prod`.
+Use this workflow when you want a fully self-contained production image that includes your Django project source.
 
-1. Keep developing in `dev` mode until your app is stable.
-2. Run the promotion helper:
+Prerequisite:
+- The base core image must exist locally: `chembience/core-django:${CHEMBIENCE_VERSION}` from your app `.env` (for example, run `./build` from repository root first).
 
 ```bash
 ./django-prepare-prod
 ```
 
 What the script does:
-- Creates a fresh `./.env.prod` from `./.env`.
-- Forces `CHEMBIENCE_RUNTIME_MODE=prod` in `./.env.prod`.
-- Applies it through `./django-configure ./.env.prod` (DB password rotation, service refresh, migrations, superuser check).
-- Runs `docker compose config` and a lightweight `/healthz` probe.
+- Creates/reuses `./.env.prod` from `./.env` and forces `CHEMBIENCE_RUNTIME_MODE=prod` there.
+- Builds a dedicated source-baked production image via `Dockerfile.prod`.
+- Uses a clear production image name: `chembience/core-django-prod-<app_name>:<tag>`.
+- Verifies the image contains `/home/app/src/manage.py`.
+- Does **not** run `django-configure`, does **not** restart compose services, and does **not** mutate your active dev `.env`.
 
 Optional flags:
-- `--rebuild` → passes through to `django-configure --rebuild`.
-- `--keep-env-prod` → reuses existing `./.env.prod` instead of recreating it.
+- `--keep-env-prod` → reuses existing `./.env.prod`.
+- `--image-tag <tag>` → release tag for the produced image.
+- `--image-name <name>` → override default production image repository/name.
+- `--skip-build` → skip the build step (metadata prep only).
 
-Recommended checks after promotion:
+Examples:
 
 ```bash
-docker compose --env-file ./.env ps
-docker compose --env-file ./.env exec -T django python manage.py showmigrations
-curl -fsS "http://localhost:${DJANGO_CONNECTION_PORT:-8001}/healthz"
+# Repeatable release image build
+./django-prepare-prod --image-tag 0.6.0-django.1
+
+# Custom production image repository/name
+./django-prepare-prod --image-name registry.example.com/chem/django-prod --image-tag 0.6.0-django.1
 ```
 
-Important caveat for current Phase 2 state:
-- In `prod`, Django entrypoint no longer bootstraps project files and fails fast when `/home/app/src/manage.py` is missing.
-- Keep `src/` fully initialized before promotion, or use a production image workflow that bakes project code.
+Run the produced image (example):
+
+```bash
+docker run --rm -p 8001:8000 chembience/core-django-prod-app:0.6.0-django.1 \
+  python -m gunicorn src.wsgi:application --bind 0.0.0.0:8000 --workers 8
+```
+
+Repeatability note:
+- Running the script again with the same `--image-name` and `--image-tag` rebuilds/replaces the same image tag deterministically from the current source state.

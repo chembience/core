@@ -86,6 +86,7 @@ if [ "${CHEMBIENCE_RUNTIME_MODE}" != "prod" ]; then
     echo "📄 Syncing internal configuration files to /home/app..."
     sync_config "/jupyter/docker-compose.yml"    "/home/app/docker-compose.yml"
     sync_config "/jupyter/Dockerfile"            "/home/app/Dockerfile"
+    sync_config "/jupyter/Dockerfile.prod"       "/home/app/Dockerfile.prod"
     sync_config "/jupyter/requirements.txt"      "/home/app/requirements.txt"
     sync_config "/jupyter/app-requirements.txt"  "/home/app/app-requirements.txt"
     sync_config "/jupyter/README.md"             "/home/app/README.md"

@@ -88,6 +88,7 @@ if [ "${CHEMBIENCE_RUNTIME_MODE}" != "prod" ]; then
     sync_config "/fastapi/docker-compose.yml"          "/home/app/docker-compose.yml"
     sync_config "/fastapi/docker-compose.override.yml" "/home/app/docker-compose.override.yml"
     sync_config "/fastapi/Dockerfile"                  "/home/app/Dockerfile"
+    sync_config "/fastapi/Dockerfile.prod"             "/home/app/Dockerfile.prod"
     sync_config "/fastapi/requirements.txt"            "/home/app/requirements.txt"
     sync_config "/fastapi/README.md"                   "/home/app/README.md"
     sync_script "/fastapi/psql"                        "/home/app/psql"
