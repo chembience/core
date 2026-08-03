@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 # Check if the FastAPI container is running (only if on host)
 if [ ! -f /.dockerenv ]; then
@@ -8,30 +9,9 @@ if [ ! -f /.dockerenv ]; then
     fi
 fi
 
-echo "🚀 Recreating database schema for FastAPI..."
-
-# Run a one-liner Python command to trigger SQLAlchemy's create_all
-if [ -f /.dockerenv ]; then
-    # We are inside the container
-    python -c "
-import sys
-sys.path.append('/home/app/src')
-from db import init_db
-print('Connecting to database...')
-init_db()
-print('✅ Database schema recreated successfully.')
-"
-else
-    # We are on the host
-    docker compose exec fastapi python -c "
-import sys
-sys.path.append('/home/app/src')
-from db import init_db
-print('Connecting to database...')
-init_db()
-print('✅ Database schema recreated successfully.')
-"
-fi
+echo "🚀 Applying FastAPI database migrations..."
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+"${SCRIPT_DIR}/fastapi-migrate"
 
 # --- Final info: print the web URL ---
 # Load .env if present to get the connection port; fall back to defaults

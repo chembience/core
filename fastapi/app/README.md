@@ -5,7 +5,8 @@ This is the async REST API service for your Chembience project. It is built usin
 ## Directory Structure
 
 - `src/`: The main FastAPI project directory.
-- `fastapi-init`: Helper script for initializing the application.
+- `fastapi-init`: Initializes the application and applies Alembic migrations.
+- `fastapi-makemigrations`, `fastapi-migrate`: Django-style schema migration helpers.
 - `db_backup`, `db_cleanup`, `db_restore`: Database management scripts.
 - `requirements.txt`: Python dependencies for this service.
 
@@ -17,16 +18,33 @@ To start the FastAPI service along with the PostgreSQL database:
 docker compose up -d
 ```
 
-For initial setup (optional):
+For initial setup:
 
 ```bash
 ./fastapi-init
 ```
 
+## Database migrations
+
+FastAPI uses Alembic to version the SQLAlchemy schema. After changing a model,
+generate and review a migration, then apply it:
+
+```bash
+./fastapi-makemigrations "add molecular formula"
+./fastapi-migrate
+```
+
+These correspond to Django's `makemigrations` and `migrate`. Migration files
+are committed under `src/alembic/versions/`. FastAPI workers never modify the
+schema during application startup.
+
 To run tests:
 ```bash
 docker compose exec fastapi pytest
 ```
+
+The test suite creates a uniquely named disposable PostgreSQL database, applies
+all migrations, and removes only that database after the test session.
 
 For more information, see the root [README.md](../../README.md).
 
@@ -75,8 +93,11 @@ Run the produced image (example):
 
 ```bash
 docker run --rm -p 8002:8000 chembience/core-fastapi-prod-app:0.6.0-fastapi.1 \
-  sh -c "exec uvicorn main:app --host 0.0.0.0 --port 8000 --workers 2"
+  sh -c "alembic upgrade head && exec uvicorn main:app --host 0.0.0.0 --port 8000 --workers 2"
 ```
+
+For orchestrated deployments, run `alembic upgrade head` as a one-shot release
+step before starting or replacing API workers, rather than once per replica.
 
 Repeatability note:
 - Running the script again with the same `--image-name` and `--image-tag` rebuilds/replaces the same image tag deterministically from the current source state.

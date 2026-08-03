@@ -127,6 +127,12 @@ jobs:
             echo "❌ RDKit cartridge version mismatch! Expected '$EXPECTED_RDKIT', got '$ACTUAL_CARTRIDGE'"
             exit 1
           fi
+
+          if [ "$SERVICE_NAME" = "fastapi" ]; then
+            echo "🧬 Verifying Alembic schema and isolated database tests..."
+            docker compose exec -T fastapi alembic -c /home/app/src/alembic.ini check
+            docker compose exec -T fastapi pytest -q
+          fi
           
           echo "✅ Versions match!"
           
