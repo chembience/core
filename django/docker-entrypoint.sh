@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e
+umask 077
 
 CHEMBIENCE_UID="${CHEMBIENCE_UID:-1000}"
 CHEMBIENCE_GID="${CHEMBIENCE_GID:-1000}"
@@ -82,6 +83,7 @@ fix_ownership
 
 if [ "${CHEMBIENCE_RUNTIME_MODE}" = "prod" ]; then
     echo "🚀 Running in production mode: skipping bootstrap and file sync mutations."
+    [ ! -f /home/app/.env ] || chmod 600 /home/app/.env
     if [ -f "/home/app/src/manage.py" ]; then
         cd /home/app/src
     else
@@ -585,5 +587,7 @@ if [ -z "${DJANGO_SECRET_KEY:-}" ] || [ "${DJANGO_SECRET_KEY}" = "$_INSECURE_DEF
     fi
     echo "🔐 Generated DJANGO_SECRET_KEY on the fly (persisted to ./.env when writable)."
 fi
+
+[ ! -f /home/app/.env ] || chmod 600 /home/app/.env
 
 exec gosu app "$@"

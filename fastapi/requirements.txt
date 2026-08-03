@@ -1,13 +1,12 @@
-# Pinned to compatible ranges to keep builds reproducible.
-# Bump intentionally; do not change to "latest" — see core/README.md.
-pytest>=8,<9
-pytest-asyncio>=0.24,<1
-fastapi>=0.115,<1
-uvicorn[standard]>=0.32,<1
-sqlalchemy>=2.0,<3
-psycopg>=3.3,<4
-psycopg-binary>=3.3,<4
-psycopg2-binary>=2.9,<3
-pydantic-settings>=2.6,<3
-rdkit
-git+https://github.com/rvianello/razi.git
+# Exact pins make released core images reproducible. Bump intentionally.
+pytest==8.4.2
+pytest-asyncio==0.26.0
+fastapi==0.141.1
+uvicorn[standard]==0.52.1
+sqlalchemy==2.0.51
+psycopg==3.3.4
+psycopg-binary==3.3.4
+psycopg2-binary==2.9.12
+pydantic-settings==2.14.2
+# RDKit comes from the version-pinned Micromamba base image.
+git+https://github.com/rvianello/razi.git@542ee5f6d5a0c708a13c0e8b295d95b3da0b2700

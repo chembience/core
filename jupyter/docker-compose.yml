@@ -8,7 +8,7 @@ x-common-environment: &common-env
   # auto-generate a token (and our entrypoint will persist one for stability).
   JUPYTER_TOKEN: ${JUPYTER_TOKEN:-}
   POSTGRES_USER: ${POSTGRES_USER:-chembience}
-  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure-password-here}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
   POSTGRES_NAME: ${POSTGRES_NAME:-chembience}
   POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
   POSTGRES_PORT: ${POSTGRES_PORT:-5432}

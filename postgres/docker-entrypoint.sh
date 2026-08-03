@@ -1,5 +1,15 @@
 #!/bin/bash
-set -e
+set -euo pipefail
+
+case "${POSTGRES_PASSWORD:-}" in
+    ""|CHANGE_ME_BEFORE_RUNNING|secure-password-here|change-me-immediately)
+        echo "❌ POSTGRES_PASSWORD must be set to a non-placeholder value." >&2
+        exit 1
+        ;;
+esac
+
+: "${POSTGRES_USER:?POSTGRES_USER must be set}"
+: "${POSTGRES_NAME:?POSTGRES_NAME must be set}"
 
 echo "🔧 Starting custom Postgres entrypoint..."
 
@@ -57,19 +67,26 @@ if [ ! -f "${DATA_DIR}/PG_VERSION" ]; then
     echo "NAME $POSTGRES_NAME"
 
     echo "📦 Creating user/database..."
-    gosu app psql -p 5432 --dbname=postgres <<-EOSQL
-        CREATE USER $POSTGRES_USER WITH PASSWORD '$POSTGRES_PASSWORD' SUPERUSER CREATEDB CREATEROLE REPLICATION;
-        CREATE DATABASE $POSTGRES_NAME OWNER $POSTGRES_USER;
+    gosu app psql -v ON_ERROR_STOP=1 -p 5432 --dbname=postgres \
+        --set=db_user="$POSTGRES_USER" \
+        --set=db_password="$POSTGRES_PASSWORD" \
+        --set=db_name="$POSTGRES_NAME" <<-'EOSQL'
+        SELECT format(
+            'CREATE ROLE %I WITH LOGIN PASSWORD %L SUPERUSER CREATEDB CREATEROLE REPLICATION',
+            :'db_user', :'db_password'
+        ) \gexec
+        SELECT format('CREATE DATABASE %I OWNER %I', :'db_name', :'db_user') \gexec
 EOSQL
 
     echo "📦 Initializing RDKit extension..."
-    gosu app psql -p 5432 --dbname=$POSTGRES_NAME <<-EOSQL
+    gosu app psql -v ON_ERROR_STOP=1 -p 5432 --dbname="$POSTGRES_NAME" <<-'EOSQL'
         CREATE EXTENSION IF NOT EXISTS rdkit;
 EOSQL
 
     echo "📦 Granting privileges..."
-    gosu app psql -p 5432 --dbname=$POSTGRES_NAME <<-EOSQL
-        GRANT ALL ON SCHEMA public TO $POSTGRES_USER;
+    gosu app psql -v ON_ERROR_STOP=1 -p 5432 --dbname="$POSTGRES_NAME" \
+        --set=db_user="$POSTGRES_USER" <<-'EOSQL'
+        SELECT format('GRANT ALL ON SCHEMA public TO %I', :'db_user') \gexec
 EOSQL
 
     echo "🛑 Stopping temporary server..."

@@ -31,6 +31,7 @@ jobs:
         run: |
           if [ -f .env.template ]; then
             cp .env.template .env
+            sed -i 's/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=ci-smoke-test-only-9f4c2b7a/' .env
           fi
 
       - name: Make helper scripts executable
@@ -106,9 +107,11 @@ jobs:
           
           ACTUAL_PYTHON=$(docker compose exec -T "$SERVICE_NAME" python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" | tr -d '\r' | xargs)
           ACTUAL_RDKIT=$(docker compose exec -T "$SERVICE_NAME" python -c "import rdkit; print(rdkit.__version__)" | tr -d '\r' | xargs)
+          ACTUAL_CARTRIDGE=$(docker compose exec -T postgres bash -c "pg_config --version >/dev/null && micromamba list -n chembience rdkit-postgresql --json" | python -c "import json,sys; rows=json.load(sys.stdin); print(rows[0]['version'])" | tr -d '\r' | xargs)
           
           echo "Actual Python: $ACTUAL_PYTHON"
           echo "Actual RDKit: $ACTUAL_RDKIT"
+          echo "Actual RDKit cartridge: $ACTUAL_CARTRIDGE"
           
           if [ "$ACTUAL_PYTHON" != "$EXPECTED_PYTHON" ]; then
             echo "❌ Python version mismatch! Expected '$EXPECTED_PYTHON', got '$ACTUAL_PYTHON'"
@@ -117,6 +120,11 @@ jobs:
           
           if [ "$ACTUAL_RDKIT" != "$EXPECTED_RDKIT" ]; then
             echo "❌ RDKit version mismatch! Expected '$EXPECTED_RDKIT', got '$ACTUAL_RDKIT'"
+            exit 1
+          fi
+
+          if [ "$ACTUAL_CARTRIDGE" != "$EXPECTED_RDKIT" ]; then
+            echo "❌ RDKit cartridge version mismatch! Expected '$EXPECTED_RDKIT', got '$ACTUAL_CARTRIDGE'"
             exit 1
           fi
           

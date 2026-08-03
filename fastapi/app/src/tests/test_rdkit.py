@@ -3,9 +3,19 @@ from sqlalchemy import select, func
 from rdkit.Chem import AllChem as Chem
 from razi.rdkit_postgresql.types import Mol, Reaction
 from db import engine, Molecule, Base, SessionLocal
+from chembience.db import _build_database_url
 
 # Re-use Molecule model but with Mol type for 'm' column if we were to test insertion
 # For now, we test the functions directly as in the original tests
+
+
+def test_database_url_preserves_special_characters():
+    url = _build_database_url(
+        "chem-user", "p@ss:/word%with'quotes", "postgres", "5432", "chem/db"
+    )
+    assert url.username == "chem-user"
+    assert url.password == "p@ss:/word%with'quotes"
+    assert url.database == "chem/db"
 
 @pytest.fixture(scope="module")
 def db_session():

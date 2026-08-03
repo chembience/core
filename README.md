@@ -58,7 +58,7 @@ different stack.
 Versions are controlled through `.env` / `.env.template` and Docker build arguments.
 
 - **Python**: 3.14 (configurable via `CONDA_PY`)
-- **[RDKit](https://github.com/rdkit/rdkit)**: 2026.03.2 (configurable via `RDKIT_VERSION`)
+- **[RDKit](https://github.com/rdkit/rdkit)**: 2026.03.4 (configurable via `RDKIT_VERSION`)
 - **PostgreSQL**: 18 (RDKit-cartridge-enabled)
 - **Django**: 5.x-compatible
 - **FastAPI**: 0.115+-compatible
@@ -135,6 +135,7 @@ reset tokens remain valid. Treat that `.env` as a secret.
 
 `POSTGRES_PASSWORD` must be set in the project's `.env` before running `./build`.
 The `.env.template` file contains a placeholder (`CHANGE_ME_BEFORE_RUNNING`) as a reminder.
+The build and database entrypoint reject empty and known placeholder passwords.
 
 **To change the password later**, use the `<appname>-configure` script located inside
 your application directory. Each app type ships its own configure script:

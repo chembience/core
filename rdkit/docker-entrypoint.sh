@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e
+umask 077
 
 CHEMBIENCE_UID="${CHEMBIENCE_UID:-1000}"
 CHEMBIENCE_GID="${CHEMBIENCE_GID:-1000}"
@@ -125,6 +126,6 @@ fi
 
 # Ensure all files in /home/app are owned by the app user (selective).
 fix_ownership
+[ ! -f /home/app/.env ] || chmod 600 /home/app/.env
 
 exec gosu app "$@"
-

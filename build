@@ -1,5 +1,6 @@
 #!/bin/bash
 set -euo pipefail
+umask 077
 
 # Create .env once from template; don't overwrite local settings
 if [ ! -f .env ]; then
@@ -28,14 +29,14 @@ fi
 set -o allexport
 source .env
 set +o allexport
+chmod 600 .env
 
-# Check if the published Postgres host port is already in use
-PORT_TO_CHECK="${POSTGRES_HOST_PORT:-${POSTGRES_PORT:-5432}}"
-if netstat -tuln | grep -q ":$PORT_TO_CHECK "; then
-  echo "❌ Error: Postgres port $PORT_TO_CHECK is already in use."
-  echo "Please stop the service using this port or change POSTGRES_HOST_PORT in .env"
-  exit 1
-fi
+case "${POSTGRES_PASSWORD:-}" in
+  ""|CHANGE_ME_BEFORE_RUNNING|secure-password-here|change-me-immediately)
+    echo "❌ Error: Set POSTGRES_PASSWORD in .env to a non-placeholder value." >&2
+    exit 1
+    ;;
+esac
 
 # Match container UID/GID to current user (WSL2/macOS/Linux)
 export CHEMBIENCE_UID="${CHEMBIENCE_UID:-$(id -u)}"
@@ -96,12 +97,9 @@ fi
 
 cleanup() {
   echo "🧹 Cleaning up containers..."
-  if [ "$QUIT_AFTER_SETUP" = true ]; then
-    # Keep volumes if we just did a setup
-    APP_NAME="$APP_NAME" docker compose down
-  else
-    APP_NAME="$APP_NAME" docker compose down --volumes
-  fi
+  # Generated database state lives in APP_HOME. Never remove volumes as an
+  # implicit side effect of --no-quit; explicit removal belongs to ./remove.
+  APP_NAME="$APP_NAME" docker compose down
 }
 trap cleanup EXIT
 

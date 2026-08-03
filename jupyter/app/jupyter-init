@@ -40,16 +40,7 @@ if [ -z "$TOKEN_VALUE" ]; then
     JSON_LINE="$(docker compose exec jupyter jupyter server list --json 2>/dev/null | head -n1)"
   fi
   if [ -n "$JSON_LINE" ]; then
-    TOKEN_VALUE="$(printf '%s' "$JSON_LINE" | python - "$JSON_LINE" <<'PY'
-import sys, json
-data=sys.stdin.read().strip()
-try:
-    j=json.loads(data)
-    print(j.get('token',''))
-except Exception:
-    print("")
-PY
-)"
+    TOKEN_VALUE="$(python -c 'import json, sys; print(json.loads(sys.argv[1]).get("token", ""))' "$JSON_LINE" 2>/dev/null || true)"
   fi
 fi
 

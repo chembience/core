@@ -40,7 +40,7 @@ services:
       args:
         mamba_image: 'mambaorg/micromamba:1.5.8'
         conda_py: ${CONDA_PY:-3.14}
-        rdkit_version: ${RDKIT_VERSION:-2026.03.2}
+        rdkit_version: ${RDKIT_VERSION:-2026.03.4}
         apt_mirror: ${APT_MIRROR:-}
         conda_mirror: ${CONDA_MIRROR:-}
     environment:
@@ -187,6 +187,7 @@ services:
         build_tag: ${CHEMBIENCE_VERSION}
         apt_mirror: ${APT_MIRROR:-}
         conda_py: ${CONDA_PY:-3.14}
+        rdkit_version: ${RDKIT_VERSION:-2026.03.4}
         conda_mirror: ${CONDA_MIRROR:-}
         CHEMBIENCE_UID: ${CHEMBIENCE_UID:-1000}
         CHEMBIENCE_GID: ${CHEMBIENCE_GID:-1000}
