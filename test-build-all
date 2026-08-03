@@ -81,6 +81,16 @@ for app in "${APPS[@]}"; do
         ./remove "$app" -d "$TEST_DIR_ABS" --images --silent || true
         exit 1
     fi
+
+    # Run the FastAPI application test suite against its disposable test database.
+    if [ "$app" = "fastapi" ]; then
+        echo "🧪 Running FastAPI pytest suite..."
+        if ! (cd "$APP_PATH" && docker compose exec -T fastapi pytest); then
+            echo "❌ FastAPI pytest suite failed!"
+            ./remove "$app" -d "$TEST_DIR_ABS" --images --silent || true
+            exit 1
+        fi
+    fi
     
     # 3. Remove the app
     ./remove "$app" -d "$TEST_DIR_ABS" --images --silent || true
