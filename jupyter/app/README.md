@@ -26,13 +26,17 @@ Then print the access URL (with token when available):
 Open the printed URL in your browser. The default port is 8888 and can be
 changed via `JUPYTER_CONNECTION_PORT` in your `.env` file.
 
-## Directory Structure
+## Important Files
 
-- `notebooks/`: Default directory for your Jupyter notebooks.
-  - `check_env.py`: A script to verify that RDKit and the database connection are working correctly.
-- `psql`: Helper script for accessing the PostgreSQL database directly.
-- `jupyter-init`: Script to verify the environment and start the service if needed.
-- `requirements.txt`: Python dependencies installed in this environment.
+- `.env`: Per-app runtime configuration and secrets, including an optional `JUPYTER_TOKEN`. It is created during initialization; do not commit it. When creating several Jupyter environments, a descriptive build target (for example, `./build jupyter assay-notebooks`) sets `APP_NAME` to distinguish the resulting image names; it normally does not need to be changed later.
+- `docker-compose.yml`: Defines the JupyterLab and PostgreSQL services for this app.
+- `notebooks/`: Your notebooks and supporting Python files. `notebooks/check_env.py` verifies RDKit and database connectivity.
+- `app-requirements.txt`: Add Python dependencies for notebooks and scripts. The generated app also has `requirements.txt`, which contains the core Jupyter dependencies.
+- `Dockerfile`: Development image extension that installs `app-requirements.txt`; `Dockerfile.prod` bakes notebooks into the production image.
+- `jupyter-init`: Starts JupyterLab if necessary, validates the environment, and prints the access URL/token.
+- `jupyter-configure`: Safely applies `.env` updates and refreshes the service.
+- `jupyter-prepare-prod`: Builds the production image and writes `.env.prod`.
+- `psql`: Opens a PostgreSQL client connected to this app's database.
 
 ## Verifying the Environment
 

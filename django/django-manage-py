@@ -11,4 +11,8 @@ else
   TTY_FLAG="-T"  # non-interactive stdin; do not allocate TTY
 fi
 
-docker compose exec ${TTY_FLAG} --user app django python manage.py "$@"
+# The `app` account is created by the container entrypoint at runtime. Passing
+# `--user app` makes the Docker daemon resolve it before the command starts,
+# which can fail during startup. Switch users inside the initialized container
+# instead.
+docker compose exec ${TTY_FLAG} django gosu app python manage.py "$@"

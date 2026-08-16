@@ -2,13 +2,20 @@
 
 This is the web service for your Chembience project. It is built using Django and integrated with RDKit for chemical informatics.
 
-## Directory Structure
+## Important Files
 
-- `src/`: The main Django project directory.
-- `django-init`: Helper script for initializing the application.
-- `django-manage-py`: Wrapper for Django's `manage.py`.
-- `psql`: Helper script for accessing the PostgreSQL database.
-- `requirements.txt`: Python dependencies for this service.
+- `.env`: Per-app runtime configuration and secrets. It is created during initialization; do not commit it. `APP_NAME` is set when the app is created (for example, `./build django my-project`) and should normally remain unchanged because it identifies this app's container-image and production-image names.
+- `docker-compose.yml`: Defines the Django and PostgreSQL services for this app.
+- `src/`: Django project source. `manage.py` is the entry point; edit application code, settings, URLs, and migrations here.
+- `requirements.txt`: Add Python dependencies for this Django app.
+- `Dockerfile`: Development image extension that installs `requirements.txt`.
+- `Dockerfile.prod`: Production image recipe that bakes `src/` into an immutable image.
+- `django-init`: Runs migrations, creates the configured superuser, collects static files, and runs the test suite.
+- `django-manage-py`: Runs any `manage.py` command as the container's application user.
+- `django-configure`: Safely applies `.env` updates, including database-password rotation.
+- `django-prepare-prod`: Builds the production image and writes `.env.prod`.
+- `psql`: Opens a PostgreSQL client connected to this app's database.
+- `src/django_rdkit_test_app/`: Retained RDKit integration smoke-test app and its tests.
 
 ## Getting Started
 

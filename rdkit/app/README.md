@@ -2,12 +2,18 @@
 
 This is the RDKit service for your Chembience project. It provides specialized chemical processing capabilities.
 
-## Directory Structure
+## Important Files
 
-- `run`: Script for running RDKit-based workloads.
-- `shell`: Helper script for accessing the RDKit environment.
-- `psql`: Helper script for accessing the PostgreSQL database.
-- `requirements.txt`: Python dependencies for this service.
+- `.env`: Per-app runtime configuration and secrets. It is created during initialization; do not commit it. `APP_NAME` is set when the app is created (for example, `./build rdkit my-project`) and should normally remain unchanged because it identifies this app's container-image and production-image names.
+- `docker-compose.yml`: Defines the RDKit sidecar and PostgreSQL services for this app.
+- `requirements.txt`: Add Python dependencies for RDKit scripts.
+- `Dockerfile`: Development image extension that installs `requirements.txt`; `Dockerfile.prod` creates a source-baked production image.
+- `run`: Runs a Python script inside the RDKit container: `./run your_script.py`.
+- `shell`: Opens an interactive Python shell in the RDKit container.
+- `rdkit-init`: Starts the RDKit service if necessary and verifies the installed RDKit version.
+- `rdkit-configure`: Safely applies `.env` updates and refreshes the environment.
+- `rdkit-prepare-prod`: Builds the production image and writes `.env.prod`.
+- `psql`: Opens a PostgreSQL client connected to this app's database.
 
 ## Getting Started
 

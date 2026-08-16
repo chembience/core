@@ -2,13 +2,20 @@
 
 This is the async REST API service for your Chembience project. It is built using FastAPI and integrated with RDKit for chemical informatics.
 
-## Directory Structure
+## Important Files
 
-- `src/`: The main FastAPI project directory.
-- `fastapi-init`: Initializes the application and applies Alembic migrations.
-- `fastapi-makemigrations`, `fastapi-migrate`: Django-style schema migration helpers.
-- `db_backup`, `db_cleanup`, `db_restore`: Database management scripts.
-- `requirements.txt`: Python dependencies for this service.
+- `.env`: Per-app runtime configuration and secrets. It is created during initialization; do not commit it. `APP_NAME` is set when the app is created (for example, `./build fastapi my-project`) and should normally remain unchanged because it identifies this app's container-image and production-image names.
+- `docker-compose.yml`: Defines the FastAPI and PostgreSQL services; `docker-compose.override.yml` is available for local overrides.
+- `src/main.py`: FastAPI application entry point and router registration.
+- `src/db/schema.py`: SQLAlchemy metadata and database schema definitions.
+- `src/alembic.ini`, `src/alembic/`: Alembic configuration, migration environment, and committed schema revisions.
+- `src/tests/`: API and RDKit integration tests; `pytest.ini` configures pytest.
+- `requirements.txt`: Add Python dependencies for this FastAPI app.
+- `Dockerfile`: Development image extension that installs `requirements.txt`; `Dockerfile.prod` bakes `src/` into the production image.
+- `fastapi-init`: Starts the service if needed and applies migrations.
+- `fastapi-makemigrations`, `fastapi-migrate`: Generate/review and apply Alembic migrations.
+- `fastapi-configure`, `fastapi-prepare-prod`: Safely apply configuration changes or create a production image.
+- `db_backup`, `db_restore`, `db_cleanup`, `psql`: Database maintenance and access helpers.
 
 ## Getting Started
 
