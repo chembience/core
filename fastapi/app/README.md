@@ -12,9 +12,12 @@ This is the async REST API service for your Chembience project. It is built usin
 - `src/tests/`: API and RDKit integration tests; `pytest.ini` configures pytest.
 - `requirements.txt`: Add Python dependencies for this FastAPI app.
 - `Dockerfile`: Development image extension that installs `requirements.txt`; `Dockerfile.prod` bakes `src/` into the production image.
+- `docker-compose.prod.yml`: Production deployment for an external RDKit-enabled PostgreSQL database.
+- `docker-compose.prod.self-hosted.yml`: Overlay that runs the bundled RDKit PostgreSQL image with a named persistent volume.
 - `fastapi-init`: Starts the service if needed and applies migrations.
 - `fastapi-makemigrations`, `fastapi-migrate`: Generate/review and apply Alembic migrations.
 - `fastapi-configure`, `fastapi-prepare-prod`: Safely apply configuration changes or create a production image.
+- `fastapi-prod-self-hosted`: Builds (or refreshes) the production image, applies Alembic migrations, and starts the isolated self-hosted production stack.
 - `db_backup`, `db_restore`, `db_cleanup`, `psql`: Database maintenance and access helpers.
 
 ## Getting Started
@@ -73,6 +76,17 @@ Prerequisite:
 ./fastapi-prepare-prod
 ```
 
+For the complete self-hosted deployment, use:
+
+```bash
+./fastapi-prod-self-hosted
+```
+
+It uses the Compose project name `<app_name>-prod`, applies Alembic migrations
+before starting the API, and assigns a newly created `.env.prod` the development
+port plus 1000 (normally `9002`). Use `--skip-prepare` to start an already
+prepared image without rebuilding it.
+
 What the script does:
 - Creates/reuses `./.env.prod` from `./.env` and forces `CHEMBIENCE_RUNTIME_MODE=prod` there.
 - Builds a dedicated source-baked production image via `Dockerfile.prod`.
@@ -105,6 +119,39 @@ docker run --rm -p 8002:8000 chembience/core-fastapi-prod-app:0.6.0-fastapi.1 \
 
 For orchestrated deployments, run `alembic upgrade head` as a one-shot release
 step before starting or replacing API workers, rather than once per replica.
+
+## Production deployment
+
+`fastapi-prepare-prod` writes the immutable application image reference and the
+matching `CHEMBIENCE_POSTGRES_IMAGE` to `.env.prod`. Deploy with one of the
+following profiles.
+
+### External database
+
+Set `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, and
+`POSTGRES_NAME` in `.env.prod` for a reachable PostgreSQL database that already
+has the RDKit extension installed. Apply migrations before starting workers:
+
+```bash
+docker compose --env-file .env.prod -f docker-compose.prod.yml run --rm migrate
+docker compose --env-file .env.prod -f docker-compose.prod.yml up -d fastapi
+```
+
+### Self-hosted RDKit PostgreSQL
+
+Leave `POSTGRES_HOST=postgres` in `.env.prod`. The overlay starts the bundled
+RDKit PostgreSQL image with a named `postgres-data` volume and keeps its port
+private to the Compose network:
+
+```bash
+docker compose --env-file .env.prod -f docker-compose.prod.yml -f docker-compose.prod.self-hosted.yml up -d postgres
+docker compose --env-file .env.prod -f docker-compose.prod.yml -f docker-compose.prod.self-hosted.yml run --rm migrate
+docker compose --env-file .env.prod -f docker-compose.prod.yml -f docker-compose.prod.self-hosted.yml up -d fastapi
+```
+
+For an external database, backups, TLS, and network access are managed by its
+operator. The application currently uses the supplied PostgreSQL connection
+settings without adding TLS-specific options.
 
 Repeatability note:
 - Running the script again with the same `--image-name` and `--image-tag` rebuilds/replaces the same image tag deterministically from the current source state.

@@ -5,6 +5,8 @@
 **/*.pyd
 venv
 .env
+.env.prod
+.env.new
 *.env
 *.ipynb_checkpoints
 node_modules

@@ -64,10 +64,13 @@ if [ "${CHEMBIENCE_RUNTIME_MODE}" != "prod" ] && { [ ! -f "/home/app/.rdkit-init
         cp /opt/rdkit/rdkit-init /home/app/rdkit-init
         cp /opt/rdkit/rdkit-configure /home/app/rdkit-configure
         cp /opt/rdkit/rdkit-prepare-prod /home/app/rdkit-prepare-prod
+        cp /opt/rdkit/rdkit-prod-self-hosted /home/app/rdkit-prod-self-hosted
         cp /opt/rdkit/psql /home/app/psql
         [ ! -f "/home/app/docker-compose.yml" ] && cp /opt/rdkit/docker-compose.yml /home/app/docker-compose.yml
         [ ! -f "/home/app/Dockerfile" ] && cp /opt/rdkit/Dockerfile /home/app/Dockerfile
         [ ! -f "/home/app/Dockerfile.prod" ] && cp /opt/rdkit/Dockerfile.prod /home/app/Dockerfile.prod
+        [ ! -f "/home/app/docker-compose.prod.yml" ] && cp /opt/rdkit/docker-compose.prod.yml /home/app/docker-compose.prod.yml
+        [ ! -f "/home/app/docker-compose.prod.self-hosted.yml" ] && cp /opt/rdkit/docker-compose.prod.self-hosted.yml /home/app/docker-compose.prod.self-hosted.yml
         [ ! -f "/home/app/README.md" ] && cp /opt/rdkit/README.md /home/app/README.md
         [ -f "/.gitignore" ] && [ ! -f "/home/app/.gitignore" ] && cp "/.gitignore" "/home/app/.gitignore"
         [ -f "/.dockerignore" ] && [ ! -f "/home/app/.dockerignore" ] && cp "/.dockerignore" "/home/app/.dockerignore"
@@ -111,7 +114,7 @@ if [ "${CHEMBIENCE_RUNTIME_MODE}" != "prod" ] && { [ ! -f "/home/app/.rdkit-init
         sed -i 's/\r$//' "/home/app/.env"
     fi
 
-        chmod +x /home/app/run /home/app/shell /home/app/rdkit-init /home/app/rdkit-configure /home/app/rdkit-prepare-prod /home/app/psql
+        chmod +x /home/app/run /home/app/shell /home/app/rdkit-init /home/app/rdkit-configure /home/app/rdkit-prepare-prod /home/app/rdkit-prod-self-hosted /home/app/psql
         
         # Clean up django-specific files if they exist
         rm -rf /home/app/appsite /home/app/apisite /home/app/src /home/app/django-init /home/app/django-manage-py

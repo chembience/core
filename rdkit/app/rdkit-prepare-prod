@@ -83,6 +83,7 @@ fi
 set_env_var .env.prod CHEMBIENCE_VERSION "$IMAGE_TAG"
 set_env_var .env.prod CHEMBIENCE_IMAGE_TAG "$IMAGE_TAG"
 set_env_var .env.prod CHEMBIENCE_PROD_IMAGE_NAME "$IMAGE_NAME"
+set_env_var .env.prod CHEMBIENCE_POSTGRES_IMAGE "chembience/core-rdkit-postgres:${CORE_IMAGE_TAG}"
 
 if [[ $SKIP_BUILD -eq 0 ]]; then
   echo "📦 Building source-baked RDKit production image ${IMAGE_NAME}:${IMAGE_TAG}..."

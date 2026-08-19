@@ -95,6 +95,8 @@ coverage.xml
 
 # Environments
 .env
+.env.prod
+.env.new
 .venv
 env/
 venv/
@@ -110,7 +112,6 @@ venv.bak/
 
 # Test builds
 test-builds/
-
 
 
 

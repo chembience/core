@@ -57,6 +57,16 @@ get_env_var() {
   grep -E "^${key}=" "$file" | tail -n1 | cut -d= -f2- || true
 }
 
+# A production environment must not contend with the development stack for its
+# published HTTP port. Preserve an explicitly distinct production port.
+DEV_PORT="$(get_env_var .env FASTAPI_CONNECTION_PORT)"
+DEV_PORT="${DEV_PORT:-8002}"
+PROD_PORT="$(get_env_var .env.prod FASTAPI_CONNECTION_PORT)"
+[[ "$DEV_PORT" =~ ^[0-9]+$ ]] || { echo "FASTAPI_CONNECTION_PORT must be numeric" >&2; exit 2; }
+if [[ $KEEP_ENV_PROD -eq 0 || -z "$PROD_PORT" || "$PROD_PORT" == "$DEV_PORT" ]]; then
+  set_env_var .env.prod FASTAPI_CONNECTION_PORT "$((DEV_PORT + 1000))"
+fi
+
 if [[ -z "$IMAGE_TAG" ]]; then
   IMAGE_TAG="$(get_env_var .env.prod CHEMBIENCE_VERSION)"
 fi
@@ -83,6 +93,7 @@ fi
 set_env_var .env.prod CHEMBIENCE_VERSION "$IMAGE_TAG"
 set_env_var .env.prod CHEMBIENCE_IMAGE_TAG "$IMAGE_TAG"
 set_env_var .env.prod CHEMBIENCE_PROD_IMAGE_NAME "$IMAGE_NAME"
+set_env_var .env.prod CHEMBIENCE_POSTGRES_IMAGE "chembience/core-rdkit-postgres:${CORE_IMAGE_TAG}"
 
 if [[ $SKIP_BUILD -eq 0 ]]; then
   echo "📦 Building source-baked FastAPI production image ${IMAGE_NAME}:${IMAGE_TAG}..."

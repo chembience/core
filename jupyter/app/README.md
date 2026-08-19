@@ -33,9 +33,12 @@ changed via `JUPYTER_CONNECTION_PORT` in your `.env` file.
 - `notebooks/`: Your notebooks and supporting Python files. `notebooks/check_env.py` verifies RDKit and database connectivity.
 - `app-requirements.txt`: Add Python dependencies for notebooks and scripts. The generated app also has `requirements.txt`, which contains the core Jupyter dependencies.
 - `Dockerfile`: Development image extension that installs `app-requirements.txt`; `Dockerfile.prod` bakes notebooks into the production image.
+- `docker-compose.prod.yml`: Production deployment for an external RDKit-enabled PostgreSQL database.
+- `docker-compose.prod.self-hosted.yml`: Overlay that runs the bundled RDKit PostgreSQL image with a named persistent volume.
 - `jupyter-init`: Starts JupyterLab if necessary, validates the environment, and prints the access URL/token.
 - `jupyter-configure`: Safely applies `.env` updates and refreshes the service.
 - `jupyter-prepare-prod`: Builds the production image and writes `.env.prod`.
+- `jupyter-prod-self-hosted`: Builds (or refreshes) the production image and starts the isolated self-hosted production stack.
 - `psql`: Opens a PostgreSQL client connected to this app's database.
 
 ## Verifying the Environment
@@ -71,6 +74,16 @@ The environment is pre-configured with the following variables for database acce
 ## Dev-to-Prod Image Freeze
 
 Use this workflow when you want a fully self-contained production image that includes your notebooks and app dependencies.
+
+For the complete self-hosted deployment, use:
+
+```bash
+./jupyter-prod-self-hosted
+```
+
+It uses the Compose project name `<app_name>-prod` and assigns a newly created
+`.env.prod` the development port plus 1000 (normally `9888`). Use
+`--skip-prepare` to start an already prepared image without rebuilding it.
 
 Prerequisite:
 - The base core image must exist locally: `chembience/core-jupyter:${CHEMBIENCE_VERSION}` from your app `.env` (for example, run `./build` from repository root first).
@@ -108,6 +121,29 @@ Run the produced image (example):
 docker run --rm -p 8888:8888 chembience/core-jupyter-prod-app:0.6.0-jupyter.1 \
   jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root
 ```
+
+## Production deployment
+
+`jupyter-prepare-prod` writes the immutable application image reference and the
+matching `CHEMBIENCE_POSTGRES_IMAGE` to `.env.prod`. For an external database,
+set `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, and
+`POSTGRES_NAME` in `.env.prod`; that database must already have the RDKit
+extension installed:
+
+```bash
+docker compose --env-file .env.prod -f docker-compose.prod.yml up -d jupyter
+```
+
+For a self-hosted database, leave `POSTGRES_HOST=postgres`; the overlay creates
+a private RDKit PostgreSQL service with a named `postgres-data` volume:
+
+```bash
+docker compose --env-file .env.prod -f docker-compose.prod.yml -f docker-compose.prod.self-hosted.yml up -d
+```
+
+For an external database, backups, TLS, and network access are managed by its
+operator. The application currently uses the supplied PostgreSQL connection
+settings without adding TLS-specific options.
 
 Repeatability note:
 - Running the script again with the same `--image-name` and `--image-tag` rebuilds/replaces the same image tag deterministically from the current source state.

@@ -20,10 +20,13 @@ COPY jupyter/docker-compose.yml /jupyter/docker-compose.yml
 COPY jupyter/requirements.txt /jupyter/requirements.txt
 COPY jupyter/app/Dockerfile /jupyter/Dockerfile
 COPY jupyter/app/Dockerfile.prod /jupyter/Dockerfile.prod
+COPY jupyter/app/docker-compose.prod.yml /jupyter/docker-compose.prod.yml
+COPY jupyter/app/docker-compose.prod.self-hosted.yml /jupyter/docker-compose.prod.self-hosted.yml
 COPY jupyter/app/requirements.txt /jupyter/app-requirements.txt
 COPY jupyter/app/jupyter-init /jupyter/jupyter-init
 COPY jupyter/app/jupyter-configure /jupyter/jupyter-configure
 COPY jupyter/app/jupyter-prepare-prod /jupyter/jupyter-prepare-prod
+COPY jupyter/app/jupyter-prod-self-hosted /jupyter/jupyter-prod-self-hosted
 COPY jupyter/app/notebooks /jupyter/app/notebooks
 COPY psql /jupyter/psql
 COPY share /opt/share

@@ -17,11 +17,14 @@ COPY django/django-init /django/django-init
 COPY django/django-manage-py /django/django-manage-py
 COPY django/app/django-configure /django/django-configure
 COPY django/app/django-prepare-prod /django/django-prepare-prod
+COPY django/app/django-prod-self-hosted /django/django-prod-self-hosted
 COPY .gitignore /
 COPY .dockerignore /
 COPY django/docker-compose.yml /django/docker-compose.yml
 COPY django/app/Dockerfile /django/Dockerfile
 COPY django/app/Dockerfile.prod /django/Dockerfile.prod
+COPY django/app/docker-compose.prod.yml /django/docker-compose.prod.yml
+COPY django/app/docker-compose.prod.self-hosted.yml /django/docker-compose.prod.self-hosted.yml
 COPY django/app/requirements.txt /django/requirements.txt
 COPY django/app/README.md /django/README.md
 COPY django/psql /django/psql
