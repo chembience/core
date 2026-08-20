@@ -17,7 +17,7 @@ x-common-environment: &common-env
 
 services:
   django:
-    image: chembience/core-django-${APP_NAME:-app}:${CHEMBIENCE_IMAGE_TAG:-latest}
+    image: chembience/${APP_NAME:-app}:${CHEMBIENCE_IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: Dockerfile

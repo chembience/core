@@ -87,6 +87,12 @@ if [ "$TYPE" != "django" ] && [ "$TYPE" != "rdkit" ] && [ "$TYPE" != "fastapi" ]
   exit 1
 fi
 
+if [[ ! "$TARGET" =~ ^[a-z0-9][a-z0-9._-]*$ ]]; then
+  echo "Error: Application name '$TARGET' is not valid for a Docker image repository."
+  echo "Use lowercase letters, digits, dots, underscores, or dashes; start with a letter or digit."
+  exit 2
+fi
+
 export APP_ID="$TARGET"
 export APP_NAME="$TARGET"
 if [ -n "${CUSTOM_DIR:-}" ]; then

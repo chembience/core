@@ -28,7 +28,7 @@ changed via `JUPYTER_CONNECTION_PORT` in your `.env` file.
 
 ## Important Files
 
-- `.env`: Per-app runtime configuration and secrets, including an optional `JUPYTER_TOKEN`. It is created during initialization; do not commit it. When creating several Jupyter environments, a descriptive build target (for example, `./build jupyter assay-notebooks`) sets `APP_NAME` to distinguish the resulting image names; it normally does not need to be changed later.
+- `.env`: Per-app runtime configuration and secrets, including an optional `JUPYTER_TOKEN`. It is created during initialization; do not commit it. `APP_NAME` is set by the build target and identifies the app images: `chembience/<app_name>:<tag>` and `chembience/<app_name>-prod:<tag>`.
 - `docker-compose.yml`: Defines the JupyterLab and PostgreSQL services for this app.
 - `notebooks/`: Your notebooks and supporting Python files. `notebooks/check_env.py` verifies RDKit and database connectivity.
 - `app-requirements.txt`: Add Python dependencies for notebooks and scripts. The generated app also has `requirements.txt`, which contains the core Jupyter dependencies.
@@ -95,7 +95,7 @@ Prerequisite:
 What the script does:
 - Creates/reuses `./.env.prod` from `./.env` and forces `CHEMBIENCE_RUNTIME_MODE=prod` there.
 - Builds a dedicated source-baked production image via `Dockerfile.prod`.
-- Uses a clear production image name: `chembience/core-jupyter-prod-<app_name>:<tag>`.
+- Uses the production image name: `chembience/<app_name>-prod:<tag>`.
 - Verifies the image contains `/home/app/notebooks`.
 - Does **not** run `jupyter-configure`, does **not** restart compose services, and does **not** mutate your active dev `.env`.
 
@@ -118,7 +118,7 @@ Examples:
 Run the produced image (example):
 
 ```bash
-docker run --rm -p 8888:8888 chembience/core-jupyter-prod-app:0.6.0-jupyter.1 \
+docker run --rm -p 8888:8888 chembience/app-prod:0.6.0-jupyter.1 \
   jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root
 ```
 

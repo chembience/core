@@ -77,7 +77,8 @@ fi
 if [[ -z "$IMAGE_NAME" ]]; then
   APP_NAME_VALUE="$(get_env_var .env.prod APP_NAME)"
   APP_NAME_VALUE="${APP_NAME_VALUE:-app}"
-  IMAGE_NAME="chembience/core-jupyter-prod-${APP_NAME_VALUE}"
+  [[ "$APP_NAME_VALUE" =~ ^[a-z0-9][a-z0-9._-]*$ ]] || { echo "APP_NAME must be a valid lowercase Docker image name" >&2; exit 2; }
+  IMAGE_NAME="chembience/${APP_NAME_VALUE}-prod"
 fi
 
 CORE_IMAGE_TAG="$(get_env_var .env CHEMBIENCE_VERSION)"

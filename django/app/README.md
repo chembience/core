@@ -4,7 +4,7 @@ This is the web service for your Chembience project. It is built using Django an
 
 ## Important Files
 
-- `.env`: Per-app runtime configuration and secrets. It is created during initialization; do not commit it. `APP_NAME` is set when the app is created (for example, `./build django my-project`) and should normally remain unchanged because it identifies this app's container-image and production-image names.
+- `.env`: Per-app runtime configuration and secrets. It is created during initialization; do not commit it. `APP_NAME` is set when the app is created (for example, `./build django my-project`) and identifies the app images: `chembience/<app_name>:<tag>` and `chembience/<app_name>-prod:<tag>`.
 - `docker-compose.yml`: Defines the Django and PostgreSQL services for this app.
 - `src/`: Django project source. `manage.py` is the entry point; edit application code, settings, URLs, and migrations here.
 - `requirements.txt`: Add Python dependencies for this Django app.
@@ -84,7 +84,7 @@ already prepared image without rebuilding it.
 What the script does:
 - Creates/reuses `./.env.prod` from `./.env` and forces `CHEMBIENCE_RUNTIME_MODE=prod` there.
 - Builds a dedicated source-baked production image via `Dockerfile.prod`.
-- Uses a clear production image name: `chembience/core-django-prod-<app_name>:<tag>`.
+- Uses the production image name: `chembience/<app_name>-prod:<tag>`.
 - Verifies the image contains `/home/app/src/manage.py`.
 - Does **not** run `django-configure`, does **not** restart compose services, and does **not** mutate your active dev `.env`.
 
@@ -107,7 +107,7 @@ Examples:
 Run the produced image (example):
 
 ```bash
-docker run --rm -p 8001:8000 chembience/core-django-prod-app:0.6.0-django.1 \
+docker run --rm -p 8001:8000 chembience/app-prod:0.6.0-django.1 \
   python -m gunicorn src.wsgi:application --bind 0.0.0.0:8000 --workers 8
 ```
 

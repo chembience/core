@@ -99,6 +99,12 @@ Release older than 0.5.0 are no longer supported but are still available in the 
   ./build django myapp
   ```
 
+  The target is also the published application image name. It must use
+  lowercase letters, digits, dots, underscores, or dashes and start with a
+  letter or digit. Application names are unique across app types: a project
+  named `myapp` uses `chembience/myapp:<tag>` in development and
+  `chembience/myapp-prod:<tag>` for its source-baked production image.
+
   By default, the application is created in `~/myapp`. You can specify a custom directory with the `-d` option:
   ```bash
   ./build rdkit|django|fastapi|jupyter myapp -d /path/to/parent_dir

@@ -4,7 +4,7 @@ This is the RDKit service for your Chembience project. It provides specialized c
 
 ## Important Files
 
-- `.env`: Per-app runtime configuration and secrets. It is created during initialization; do not commit it. `APP_NAME` is set when the app is created (for example, `./build rdkit my-project`) and should normally remain unchanged because it identifies this app's container-image and production-image names.
+- `.env`: Per-app runtime configuration and secrets. It is created during initialization; do not commit it. `APP_NAME` is set when the app is created (for example, `./build rdkit my-project`) and identifies the app images: `chembience/<app_name>:<tag>` and `chembience/<app_name>-prod:<tag>`.
 - `docker-compose.yml`: Defines the RDKit sidecar and PostgreSQL services for this app.
 - `requirements.txt`: Add Python dependencies for RDKit scripts.
 - `Dockerfile`: Development image extension that installs `requirements.txt`; `Dockerfile.prod` creates a source-baked production image.
@@ -68,7 +68,7 @@ start an already prepared image without rebuilding it.
 What the script does:
 - Creates/reuses `./.env.prod` from `./.env` and forces `CHEMBIENCE_RUNTIME_MODE=prod` there.
 - Builds a dedicated source-baked production image via `Dockerfile.prod`.
-- Uses a clear production image name: `chembience/core-rdkit-prod-<app_name>:<tag>`.
+- Uses the production image name: `chembience/<app_name>-prod:<tag>`.
 - Runs an RDKit smoke check from the built image (`MolFromSmiles`).
 - Does **not** run `rdkit-configure`, does **not** restart compose services, and does **not** mutate your active dev `.env`.
 
@@ -91,7 +91,7 @@ Examples:
 Run the produced image (example):
 
 ```bash
-docker run --rm --entrypoint /opt/conda/envs/chembience/bin/python chembience/core-rdkit-prod-app:0.6.0-rdkit.1 - <<'PY'
+docker run --rm --entrypoint /opt/conda/envs/chembience/bin/python chembience/app-prod:0.6.0-rdkit.1 - <<'PY'
 from rdkit import Chem
 print(bool(Chem.MolFromSmiles('CCO')))
 PY
