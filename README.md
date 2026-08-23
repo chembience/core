@@ -2,8 +2,10 @@
 
 Chembience is a Docker-based chemoinformatics platform with prewired RDKit and RDKit-enabled PostgreSQL components. 
 It provides ready-to-use Django, FastAPI, JupyterLab, RDKit, and PostgreSQL services for building chemical informatics 
-applications. This repository superceeds the chembience implementation at https://github.com/chembience/chembience (v<=0.4.0)
-and starts at version 0.5.0. It is a full KI-based re-implementation of the original chembience project from the scratch.
+applications. This repository supersedes the original
+[Chembience implementation](https://github.com/chembience/chembience) (versions
+0.4.0 and earlier) and starts at version 0.5.0. It is a complete
+reimplementation of the original project.
 
 [![Release](https://img.shields.io/github/v/release/chembience/core?sort=semver&label=release&style=flat-square&logo=github)](https://github.com/chembience/core/releases/latest)
 [![Build & Smoke Test](https://github.com/chembience/core/actions/workflows/build-test.yml/badge.svg?branch=main)](https://github.com/chembience/core/actions/workflows/build-test.yml)
@@ -43,7 +45,8 @@ docker compose up -d
 ./jupyter-init
 ```
 
-Then open the printed URL in your browser (it includes the access token).
+Then open the printed URL in your browser. Generated Jupyter projects persist a
+token in their local `.env`, and `jupyter-init` prints the corresponding URL.
 Swap `jupyter` for `django`, `fastapi`, or `rdkit` in step 2 to bootstrap a
 different stack.
 
@@ -81,7 +84,7 @@ Release older than 0.5.0 are no longer supported but are still available in the 
 
 1.  **Clone the repository.**
     ```bash
-    ./git clone https://github.com/chembience/core.git chembience
+    git clone https://github.com/chembience/core.git chembience
     ```
 2.  **Navigate to the project directory.**
 3. ```bash
@@ -99,6 +102,10 @@ Release older than 0.5.0 are no longer supported but are still available in the 
   ./build django myapp
   ```
 
+  `build` creates the project, builds the required images, and performs an
+  initial setup run. The generated project is left in the target directory;
+  start it later with `docker compose up -d` from that directory.
+
   The target is also the published application image name. It must use
   lowercase letters, digits, dots, underscores, or dashes and start with a
   letter or digit. Application names are unique across app types: a project
@@ -110,6 +117,9 @@ Release older than 0.5.0 are no longer supported but are still available in the 
   ./build rdkit|django|fastapi|jupyter myapp -d /path/to/parent_dir
   ```
   This will create the app in `/path/to/parent_dir/myapp`.
+
+  Useful build flags are `--no-cache`, `--pull`, `--progress=plain`,
+  `--no-prompt` (or `-y`), and `--no-quit` (keep the setup run attached).
 
 ### Runtime Modes (`CHEMBIENCE_RUNTIME_MODE`)
 
@@ -178,9 +188,10 @@ needed.
 
 ### JupyterLab Token
 
-JupyterLab is launched with its token authentication enabled by default
-(we do not disable it in `docker-compose.yml`). Use the per-app init helper to
-print the access URL — including the token when available:
+JupyterLab uses token authentication by default. The generated Jupyter
+entrypoint creates and persists a strong `JUPYTER_TOKEN` in the project `.env`
+when none is supplied, then uses it for later starts. Use the per-app init
+helper to verify the environment and print the access URL:
 
 ```bash
 ./jupyter-init
@@ -196,14 +207,8 @@ server and print a URL like `http://localhost:8888/?token=<...>`.
   The `docker-compose.dev.yml` file sets `--ServerApp.token=''` for the
   `jupyter` service.
 
-- To pin a stable token, set `JUPYTER_TOKEN` in your project's `.env` and add a
-  small compose override to pass it to the server, for example
-  `docker-compose.override.yml`:
-  ```yaml
-  services:
-    jupyter:
-      command: ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root", "--ServerApp.token=${JUPYTER_TOKEN}"]
-  ```
+- To choose a stable token yourself, set `JUPYTER_TOKEN` in the project's
+  `.env` before starting the service. No compose override is required.
 
 Treat `JUPYTER_TOKEN` as a secret (same as `POSTGRES_PASSWORD` and
 `DJANGO_SECRET_KEY`): never commit it, and rotate it by changing `.env`
@@ -258,14 +263,16 @@ Thin Bash wrappers around `docker compose` and the per-service entrypoints.
 - `./psql` — open a `psql` shell on the Postgres container.
 - `./test-build-all` — Test script to build and init all app types.
 
-Per-app helper scripts located in their app directories:
+The paths below are the source templates in this repository. During `./build`,
+the relevant helpers are copied to the root of the generated application
+directory, where they should be run:
 
 | App       | Scripts |
 |-----------| ------- |
-| `django`  | `django/django-init`, `django/django-manage-py`, `django/psql` |
+| `django`  | `django/django-init`, `django/django-manage-py`, `django/psql`, `django/app/django-configure` |
 | `fastapi` | `fastapi/app/fastapi-init`, `fastapi/app/fastapi-makemigrations`, `fastapi/app/fastapi-migrate`, `fastapi/app/db-backup`, `fastapi/app/db-cleanup`, `fastapi/app/db-restore` |
-| `jupyter` | `jupyter/app/jupyter-init` |
-| `rdkit`   | `rdkit/app/rdkit-init`, `rdkit/app/run`, `rdkit/app/shell` |
+| `jupyter` | `jupyter/app/jupyter-init`, `jupyter/app/jupyter-configure` |
+| `rdkit`   | `rdkit/app/rdkit-init`, `rdkit/app/run`, `rdkit/app/shell`, `rdkit/app/rdkit-configure` |
 
 ## Development
 

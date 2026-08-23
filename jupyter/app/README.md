@@ -17,14 +17,16 @@ To start the JupyterLab service along with the PostgreSQL database:
 docker compose up -d
 ```
 
-Then print the access URL (with token when available):
+Then verify the environment and print the access URL:
 
 ```bash
 ./jupyter-init
 ```
 
 Open the printed URL in your browser. The default port is 8888 and can be
-changed via `JUPYTER_CONNECTION_PORT` in your `.env` file.
+changed via `JUPYTER_CONNECTION_PORT` in your `.env` file. On first start, the
+entrypoint generates and persists a strong `JUPYTER_TOKEN` unless you supplied
+one yourself.
 
 ## Important Files
 
@@ -63,6 +65,10 @@ The environment is pre-configured with the following variables for database acce
 - `POSTGRES_NAME`
 - `POSTGRES_HOST`
 - `POSTGRES_PORT` (Internal port 5432)
+
+Postgres is not published to the host by default. Use `./psql` for an
+interactive database shell or add a local Compose override if host access is
+needed.
 
 ## Configuration
 
@@ -150,13 +156,12 @@ Repeatability note:
 
 ### Token behavior
 
-- Token auth is enabled by default. If Jupyter auto-generates a token,
-  `./jupyter-init` will query the server and print a URL like
-  `http://localhost:8888/?token=<...>`.
+- Token auth is enabled by default. The generated app pins a token in `.env`
+  on first start (unless `JUPYTER_TOKEN` was already set), and
+  `./jupyter-init` prints the corresponding URL.
 - To disable the token in development, use the provided overlay:
   ```bash
   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
   ```
-- To pin a stable token, set `JUPYTER_TOKEN` in `.env` and pass it via a small
-  compose override that appends `--ServerApp.token=${JUPYTER_TOKEN}` to the
-  `jupyter` service command.
+- To choose a stable token, set `JUPYTER_TOKEN` in `.env`; no compose override
+  is needed.

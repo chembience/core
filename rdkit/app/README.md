@@ -26,6 +26,12 @@ To start the stack along with the PostgreSQL database:
 docker compose up -d
 ```
 
+Verify the environment after the first start:
+
+```bash
+./rdkit-init
+```
+
 To run a script in the RDKit environment:
 ```bash
 ./run your_script.py
@@ -36,7 +42,11 @@ To access the interactive shell:
 ./shell
 ```
 
-For more information, see the root [README.md](../../README.md).
+For platform documentation, see the [Chembience core README](https://github.com/chembience/core#readme).
+
+The long-running `rdkit` service is intended for scripts and ad-hoc Python
+sessions. It connects to the private database at `postgres:5432`; use `./psql`
+or add a local Compose override if host access is needed.
 
 ## Configuration
 

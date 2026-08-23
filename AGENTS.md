@@ -48,6 +48,9 @@ optional cross-stack wiring.
   engine and Postgres connection settings.
 - `build`, `remove`, `psql`, `test-build-all`: Top-level
   helper scripts (run from the project root).
+- `*/app/`: Templates copied into the root of generated applications by the
+  corresponding service entrypoint. When editing a template helper or README,
+  keep its commands relative to a generated application directory.
 - Per-service init helpers:
   - `django/django-init`, `django/django-manage-py`, `django/psql`
   - `fastapi/app/fastapi-init`, `fastapi/app/db-backup`,
@@ -76,13 +79,15 @@ optional cross-stack wiring.
   can cause issues in Docker containers and shell scripts.
 - **Docker is the primary execution environment.** Assume commands should be
   run via `docker compose exec <service> ...` from the project root.
-- **Jupyter token behavior**: Token auth is enabled by default. Prefer
-  running `jupyter/app/jupyter-init` inside a generated app; it prints the
-  access URL and, when available, the token. Use the provided
-  `docker-compose.dev.yml` overlay to disable the token in development
-  (`--ServerApp.token=''`). To pin a stable token, set `JUPYTER_TOKEN` in the
-  app's `.env` and pass it via a small compose override that appends
-  `--ServerApp.token=${JUPYTER_TOKEN}` to the `jupyter` command.
+- **Generated application context**: The core repository and a generated app
+  use different compose files. For generated-app work, `cd` into the generated
+  directory before running `docker compose`; its copied helper scripts live at
+  that directory's root.
+- **Jupyter token behavior**: Token auth is enabled by default. A generated
+  Jupyter app persists `JUPYTER_TOKEN` in its `.env` when none is supplied;
+  `jupyter-init` prints the access URL. Set that variable directly to choose a
+  stable token. Use the provided `docker-compose.dev.yml` overlay to disable
+  the token in development (`--ServerApp.token=''`).
 - **Postgres networking**: The Postgres service is not published on a host
   port by default. All services connect over the internal Docker network at
   `postgres:5432`. Use your own compose override if host access is needed.

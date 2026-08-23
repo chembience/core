@@ -29,7 +29,7 @@ docker compose up -d
 ```
 
 
-For initial setup (optional):
+For initial setup and a smoke test:
 
 ```bash
 ./django-init
@@ -45,12 +45,24 @@ or as a shortcut
 ./django-manage-py <command>
 ```
 
+After changing models, generate, review, and commit the migration files under
+`src/` before applying them:
+
+```bash
+./django-manage-py makemigrations
+./django-manage-py migrate
+```
+
 To access the database:
 ```bash
 ./psql
 ```
 
-For more information, see the root [README.md](../../README.md).
+For platform documentation, see the [Chembience core README](https://github.com/chembience/core#readme).
+
+The database is intentionally private to the Compose network. Application
+containers reach it as `postgres:5432`; use `./psql` or add a local Compose
+override if host access is required.
 
 ## Configuration
 

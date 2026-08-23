@@ -34,6 +34,9 @@ For initial setup:
 ./fastapi-init
 ```
 
+The API is then available at `http://localhost:${FASTAPI_CONNECTION_PORT}`
+(default `8002`), with interactive documentation at `/docs`.
+
 ## Database migrations
 
 FastAPI uses Alembic to version the SQLAlchemy schema. After changing a model,
@@ -56,7 +59,10 @@ docker compose exec fastapi pytest
 The test suite creates a uniquely named disposable PostgreSQL database, applies
 all migrations, and removes only that database after the test session.
 
-For more information, see the root [README.md](../../README.md).
+The database has no host port by default. Services connect to
+`postgres:5432`; use `./psql` or a local Compose override for host access.
+
+For platform documentation, see the [Chembience core README](https://github.com/chembience/core#readme).
 
 ## Configuration
 
