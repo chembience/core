@@ -50,8 +50,8 @@ optional cross-stack wiring.
   helper scripts (run from the project root).
 - Per-service init helpers:
   - `django/django-init`, `django/django-manage-py`, `django/psql`
-  - `fastapi/app/fastapi-init`, `fastapi/app/db_backup`,
-    `fastapi/app/db_cleanup`, `fastapi/app/db_restore`
+  - `fastapi/app/fastapi-init`, `fastapi/app/db-backup`,
+    `fastapi/app/db-cleanup`, `fastapi/app/db-restore`
   - `jupyter/app/jupyter-init`
   - `rdkit/app/rdkit-init`, `rdkit/app/run`, `rdkit/app/shell`
 - Per-app `*-configure` scripts (used for password rotation and other

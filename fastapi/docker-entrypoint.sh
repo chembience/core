@@ -95,9 +95,9 @@ if [ "${CHEMBIENCE_RUNTIME_MODE}" != "prod" ]; then
     sync_config "/fastapi/requirements.txt"            "/home/app/requirements.txt"
     sync_config "/fastapi/README.md"                   "/home/app/README.md"
     sync_script "/fastapi/psql"                        "/home/app/psql"
-    sync_script "/fastapi/db_backup"                   "/home/app/db_backup"
-    sync_script "/fastapi/db_restore"                  "/home/app/db_restore"
-    sync_script "/fastapi/db_cleanup"                  "/home/app/db_cleanup"
+    sync_script "/fastapi/db-backup"                   "/home/app/db-backup"
+    sync_script "/fastapi/db-restore"                  "/home/app/db-restore"
+    sync_script "/fastapi/db-cleanup"                  "/home/app/db-cleanup"
     # fastapi-init is now expected to be in /fastapi/fastapi-init (synced from fastapi/app/fastapi-init in Dockerfile)
     sync_script "/fastapi/fastapi-init"                "/home/app/fastapi-init"
     sync_script "/fastapi/fastapi-migrate"             "/home/app/fastapi-migrate"

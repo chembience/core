@@ -263,7 +263,7 @@ Per-app helper scripts located in their app directories:
 | App       | Scripts |
 |-----------| ------- |
 | `django`  | `django/django-init`, `django/django-manage-py`, `django/psql` |
-| `fastapi` | `fastapi/app/fastapi-init`, `fastapi/app/fastapi-makemigrations`, `fastapi/app/fastapi-migrate`, `fastapi/app/db_backup`, `fastapi/app/db_cleanup`, `fastapi/app/db_restore` |
+| `fastapi` | `fastapi/app/fastapi-init`, `fastapi/app/fastapi-makemigrations`, `fastapi/app/fastapi-migrate`, `fastapi/app/db-backup`, `fastapi/app/db-cleanup`, `fastapi/app/db-restore` |
 | `jupyter` | `jupyter/app/jupyter-init` |
 | `rdkit`   | `rdkit/app/rdkit-init`, `rdkit/app/run`, `rdkit/app/shell` |
 

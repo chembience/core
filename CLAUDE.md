@@ -32,9 +32,9 @@ Run from the project root (where `docker-compose.yml` lives) unless noted.
 - Shell: `docker compose exec fastapi /bin/bash`
 - Logs: `docker compose logs -f fastapi`
 - Helpers: `fastapi/app/fastapi-init`,
-  `fastapi/app/db_backup`,
-  `fastapi/app/db_restore`,
-  `fastapi/app/db_cleanup`
+  `fastapi/app/db-backup`,
+  `fastapi/app/db-restore`,
+  `fastapi/app/db-cleanup`
 - Entry: `uvicorn main:app --host 0.0.0.0 --port 8000` (run from
   `working_dir=/home/app/src/`, i.e. `src/main.py`)
 
