@@ -46,33 +46,33 @@ jobs:
           set -euo pipefail
           mkdir -p ./test-builds
           TEST_DIR_ABS="$(realpath ./test-builds)"
-          
-          # We run the build and init. 
+
+          # We run the build and init.
           # Note: the build script has a trap that runs 'docker compose down' on exit.
-          # To verify versions while containers are running, we need to do it 
-          # before the build script finishes, OR we move the verification 
+          # To verify versions while containers are running, we need to do it
+          # before the build script finishes, OR we move the verification
           # logic into a wrapper or just run it here if we can keep them alive.
-          # However, the easiest way is to run the verification right after 
+          # However, the easiest way is to run the verification right after
           # the build script but in a way that doesn't trigger the trap yet.
-          # Actually, the trap is in the 'build' bash script. 
+          # Actually, the trap is in the 'build' bash script.
           # If we run 'build' and it finishes, containers are DOWN.
-          
+
           # To keep them alive, we can use --no-quit, but then it blocks.
-          # Better: Extract the verification logic and run it within the same 
-          # subshell or just before the build script completes? No, we can't 
+          # Better: Extract the verification logic and run it within the same
+          # subshell or just before the build script completes? No, we can't
           # easily inject into the build script.
-          
+
           # Alternative: Modify the build script to optionally skip cleanup,
           # or just restart them here. Restarting is easier.
-          
+
           ./build "${{ matrix.app }}" "${{ matrix.app }}" -d "$TEST_DIR_ABS"
-          
+
           echo "🔍 Verifying RDKit and Python versions..."
-          
+
           # Extract expected versions from ROOT .env before moving to test dir
           EXPECTED_PYTHON=$(grep '^CONDA_PY=' .env | cut -d '=' -f 2 | xargs)
           EXPECTED_RDKIT=$(grep '^RDKIT_VERSION=' .env | cut -d '=' -f 2 | xargs)
-          
+
           cd "$TEST_DIR_ABS/${{ matrix.app }}"
           if [ -f "./${{ matrix.app }}-init" ]; then
             "./${{ matrix.app }}-init"
@@ -83,41 +83,41 @@ jobs:
             ls -R .
             exit 1
           fi
-          
+
           # Restart containers because the build script cleaned them up
           # We use -d to run in background
-          
+
           # Set APP_NAME for docker compose (dashless; compose adds dash where needed)
           export APP_NAME="${{ matrix.app }}"
-          
+
           # Determine the main service and postgres to start
           SERVICE_NAME="${{ matrix.app }}"
-          
+
           echo "Service name for verification: $SERVICE_NAME"
-          
+
           docker compose up -d "$SERVICE_NAME" postgres
-          
+
           # Wait for healthy if possible, or just sleep a bit
           # docker compose up --wait would be better if supported by the version in GA
           # Let's try --wait first
           docker compose up --wait "$SERVICE_NAME" postgres || (echo "⚠️ Wait failed, sleeping 30s..."; sleep 30)
-          
+
           echo "Expected Python: '$EXPECTED_PYTHON'"
           echo "Expected RDKit: '$EXPECTED_RDKIT'"
-          
+
           ACTUAL_PYTHON=$(docker compose exec -T "$SERVICE_NAME" python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" | tr -d '\r' | xargs)
           ACTUAL_RDKIT=$(docker compose exec -T "$SERVICE_NAME" python -c "import rdkit; print(rdkit.__version__)" | tr -d '\r' | xargs)
           ACTUAL_CARTRIDGE=$(docker compose exec -T postgres bash -c "pg_config --version >/dev/null && micromamba list -n chembience rdkit-postgresql --json" | python -c "import json,sys; rows=json.load(sys.stdin); print(rows[0]['version'])" | tr -d '\r' | xargs)
-          
+
           echo "Actual Python: $ACTUAL_PYTHON"
           echo "Actual RDKit: $ACTUAL_RDKIT"
           echo "Actual RDKit cartridge: $ACTUAL_CARTRIDGE"
-          
+
           if [ "$ACTUAL_PYTHON" != "$EXPECTED_PYTHON" ]; then
             echo "❌ Python version mismatch! Expected '$EXPECTED_PYTHON', got '$ACTUAL_PYTHON'"
             exit 1
           fi
-          
+
           if [ "$ACTUAL_RDKIT" != "$EXPECTED_RDKIT" ]; then
             echo "❌ RDKit version mismatch! Expected '$EXPECTED_RDKIT', got '$ACTUAL_RDKIT'"
             exit 1
@@ -133,9 +133,9 @@ jobs:
             docker compose exec -T fastapi alembic -c /home/app/src/alembic.ini check
             docker compose exec -T fastapi pytest -q
           fi
-          
+
           echo "✅ Versions match!"
-          
+
           # --- Basic HTTP smoke check when applicable ---
           echo "🌐 Running HTTP smoke check for $SERVICE_NAME (if applicable)"
 
