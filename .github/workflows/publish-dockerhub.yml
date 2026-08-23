@@ -1,0 +1,139 @@
+name: Publish Docker Hub Images
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dockerhub-release-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
+env:
+  DOCKERHUB_NAMESPACE: chembience
+
+jobs:
+  publish:
+    name: Publish core images
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Check out the release revision
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Resolve and validate release version
+        id: version
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          IS_PRERELEASE: ${{ github.event.release.prerelease }}
+        run: |
+          set -euo pipefail
+          version="${RELEASE_TAG#v}"
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "Release tag must be vX.Y.Z or X.Y.Z (optional prerelease suffix): $RELEASE_TAG" >&2
+            exit 1
+          fi
+
+          template_version="$(sed -n 's/^CHEMBIENCE_VERSION=//p' .env.template | head -n 1)"
+          if [ "$version" != "$template_version" ]; then
+            echo "Release version $version does not match .env.template version $template_version." >&2
+            exit 1
+          fi
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if [ "$IS_PRERELEASE" = "true" ]; then
+            echo "publish_latest=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish_latest=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Prepare Compose validation environment
+        run: |
+          set -euo pipefail
+          cp .env.template .env
+          sed -i 's/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=ci-release-validation-only-9f4c2b7a/' .env
+
+      - name: Validate Compose configuration
+        run: |
+          docker compose -f docker-compose.yml config --quiet
+          docker compose -f docker-compose.yml -f docker-compose.dev.yml config --quiet
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and publish core images
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+          PUBLISH_LATEST: ${{ steps.version.outputs.publish_latest }}
+          REVISION: ${{ github.sha }}
+          SOURCE_URL: ${{ github.server_url }}/${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          env_value() {
+            sed -n "s/^$1=//p" .env.template | head -n 1
+          }
+
+          CONDA_PY="$(env_value CONDA_PY)"
+          RDKIT_VERSION="$(env_value RDKIT_VERSION)"
+          APT_MIRROR="$(env_value APT_MIRROR)"
+          CONDA_MIRROR="$(env_value CONDA_MIRROR)"
+
+          image_tags() {
+            local image="$1"
+            printf '%s\n' "-t" "${image}:${RELEASE_VERSION}"
+            if [ "$PUBLISH_LATEST" = "true" ]; then
+              printf '%s\n' "-t" "${image}:latest"
+            fi
+          }
+
+          build_image() {
+            local image="$1"
+            local dockerfile="$2"
+            shift 2
+            mapfile -t tags < <(image_tags "$image")
+            docker buildx build \
+              --platform linux/amd64 \
+              --file "$dockerfile" \
+              --push \
+              --label "org.opencontainers.image.source=${SOURCE_URL}" \
+              --label "org.opencontainers.image.revision=${REVISION}" \
+              --label "org.opencontainers.image.version=${RELEASE_VERSION}" \
+              "${tags[@]}" \
+              "$@" \
+              .
+          }
+
+          build_image "$DOCKERHUB_NAMESPACE/core-rdkit" rdkit/Dockerfile \
+            --build-arg "mamba_image=mambaorg/micromamba:1.5.8" \
+            --build-arg "conda_py=${CONDA_PY}" \
+            --build-arg "rdkit_version=${RDKIT_VERSION}" \
+            --build-arg "apt_mirror=${APT_MIRROR}" \
+            --build-arg "conda_mirror=${CONDA_MIRROR}"
+
+          build_image "$DOCKERHUB_NAMESPACE/core-rdkit-postgres" postgres/Dockerfile \
+            --build-arg "mamba_image=mambaorg/micromamba:1.5.8" \
+            --build-arg "conda_py=${CONDA_PY}" \
+            --build-arg "rdkit_version=${RDKIT_VERSION}" \
+            --build-arg "apt_mirror=${APT_MIRROR}" \
+            --build-arg "conda_mirror=${CONDA_MIRROR}" \
+            --build-arg "CHEMBIENCE_UID=1000" \
+            --build-arg "CHEMBIENCE_GID=1000"
+
+          for service in django fastapi jupyter; do
+            build_image "$DOCKERHUB_NAMESPACE/core-${service}" "${service}/Dockerfile" \
+              --build-arg "build_tag=${RELEASE_VERSION}" \
+              --build-arg "conda_py=${CONDA_PY}" \
+              --build-arg "conda_mirror=${CONDA_MIRROR}" \
+              --build-arg "app_name="
+          done

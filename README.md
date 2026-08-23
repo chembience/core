@@ -69,6 +69,21 @@ Versions are controlled through `.env` / `.env.template` and Docker build argume
 - **JupyterLab**: 4.x-compatible
 - **[django-rdkit](https://github.com/rdkit/django-rdkit) and [razi](https://github.com/rvianello/razi)**
 
+## Official Docker Images
+
+Published GitHub Releases provide the reusable core images on Docker Hub under
+the [`chembience`](https://hub.docker.com/u/chembience) namespace:
+
+- `chembience/core-rdkit`
+- `chembience/core-rdkit-postgres`
+- `chembience/core-django`
+- `chembience/core-fastapi`
+- `chembience/core-jupyter`
+
+Use an exact release tag in deployments (for example,
+`chembience/core-rdkit:0.6.0`). Stable releases also update `latest`; prerelease
+images receive only their exact version tag.
+
 
 ## Releases
 
