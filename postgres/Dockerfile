@@ -1,6 +1,7 @@
 ARG mamba_image=mambaorg/micromamba:1.5.8
 FROM ${mamba_image}
 ARG conda_py
+ARG rdkit_version
 ARG apt_mirror
 ARG conda_mirror
 ARG CHEMBIENCE_UID=1000
@@ -36,6 +37,9 @@ RUN micromamba config append channels conda-forge && \
     if [ -n "${conda_py}" ]; then \
         micromamba install -y -n chembience "python=${conda_py}"; \
     fi && \
+    if [ -n "${rdkit_version}" ]; then \
+        micromamba install -y -n chembience "rdkit-postgresql=${rdkit_version}"; \
+    fi && \
     micromamba clean -a -y && \
     find /opt/conda/ -follow -type f -name '*.a' -delete && \
     find /opt/conda/ -follow -type f -name '*.pyc' -delete && \
@@ -47,4 +51,3 @@ ENV PATH=/opt/conda/envs/chembience/bin:/opt/conda/bin:$PATH
 USER root
 # Make sure entrypoint is executable (can be lost on some checkouts)
 RUN chmod +x /docker-entrypoint.sh
-

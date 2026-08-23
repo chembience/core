@@ -1,19 +1,33 @@
+from pathlib import Path
+
 import pytest
-from sqlalchemy import select, func
+from alembic.config import Config
+from alembic.script import ScriptDirectory
+from sqlalchemy import inspect, select, func, text
 from rdkit.Chem import AllChem as Chem
 from razi.rdkit_postgresql.types import Mol, Reaction
-from db import engine, Molecule, Base, SessionLocal
+from chembience.db import _build_database_url
 
 # Re-use Molecule model but with Mol type for 'm' column if we were to test insertion
 # For now, we test the functions directly as in the original tests
 
-@pytest.fixture(scope="module")
-def db_session():
-    Base.metadata.create_all(bind=engine)
-    session = SessionLocal()
-    yield session
-    session.close()
-    Base.metadata.drop_all(bind=engine)
+
+def test_database_url_preserves_special_characters():
+    url = _build_database_url(
+        "chem-user", "p@ss:/word%with'quotes", "postgres", "5432", "chem/db"
+    )
+    assert url.username == "chem-user"
+    assert url.password == "p@ss:/word%with'quotes"
+    assert url.database == "chem/db"
+
+def test_migrations_applied(db_session):
+    assert inspect(db_session.get_bind()).has_table("molecules")
+    config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
+    expected_heads = set(ScriptDirectory.from_config(config).get_heads())
+    applied_heads = set(
+        db_session.execute(text("SELECT version_num FROM alembic_version")).scalars()
+    )
+    assert applied_heads == expected_heads
 
 def test_mol_from_smiles(db_session):
     # rs = engine.execute(select([ func.is_valid_smiles('c1ccccc1') ]))

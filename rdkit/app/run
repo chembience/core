@@ -25,4 +25,4 @@ if [ -z "$CONTAINER_ID" ]; then
 fi
 
 # Execute script inside the container
-docker exec -it --user app "$CONTAINER_ID" python "$@"
+docker exec -it "$CONTAINER_ID" gosu app python "$@"

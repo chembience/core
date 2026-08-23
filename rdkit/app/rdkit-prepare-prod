@@ -1,0 +1,107 @@
+#!/bin/bash
+set -euo pipefail
+
+APP_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$APP_DIR"
+
+KEEP_ENV_PROD=0
+SKIP_BUILD=0
+IMAGE_TAG=""
+IMAGE_NAME=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --keep-env-prod) KEEP_ENV_PROD=1; shift ;;
+    --skip-build) SKIP_BUILD=1; shift ;;
+    --image-name)
+      [[ $# -ge 2 ]] || { echo "Missing value for --image-name" >&2; exit 2; }
+      IMAGE_NAME="$2"
+      shift 2
+      ;;
+    --image-tag)
+      [[ $# -ge 2 ]] || { echo "Missing value for --image-tag" >&2; exit 2; }
+      IMAGE_TAG="$2"
+      shift 2
+      ;;
+    -*) echo "Unknown option: $1" >&2; exit 2 ;;
+    *) echo "Unexpected argument: $1" >&2; exit 2 ;;
+  esac
+done
+
+if [[ ! -f .env ]]; then
+  echo "Missing ./.env in $APP_DIR. Aborting." >&2
+  exit 1
+fi
+
+if [[ $KEEP_ENV_PROD -eq 0 ]]; then
+  cp -f .env .env.prod
+fi
+
+if grep -q '^CHEMBIENCE_RUNTIME_MODE=' .env.prod; then
+  sed -i 's/^CHEMBIENCE_RUNTIME_MODE=.*/CHEMBIENCE_RUNTIME_MODE=prod/' .env.prod
+else
+  echo 'CHEMBIENCE_RUNTIME_MODE=prod' >> .env.prod
+fi
+
+set_env_var() {
+  local file="$1" key="$2" val="$3"
+  if grep -q "^${key}=" "$file"; then
+    sed -i "s|^${key}=.*|${key}=${val}|" "$file"
+  else
+    echo "${key}=${val}" >> "$file"
+  fi
+}
+
+get_env_var() {
+  local file="$1" key="$2"
+  grep -E "^${key}=" "$file" | tail -n1 | cut -d= -f2- || true
+}
+
+if [[ -z "$IMAGE_TAG" ]]; then
+  IMAGE_TAG="$(get_env_var .env.prod CHEMBIENCE_VERSION)"
+fi
+if [[ -z "$IMAGE_TAG" ]]; then
+  IMAGE_TAG="prod-$(date +%Y%m%d%H%M%S)"
+fi
+
+if [[ -z "$IMAGE_NAME" ]]; then
+  APP_NAME_VALUE="$(get_env_var .env.prod APP_NAME)"
+  APP_NAME_VALUE="${APP_NAME_VALUE:-app}"
+  [[ "$APP_NAME_VALUE" =~ ^[a-z0-9][a-z0-9._-]*$ ]] || { echo "APP_NAME must be a valid lowercase Docker image name" >&2; exit 2; }
+  IMAGE_NAME="chembience/${APP_NAME_VALUE}-prod"
+fi
+
+CORE_IMAGE_TAG="$(get_env_var .env CHEMBIENCE_VERSION)"
+CORE_IMAGE_TAG="${CORE_IMAGE_TAG:-latest}"
+CORE_IMAGE="chembience/core-rdkit:${CORE_IMAGE_TAG}"
+
+if ! docker image inspect "${CORE_IMAGE}" >/dev/null 2>&1; then
+  echo "Missing required core image: ${CORE_IMAGE}" >&2
+  echo "Build it first (for example from repo root: ./build)" >&2
+  exit 1
+fi
+
+set_env_var .env.prod CHEMBIENCE_VERSION "$IMAGE_TAG"
+set_env_var .env.prod CHEMBIENCE_IMAGE_TAG "$IMAGE_TAG"
+set_env_var .env.prod CHEMBIENCE_PROD_IMAGE_NAME "$IMAGE_NAME"
+set_env_var .env.prod CHEMBIENCE_POSTGRES_IMAGE "chembience/core-rdkit-postgres:${CORE_IMAGE_TAG}"
+
+if [[ $SKIP_BUILD -eq 0 ]]; then
+  echo "📦 Building source-baked RDKit production image ${IMAGE_NAME}:${IMAGE_TAG}..."
+  docker build \
+    --file ./Dockerfile.prod \
+    --build-arg "CORE_IMAGE=${CORE_IMAGE}" \
+    --tag "${IMAGE_NAME}:${IMAGE_TAG}" \
+    .
+  echo "🧪 Running RDKit smoke check from produced image..."
+  docker run --rm --entrypoint /opt/conda/envs/chembience/bin/python "${IMAGE_NAME}:${IMAGE_TAG}" - <<'PY'
+from rdkit import Chem
+print('MolFromSmiles OK:', bool(Chem.MolFromSmiles('c1ccccc1')))
+PY
+else
+  echo "ℹ️  Skipping build and in-image verification (--skip-build)."
+fi
+
+echo "✅ rdkit-prepare-prod completed."
+echo "ℹ️  Created image: ${IMAGE_NAME}:${IMAGE_TAG}"
+echo "ℹ️  Dev environment was not changed."

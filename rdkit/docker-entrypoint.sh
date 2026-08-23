@@ -1,8 +1,13 @@
 #!/bin/bash
 set -e
+umask 077
 
 CHEMBIENCE_UID="${CHEMBIENCE_UID:-1000}"
 CHEMBIENCE_GID="${CHEMBIENCE_GID:-1000}"
+CHEMBIENCE_RUNTIME_MODE="$(echo "${CHEMBIENCE_RUNTIME_MODE:-dev}" | tr '[:upper:]' '[:lower:]')"
+if [ "${CHEMBIENCE_RUNTIME_MODE}" = "production" ]; then
+    CHEMBIENCE_RUNTIME_MODE="prod"
+fi
 
 # Pick a group to use:
 # - Prefer an existing "app" group
@@ -35,50 +40,38 @@ fi
 # Safety check: don't try gosu if user still doesn't exist
 id app >/dev/null 2>&1
 
-# Helpers ---------------------------------------------------------------------
-# sync_config: copy a baked-in config file into APP_HOME only if it does NOT
-# already exist there. User edits on the bind mount are preserved across
-# restarts; missing files are restored.
-sync_config() {
-    src="$1"; dst="$2"
-    [ -f "$src" ] || return 0
-    if [ ! -f "$dst" ]; then
-        cp "$src" "$dst"
-        sed -i 's/\r$//' "$dst" 2>/dev/null || true
-    fi
-}
-
-# sync_script: copy helper scripts into APP_HOME only if missing.
-sync_script() {
-    src="$1"; dst="$2"
-    [ -f "$src" ] || return 0
-    if [ ! -f "$dst" ]; then
-        cp "$src" "$dst"
-        chmod +x "$dst"
-        sed -i 's/\r$//' "$dst"
-    fi
-}
-
 export PYTHONPATH=/home/app:/share:$PYTHONPATH
 
+fix_ownership() {
+    if [ "${CHEMBIENCE_RUNTIME_MODE}" = "prod" ]; then
+        [ -d /home/app ] && chown app:"${APP_GROUP}" /home/app 2>/dev/null || true
+        return 0
+    fi
+    find /home/app -not -user app -print0 2>/dev/null \
+        | xargs -0 -r chown "app:${APP_GROUP}" 2>/dev/null || true
+}
+
 # Initialize app context if missing or if it looks like a django app
-if [ ! -f "/home/app/.rdkit-init" ] || [ -d "/home/app/src" ]; then
+if [ "${CHEMBIENCE_RUNTIME_MODE}" != "prod" ] && { [ ! -f "/home/app/.rdkit-init" ] || [ -d "/home/app/src" ]; }; then
     # ONLY initialize if we are NOT in a django container.
     # We can check for existence of /django (copied in django/Dockerfile)
     if [ -d "/django" ]; then
         echo "✅ Django container detected, skipping rdkit initialization."
     else
         echo "🚀 Initializing /home/app for rdkit app..."
-        sync_script "/opt/rdkit/run"             "/home/app/run"
-        sync_script "/opt/rdkit/shell"           "/home/app/shell"
-        sync_script "/opt/rdkit/rdkit-init"      "/home/app/rdkit-init"
-        sync_script "/opt/rdkit/rdkit-configure" "/home/app/rdkit-configure"
-        sync_script "/opt/rdkit/psql"            "/home/app/psql"
-        
-        sync_config "/opt/rdkit/docker-compose.yml" "/home/app/docker-compose.yml"
-        sync_config "/opt/rdkit/Dockerfile"         "/home/app/Dockerfile"
-        sync_config "/opt/rdkit/README.md"          "/home/app/README.md"
-        
+        cp /opt/rdkit/run /home/app/run
+        cp /opt/rdkit/shell /home/app/shell
+        cp /opt/rdkit/rdkit-init /home/app/rdkit-init
+        cp /opt/rdkit/rdkit-configure /home/app/rdkit-configure
+        cp /opt/rdkit/rdkit-prepare-prod /home/app/rdkit-prepare-prod
+        cp /opt/rdkit/rdkit-prod-self-hosted /home/app/rdkit-prod-self-hosted
+        cp /opt/rdkit/psql /home/app/psql
+        [ ! -f "/home/app/docker-compose.yml" ] && cp /opt/rdkit/docker-compose.yml /home/app/docker-compose.yml
+        [ ! -f "/home/app/Dockerfile" ] && cp /opt/rdkit/Dockerfile /home/app/Dockerfile
+        [ ! -f "/home/app/Dockerfile.prod" ] && cp /opt/rdkit/Dockerfile.prod /home/app/Dockerfile.prod
+        [ ! -f "/home/app/docker-compose.prod.yml" ] && cp /opt/rdkit/docker-compose.prod.yml /home/app/docker-compose.prod.yml
+        [ ! -f "/home/app/docker-compose.prod.self-hosted.yml" ] && cp /opt/rdkit/docker-compose.prod.self-hosted.yml /home/app/docker-compose.prod.self-hosted.yml
+        [ ! -f "/home/app/README.md" ] && cp /opt/rdkit/README.md /home/app/README.md
         [ -f "/.gitignore" ] && [ ! -f "/home/app/.gitignore" ] && cp "/.gitignore" "/home/app/.gitignore"
         [ -f "/.dockerignore" ] && [ ! -f "/home/app/.dockerignore" ] && cp "/.dockerignore" "/home/app/.dockerignore"
         [ -f "/.gitattributes" ] && [ ! -f "/home/app/.gitattributes" ] && cp "/.gitattributes" "/home/app/.gitattributes"
@@ -114,14 +107,18 @@ if [ ! -f "/home/app/.rdkit-init" ] || [ -d "/home/app/src" ]; then
             echo "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}"
             echo "POSTGRES_NAME=${POSTGRES_NAME:-chembience}"
             echo "POSTGRES_HOST=${POSTGRES_HOST:-postgres}"
-            echo "POSTGRES_PORT=\${POSTGRES_PORT:-5433}"
+            echo "POSTGRES_PORT=\${POSTGRES_PORT:-5432}"
         } > /home/app/.env
         
         # Ensure LF line endings
         sed -i 's/\r$//' "/home/app/.env"
     fi
 
-        # Finalize
+        chmod +x /home/app/run /home/app/shell /home/app/rdkit-init /home/app/rdkit-configure /home/app/rdkit-prepare-prod /home/app/rdkit-prod-self-hosted /home/app/psql
+        
+        # Clean up django-specific files if they exist
+        rm -rf /home/app/appsite /home/app/apisite /home/app/src /home/app/django-init /home/app/django-manage-py
+        
         touch /home/app/.rdkit-init
     fi
 fi
@@ -131,8 +128,7 @@ if [ ! -f "/home/app/requirements.txt" ]; then
 fi
 
 # Ensure all files in /home/app are owned by the app user (selective).
-find /home/app -not -user app -print0 2>/dev/null \
-    | xargs -0 -r chown "app:${APP_GROUP}" 2>/dev/null || true
+fix_ownership
+[ ! -f /home/app/.env ] || chmod 600 /home/app/.env
 
 exec gosu app "$@"
-

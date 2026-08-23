@@ -1,8 +1,13 @@
 #!/bin/bash
 set -e
+umask 077
 
 CHEMBIENCE_UID="${CHEMBIENCE_UID:-1000}"
 CHEMBIENCE_GID="${CHEMBIENCE_GID:-1000}"
+CHEMBIENCE_RUNTIME_MODE="$(echo "${CHEMBIENCE_RUNTIME_MODE:-dev}" | tr '[:upper:]' '[:lower:]')"
+if [ "${CHEMBIENCE_RUNTIME_MODE}" = "production" ]; then
+    CHEMBIENCE_RUNTIME_MODE="prod"
+fi
 
 # Generate a cryptographically strong Django SECRET_KEY.
 # Prefer openssl; fall back to Python's secrets module (always present in this image).
@@ -58,6 +63,11 @@ id app >/dev/null 2>&1
 # on large bind-mounted APP_HOME volumes.
 echo "🔧 Ensuring correct ownership of /home/app..."
 fix_ownership() {
+    if [ "${CHEMBIENCE_RUNTIME_MODE}" = "prod" ]; then
+        [ -d /home/app ] && chown app:"$APP_GROUP" /home/app 2>/dev/null || true
+        [ -d /home/app/src ] && chown app:"$APP_GROUP" /home/app/src 2>/dev/null || true
+        return 0
+    fi
     find /home/app -not -user app -print0 2>/dev/null \
         | xargs -0 -r chown "app:$APP_GROUP" 2>/dev/null || true
 }
@@ -65,9 +75,24 @@ cleanup_ownership() {
     echo "🧹 Finalizing ownership of /home/app..."
     fix_ownership
 }
-trap cleanup_ownership EXIT
+if [ "${CHEMBIENCE_RUNTIME_MODE}" != "prod" ]; then
+    trap cleanup_ownership EXIT
+fi
 
 fix_ownership
+
+if [ "${CHEMBIENCE_RUNTIME_MODE}" = "prod" ]; then
+    echo "🚀 Running in production mode: skipping bootstrap and file sync mutations."
+    [ ! -f /home/app/.env ] || chmod 600 /home/app/.env
+    if [ -f "/home/app/src/manage.py" ]; then
+        cd /home/app/src
+    else
+        echo "❌ Production mode requires an initialized Django project (missing /home/app/src/manage.py)." >&2
+        exit 1
+    fi
+
+    exec gosu app "$@"
+fi
 
 # Helpers ---------------------------------------------------------------------
 # sync_config: copy a baked-in config file into APP_HOME only if it does NOT
@@ -100,12 +125,17 @@ sync_script() {
 echo "📄 Syncing internal configuration files to /home/app..."
 sync_config "/django/docker-compose.yml" "/home/app/docker-compose.yml"
 sync_config "/django/Dockerfile"         "/home/app/Dockerfile"
+sync_config "/django/Dockerfile.prod"    "/home/app/Dockerfile.prod"
+sync_config "/django/docker-compose.prod.yml" "/home/app/docker-compose.prod.yml"
+sync_config "/django/docker-compose.prod.self-hosted.yml" "/home/app/docker-compose.prod.self-hosted.yml"
 sync_config "/django/requirements.txt"   "/home/app/requirements.txt"
 sync_config "/django/README.md"          "/home/app/README.md"
 sync_script "/django/psql"               "/home/app/psql"
 sync_script "/django/django-init"        "/home/app/django-init"
 sync_script "/django/django-manage-py"   "/home/app/django-manage-py"
 sync_script "/django/django-configure"   "/home/app/django-configure"
+sync_script "/django/django-prepare-prod"   "/home/app/django-prepare-prod"
+sync_script "/django/django-prod-self-hosted" "/home/app/django-prod-self-hosted"
 [ -f "/.gitignore" ] && [ ! -f "/home/app/.gitignore" ] && cp "/.gitignore" "/home/app/.gitignore"
 [ -f "/.dockerignore" ] && [ ! -f "/home/app/.dockerignore" ] && cp "/.dockerignore" "/home/app/.dockerignore"
 [ -f "/.gitattributes" ] && [ ! -f "/home/app/.gitattributes" ] && cp "/.gitattributes" "/home/app/.gitattributes"
@@ -125,9 +155,9 @@ if [ -f "/home/app/.dockerignore" ]; then
 fi
 
 # Create .env from example if it doesn't exist
-if [ ! -f "/home/app/.env" ] && [ -f "/django/.env.example" ]; then
+if [ ! -f "/home/app/.env" ] && [ -f "/django/.env.template" ]; then
     echo "📄 Creating initial .env from template..."
-    cp "/django/.env.example" "/home/app/.env"
+    cp "/django/.env.template" "/home/app/.env"
     
     # Customize .env with current application settings
     sed -i "s|^APP_HOME=.*|APP_HOME=./|g" "/home/app/.env"
@@ -477,7 +507,7 @@ EOF
         echo "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}"
         echo "POSTGRES_NAME=${POSTGRES_NAME}"
         echo "POSTGRES_HOST=${POSTGRES_HOST}"
-        echo "POSTGRES_HOST_PORT=${POSTGRES_HOST_PORT:-${POSTGRES_PORT:-5433}}"
+        echo "POSTGRES_HOST_PORT=${POSTGRES_HOST_PORT:-${POSTGRES_PORT:-5432}}"
     } > /home/app/.env
     chown app:"$APP_GROUP" /home/app/.env
 
@@ -562,5 +592,7 @@ if [ -z "${DJANGO_SECRET_KEY:-}" ] || [ "${DJANGO_SECRET_KEY}" = "$_INSECURE_DEF
     fi
     echo "🔐 Generated DJANGO_SECRET_KEY on the fly (persisted to ./.env when writable)."
 fi
+
+[ ! -f /home/app/.env ] || chmod 600 /home/app/.env
 
 exec gosu app "$@"

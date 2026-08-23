@@ -1,0 +1,18 @@
+ARG CORE_IMAGE=chembience/core-fastapi:latest
+FROM ${CORE_IMAGE}
+
+COPY requirements.txt /opt/fastapi/app-requirements.txt
+
+RUN if grep -qE '^\s*[^#\s]' /opt/fastapi/app-requirements.txt; then \
+        micromamba run -n chembience python -m pip install --no-cache-dir -r /opt/fastapi/app-requirements.txt; \
+    else \
+        echo "requirements.txt is empty; skipping pip install"; \
+    fi && \
+    micromamba clean -a -y && \
+    find /opt/conda/ -follow -type f -name '*.a' -delete && \
+    find /opt/conda/ -follow -type f -name '*.pyc' -delete && \
+    find /opt/conda/ -follow -type f -name '*.js.map' -delete
+
+COPY src /home/app/src
+
+WORKDIR /home/app/src

@@ -9,15 +9,15 @@ x-common-environment: &common-env
   DJANGO_SUPERUSER_USERNAME: ${DJANGO_SUPERUSER_USERNAME:-admin}
   DJANGO_SUPERUSER_EMAIL: ${DJANGO_SUPERUSER_EMAIL:-admin@example.com}
   POSTGRES_USER: ${POSTGRES_USER:-chembience}
-  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure-password-here}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
   POSTGRES_NAME: ${POSTGRES_NAME:-chembience}
   POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
-  POSTGRES_PORT: ${POSTGRES_PORT:-5433}
+  POSTGRES_PORT: ${POSTGRES_PORT:-5432}
   POSTGRES_INTERNAL_PORT: 5432
 
 services:
   django:
-    image: chembience/core-django-${APP_NAME:-app}:${CHEMBIENCE_IMAGE_TAG:-latest}
+    image: chembience/${APP_NAME:-app}:${CHEMBIENCE_IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: Dockerfile

@@ -8,6 +8,8 @@ Run from the project root (where `docker-compose.yml` lives) unless noted.
 - Bootstrap a new app: `./build <type> <target>` (e.g. `./build django myapp`)
   - `<type>`: `django`, `fastapi`, `jupyter`, or `rdkit`
   - Custom parent dir: `./build django myapp -d /path/to/dir`
+  - The default setup run exits after initialization; work with the generated
+    app from its own directory. Use `--no-quit` to keep that setup run attached.
 - Tear down an app: `./remove <target>` (or `./remove <target> -d /path/to/dir`)
 - Start services: `docker compose up -d`
 - Stop services: `docker compose down`
@@ -32,23 +34,22 @@ Run from the project root (where `docker-compose.yml` lives) unless noted.
 - Shell: `docker compose exec fastapi /bin/bash`
 - Logs: `docker compose logs -f fastapi`
 - Helpers: `fastapi/app/fastapi-init`,
-  `fastapi/app/db_backup`,
-  `fastapi/app/db_restore`,
-  `fastapi/app/db_cleanup`
+  `fastapi/app/db-backup`,
+  `fastapi/app/db-restore`,
+  `fastapi/app/db-cleanup`
 - Entry: `uvicorn main:app --host 0.0.0.0 --port 8000` (run from
   `working_dir=/home/app/src/`, i.e. `src/main.py`)
 
 ### Jupyter
 - Shell: `docker compose exec jupyter /bin/bash`
 - Logs: `docker compose logs -f jupyter`
-- Open the lab: prefer running the per-app init helper, which prints the
-  access URL (with token when available): `./jupyter-init` from inside a
-  generated app directory.
-- Token auth is enabled by default. To disable it in development, apply the
+- Open the lab: run `./jupyter-init` inside a generated app directory; it
+  validates the environment and prints the access URL.
+- Token auth is enabled by default. The generated app persists a token in its
+  `.env` when one is not supplied. To disable it in development, apply the
   provided overlay: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d`.
-- To pin a stable token, set `JUPYTER_TOKEN` in `.env` and add a small compose
-  override that appends `--ServerApp.token=${JUPYTER_TOKEN}` to the `jupyter`
-  command.
+- To choose a stable token, set `JUPYTER_TOKEN` in the generated app's `.env`;
+  no compose override is needed.
 
 ### RDKit
 - Interactive shell (one-shot): `docker compose run --rm rdkit`
@@ -77,6 +78,9 @@ Run from the project root (where `docker-compose.yml` lives) unless noted.
   are preferred. All Python-based images utilize **micromamba** (mamba) for
   dependency management and to keep image sizes small. Never bake secrets into images.
 - **Naming**: `snake_case` for variables/functions, `PascalCase` for classes.
+- **Generated apps**: Treat the files in `*/app/` as templates. Verify a
+  generated project when changing them, because entrypoints copy helpers and
+  README files into the project directory during development-mode bootstrap.
 
 ## Project Architecture
 - Project root: top-level of the Chembience platform (contains
@@ -91,6 +95,6 @@ Run from the project root (where `docker-compose.yml` lives) unless noted.
 - `share/chembience/`: Shared Python module imported by services
   (`from chembience import db`) providing a pre-configured SQLAlchemy
   engine, session factory, and Postgres connection settings.
-- `.env`: Global environment configuration (see `.env.example`).
+- `.env`: Global environment configuration (see `.env.template`).
 - `docker-compose.yml`: Authoritative service wiring.
 - `docker-compose.dev.yml`: Optional development overlay.

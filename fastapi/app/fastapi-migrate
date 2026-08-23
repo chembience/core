@@ -1,0 +1,14 @@
+#!/bin/bash
+set -euo pipefail
+
+if [ -f /.dockerenv ]; then
+    cd /home/app/src
+    exec alembic upgrade head
+fi
+
+if [ -z "$(docker compose ps fastapi -q 2>/dev/null)" ]; then
+    echo "FastAPI container is not running. Starting it..."
+    docker compose up -d fastapi
+fi
+
+exec docker compose exec -T fastapi alembic -c /home/app/src/alembic.ini upgrade head

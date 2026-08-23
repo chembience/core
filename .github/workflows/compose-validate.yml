@@ -16,8 +16,8 @@ jobs:
 
       - name: Prepare .env
         run: |
-          if [ -f .env.example ]; then
-            cp .env.example .env
+          if [ -f .env.template ]; then
+            cp .env.template .env
           fi
 
       - name: Validate base compose file

@@ -3,16 +3,16 @@ x-common-environment: &common-env
   APP_HOME: ${APP_HOME}
   CHEMBIENCE_UID: ${CHEMBIENCE_UID:-1000}
   CHEMBIENCE_GID: ${CHEMBIENCE_GID:-1000}
-  POSTGRES_USER: chembience
-  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+  POSTGRES_USER: ${POSTGRES_USER:-chembience}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
   POSTGRES_NAME: ${POSTGRES_NAME:-chembience}
   POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
-  POSTGRES_PORT: ${POSTGRES_PORT:-5433}
+  POSTGRES_PORT: ${POSTGRES_PORT:-5432}
   POSTGRES_INTERNAL_PORT: 5432
 
 services:
   rdkit:
-    image: chembience/core-rdkit-${APP_NAME:-app}:${CHEMBIENCE_IMAGE_TAG:-latest}
+    image: chembience/${APP_NAME:-app}:${CHEMBIENCE_IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: Dockerfile

@@ -1,5 +1,6 @@
 x-common-environment: &common-env
   CHEMBIENCE_VERSION: ${CHEMBIENCE_VERSION:-latest}
+  CHEMBIENCE_RUNTIME_MODE: ${CHEMBIENCE_RUNTIME_MODE:-dev}
   APP_HOME: ${APP_HOME}
   CHEMBIENCE_UID: ${CHEMBIENCE_UID:-1000}
   CHEMBIENCE_GID: ${CHEMBIENCE_GID:-1000}
@@ -39,7 +40,7 @@ services:
       args:
         mamba_image: 'mambaorg/micromamba:1.5.8'
         conda_py: ${CONDA_PY:-3.14}
-        rdkit_version: ${RDKIT_VERSION:-2026.03.2}
+        rdkit_version: ${RDKIT_VERSION:-2026.03.4}
         apt_mirror: ${APT_MIRROR:-}
         conda_mirror: ${CONDA_MIRROR:-}
     environment:
@@ -53,7 +54,7 @@ services:
     command: [ "python" ]
 
   rdkit-app:
-    image: chembience/core-rdkit-${APP_NAME:-app}:${CHEMBIENCE_VERSION}
+    image: chembience/${APP_NAME:-app}:${CHEMBIENCE_VERSION}
     build:
       context: rdkit/app
       dockerfile: Dockerfile
@@ -186,6 +187,7 @@ services:
         build_tag: ${CHEMBIENCE_VERSION}
         apt_mirror: ${APT_MIRROR:-}
         conda_py: ${CONDA_PY:-3.14}
+        rdkit_version: ${RDKIT_VERSION:-2026.03.4}
         conda_mirror: ${CONDA_MIRROR:-}
         CHEMBIENCE_UID: ${CHEMBIENCE_UID:-1000}
         CHEMBIENCE_GID: ${CHEMBIENCE_GID:-1000}

@@ -12,7 +12,7 @@ fi
 
 if [ -z "$1" ]; then
     echo "❌ Error: No backup file specified."
-    echo "Usage: ./db_restore <backup_file.sql>"
+    echo "Usage: ./db-restore <backup_file.sql>"
     exit 1
 fi
 

@@ -36,16 +36,21 @@ COPY rdkit/docker-entrypoint.sh /docker-entrypoint.sh
 COPY rdkit/app/run /opt/rdkit/run
 COPY rdkit/app/shell /opt/rdkit/shell
 COPY rdkit/app/Dockerfile /opt/rdkit/Dockerfile
+COPY rdkit/app/Dockerfile.prod /opt/rdkit/Dockerfile.prod
 COPY rdkit/app/docker-compose.yml /opt/rdkit/docker-compose.yml
+COPY rdkit/app/docker-compose.prod.yml /opt/rdkit/docker-compose.prod.yml
+COPY rdkit/app/docker-compose.prod.self-hosted.yml /opt/rdkit/docker-compose.prod.self-hosted.yml
 COPY rdkit/app/requirements.txt /opt/rdkit/app-requirements.txt
 COPY rdkit/app/rdkit-init /opt/rdkit/rdkit-init
 COPY rdkit/app/rdkit-configure /opt/rdkit/rdkit-configure
+COPY rdkit/app/rdkit-prepare-prod /opt/rdkit/rdkit-prepare-prod
+COPY rdkit/app/rdkit-prod-self-hosted /opt/rdkit/rdkit-prod-self-hosted
 COPY rdkit/app/README.md /opt/rdkit/README.md
 COPY rdkit/environment.yml /opt/rdkit/environment.yml
 COPY psql /opt/rdkit/psql
 COPY .gitignore /
 COPY .dockerignore /
-COPY .env.example /opt/rdkit/.env.example
+COPY .env.template /opt/rdkit/.env.template
 COPY share /opt/share
 
 # Ensure editable install target is writable by non-root user
@@ -78,4 +83,3 @@ RUN micromamba config append channels conda-forge && \
 USER root
 # Make sure entrypoint is executable (line endings are LF per .gitattributes)
 RUN chmod +x /docker-entrypoint.sh
-

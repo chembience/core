@@ -1,5 +1,15 @@
 #!/bin/bash
-set -e
+set -euo pipefail
+
+case "${POSTGRES_PASSWORD:-}" in
+    ""|CHANGE_ME_BEFORE_RUNNING|secure-password-here|change-me-immediately)
+        echo "❌ POSTGRES_PASSWORD must be set to a non-placeholder value." >&2
+        exit 1
+        ;;
+esac
+
+: "${POSTGRES_USER:?POSTGRES_USER must be set}"
+: "${POSTGRES_NAME:?POSTGRES_NAME must be set}"
 
 echo "🔧 Starting custom Postgres entrypoint..."
 
@@ -29,56 +39,63 @@ if [ -d "/home/postgres/postgres_data" ]; then
     chown -R "$CHEMBIENCE_UID":"$CHEMBIENCE_GID" /home/postgres/postgres_data
 fi
 
-#DATA_DIR="/home/postgres/postgres_data"
+DATA_DIR="/home/postgres/postgres_data"
 
-if [ ! -d "/home/postgres/postgres_data" ]; then
+if [ ! -f "${DATA_DIR}/PG_VERSION" ]; then
     echo "🗃 Initializing PostgreSQL data directory ..."
-    gosu app initdb -D "/home/postgres/postgres_data"
+    gosu app initdb -D "${DATA_DIR}"
 
     echo "⚙️ Replacing PostgreSQL config files if available..."
     if [ -f /postgresql.conf ]; then
         echo "  ✅ Copying custom postgresql.conf"
-        cp /postgresql.conf "/home/postgres/postgres_data/postgresql.conf"
+        cp /postgresql.conf "${DATA_DIR}/postgresql.conf"
     else
         echo "  ⚠️  /postgresql.conf not found, using default"
     fi
 
     if [ -f /pg_hba.conf ]; then
         echo "  ✅ Copying custom pg_hba.conf"
-        cp /pg_hba.conf "/home/postgres/postgres_data/pg_hba.conf"
+        cp /pg_hba.conf "${DATA_DIR}/pg_hba.conf"
     else
         echo "  ⚠️  /pg_hba.conf not found, using default"
     fi
 
     echo "🚀 Starting temporary server to configure initial DB..."
-    gosu app pg_ctl -D "/home/postgres/postgres_data" -o "-c listen_addresses='localhost' -p 5432" -w start
+    gosu app pg_ctl -D "${DATA_DIR}" -o "-c listen_addresses='localhost' -p 5432" -w start
 
     echo "USER $POSTGRES_USER"
     echo "NAME $POSTGRES_NAME"
 
     echo "📦 Creating user/database..."
-    gosu app psql -p 5432 --dbname=postgres <<-EOSQL
-        CREATE USER $POSTGRES_USER WITH PASSWORD '$POSTGRES_PASSWORD' SUPERUSER CREATEDB CREATEROLE REPLICATION;
-        CREATE DATABASE $POSTGRES_NAME OWNER $POSTGRES_USER;
+    gosu app psql -v ON_ERROR_STOP=1 -p 5432 --dbname=postgres \
+        --set=db_user="$POSTGRES_USER" \
+        --set=db_password="$POSTGRES_PASSWORD" \
+        --set=db_name="$POSTGRES_NAME" <<-'EOSQL'
+        SELECT format(
+            'CREATE ROLE %I WITH LOGIN PASSWORD %L SUPERUSER CREATEDB CREATEROLE REPLICATION',
+            :'db_user', :'db_password'
+        ) \gexec
+        SELECT format('CREATE DATABASE %I OWNER %I', :'db_name', :'db_user') \gexec
 EOSQL
 
     echo "📦 Initializing RDKit extension..."
-    gosu app psql -p 5432 --dbname=$POSTGRES_NAME <<-EOSQL
+    gosu app psql -v ON_ERROR_STOP=1 -p 5432 --dbname="$POSTGRES_NAME" <<-'EOSQL'
         CREATE EXTENSION IF NOT EXISTS rdkit;
 EOSQL
 
     echo "📦 Granting privileges..."
-    gosu app psql -p 5432 --dbname=$POSTGRES_NAME <<-EOSQL
-        GRANT ALL ON SCHEMA public TO $POSTGRES_USER;
+    gosu app psql -v ON_ERROR_STOP=1 -p 5432 --dbname="$POSTGRES_NAME" \
+        --set=db_user="$POSTGRES_USER" <<-'EOSQL'
+        SELECT format('GRANT ALL ON SCHEMA public TO %I', :'db_user') \gexec
 EOSQL
 
     echo "🛑 Stopping temporary server..."
-    gosu app pg_ctl -D "/home/postgres/postgres_data" -m fast -w stop
+    gosu app pg_ctl -D "${DATA_DIR}" -m fast -w stop
 
     # Final ownership check after initialization
     chown -R "$CHEMBIENCE_UID":"$CHEMBIENCE_GID" /home/postgres
 else
-    echo "📂 Using existing data directory"
+    echo "📂 Using existing initialized data directory"
 fi
 
 

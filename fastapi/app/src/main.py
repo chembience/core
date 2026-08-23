@@ -1,12 +1,6 @@
-from contextlib import asynccontextmanager
-
 from fastapi import APIRouter, FastAPI, HTTPException, status
 from pydantic import BaseModel, Field
 from rdkit import Chem
-
-from chembience.db import init_db
-from db.schema import Molecule  # noqa: F401  # ensure model is registered with Base.metadata
-
 
 # --- Pydantic models ---------------------------------------------------------
 
@@ -28,18 +22,7 @@ class MoleculeResponse(BaseModel):
     molblock: str
 
 
-# --- Lifespan ----------------------------------------------------------------
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Initialize database schema / extensions on startup.
-    # Kept idempotent so concurrent workers are safe.
-    init_db()
-    yield
-
-
-app = FastAPI(title="Chembience FastAPI Prototype", lifespan=lifespan)
+app = FastAPI(title="Chembience FastAPI Prototype")
 
 
 # --- Routers -----------------------------------------------------------------

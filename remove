@@ -180,16 +180,13 @@ remove_app_images() {
     return
   fi
 
-  # Fixed name pattern
-  NAME_PATTERN="^chembience/"
-  
-  # Find matching images (excluding generic base images)
-  # Patterns: ^chembience/ (all our images) AND APP_NAME (app specific suffix)
-  # This ensures we don't delete generic images like chembience/core-rdkit or chembience/core-rdkit-postgres
-  IMAGES=$(docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' | grep -E -e "$NAME_PATTERN" | grep -E -e "$APP_NAME")
+  # Match only this app's development and production image repositories.
+  # Shared core images remain untouched.
+  IMAGES=$(docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' | \
+    awk -v app="chembience/${APP_NAME}" '{ repo=$1; sub(/:[^:]*$/, "", repo); if (repo == app || repo == app "-prod") print }')
 
   if [ -z "$IMAGES" ]; then
-    echo "ℹ️ No matching images found for app '$APP_ID' (pattern '$NAME_PATTERN' and '$APP_NAME')"
+    echo "ℹ️ No matching images found for app '$APP_ID'."
     return
   fi
 
@@ -209,7 +206,7 @@ if [ -n "$APP_ID" ]; then
 elif [ "$CLEANUP_IMAGES" = false ]; then
     # Default behavior if no app name and no -i: try to remove default 'app'
     APP_ID="app"
-    export APP_NAME="-app"
+    export APP_NAME="app"
     # Re-evaluate APP_HOME for default 'app'
     if [ -n "$CUSTOM_DIR" ]; then
       export APP_HOME="$CUSTOM_DIR/app"

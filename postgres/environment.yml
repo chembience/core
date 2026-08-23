@@ -3,4 +3,5 @@ channels:
   - conda-forge
 dependencies:
   - python
-  - rdkit-postgresql
+  # Installed in the Dockerfile to honor RDKIT_VERSION from .env.
+  # - rdkit-postgresql

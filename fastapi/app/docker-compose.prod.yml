@@ -1,0 +1,24 @@
+services:
+  fastapi:
+    image: ${CHEMBIENCE_PROD_IMAGE_NAME:?Run fastapi-prepare-prod first}:${CHEMBIENCE_IMAGE_TAG:?Set CHEMBIENCE_IMAGE_TAG in .env.prod}
+    env_file: .env.prod
+    environment:
+      CHEMBIENCE_RUNTIME_MODE: prod
+    ports:
+      - "${FASTAPI_CONNECTION_PORT:-8002}:8000"
+    restart: unless-stopped
+    command: ["sh", "-c", "exec uvicorn main:app --host 0.0.0.0 --port 8000 --workers ${UVICORN_WORKERS:-2}"]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
+  migrate:
+    image: ${CHEMBIENCE_PROD_IMAGE_NAME:?Run fastapi-prepare-prod first}:${CHEMBIENCE_IMAGE_TAG:?Set CHEMBIENCE_IMAGE_TAG in .env.prod}
+    env_file: .env.prod
+    environment:
+      CHEMBIENCE_RUNTIME_MODE: prod
+    profiles: ["migration"]
+    command: ["alembic", "-c", "/home/app/src/alembic.ini", "upgrade", "head"]

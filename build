@@ -1,21 +1,22 @@
 #!/bin/bash
 set -euo pipefail
+umask 077
 
 # Create .env once from template; don't overwrite local settings
 if [ ! -f .env ]; then
-  cp .env.example .env
-  echo "Created .env from template (.env.example)."
+  cp .env.template .env
+  echo "Created .env from template (.env.template)."
 else
-  # Check if .env.example is newer and different
-  if [ .env.example -nt .env ] && ! cmp -s .env.example .env; then
-    echo "⚠️  The template .env.example is newer than your current .env and contains changes."
+  # Check if .env.template is newer and different
+  if [ .env.template -nt .env ] && ! cmp -s .env.template .env; then
+    echo "⚠️  The template .env.template is newer than your current .env and contains changes."
     if [ "${NO_PROMPT:-false}" = true ]; then
       echo "⏩ Non-interactive mode: leaving your existing .env unchanged."
     else
       read -p "Do you want to overwrite your .env with the new template? (y/N) " -n 1 -r
       echo
       if [[ $REPLY =~ ^[Yy]$ ]]; then
-        cp .env.example .env
+        cp .env.template .env
         echo "✅ .env updated from template."
       else
         echo "⏩ Skipping .env update."
@@ -28,14 +29,14 @@ fi
 set -o allexport
 source .env
 set +o allexport
+chmod 600 .env
 
-# Check if the published Postgres host port is already in use
-PORT_TO_CHECK="${POSTGRES_HOST_PORT:-${POSTGRES_PORT:-5433}}"
-if netstat -tuln | grep -q ":$PORT_TO_CHECK "; then
-  echo "❌ Error: Postgres port $PORT_TO_CHECK is already in use."
-  echo "Please stop the service using this port or change POSTGRES_HOST_PORT in .env"
-  exit 1
-fi
+case "${POSTGRES_PASSWORD:-}" in
+  ""|CHANGE_ME_BEFORE_RUNNING|secure-password-here|change-me-immediately)
+    echo "❌ Error: Set POSTGRES_PASSWORD in .env to a non-placeholder value." >&2
+    exit 1
+    ;;
+esac
 
 # Match container UID/GID to current user (WSL2/macOS/Linux)
 export CHEMBIENCE_UID="${CHEMBIENCE_UID:-$(id -u)}"
@@ -86,6 +87,12 @@ if [ "$TYPE" != "django" ] && [ "$TYPE" != "rdkit" ] && [ "$TYPE" != "fastapi" ]
   exit 1
 fi
 
+if [[ ! "$TARGET" =~ ^[a-z0-9][a-z0-9._-]*$ ]]; then
+  echo "Error: Application name '$TARGET' is not valid for a Docker image repository."
+  echo "Use lowercase letters, digits, dots, underscores, or dashes; start with a letter or digit."
+  exit 2
+fi
+
 export APP_ID="$TARGET"
 export APP_NAME="$TARGET"
 if [ -n "${CUSTOM_DIR:-}" ]; then
@@ -96,12 +103,9 @@ fi
 
 cleanup() {
   echo "🧹 Cleaning up containers..."
-  if [ "$QUIT_AFTER_SETUP" = true ]; then
-    # Keep volumes if we just did a setup
-    APP_NAME="$APP_NAME" docker compose down
-  else
-    APP_NAME="$APP_NAME" docker compose down --volumes
-  fi
+  # Generated database state lives in APP_HOME. Never remove volumes as an
+  # implicit side effect of --no-quit; explicit removal belongs to ./remove.
+  APP_NAME="$APP_NAME" docker compose down
 }
 trap cleanup EXIT
 
@@ -126,7 +130,7 @@ export APP_HOME
 cat <<EOF > "$APP_HOME/.chembience"
 CHEMBIENCE_VERSION=${CHEMBIENCE_VERSION:-unknown}
 INSTALLATION_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-INSTALLATION_ID=$(LC_ALL=C tr -dc 'a-zA-Z0-9' < /dev/urandom | head -c 32)
+INSTALLATION_ID=$(od -An -N16 -tx1 /dev/urandom | tr -d '[:space:]')
 GIT_REVISION=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
 EOF
 

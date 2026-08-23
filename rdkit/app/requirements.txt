@@ -1,3 +1,3 @@
 # Add additional Python packages for your RDKit app here
 # Use the prebuilt wheel to avoid requiring build toolchains in the dev image
-psycopg2-binary
+psycopg2-binary==2.9.12

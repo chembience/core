@@ -1,0 +1,22 @@
+#!/bin/bash
+set -euo pipefail
+
+APP_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$APP_DIR"
+
+if [[ "${1:-}" == "--skip-prepare" && $# -eq 1 ]]; then
+  [[ -f .env.prod ]] || { echo "Missing .env.prod; run ./rdkit-prepare-prod first." >&2; exit 1; }
+elif [[ $# -eq 0 ]]; then
+  if [[ -f .env.prod ]]; then ./rdkit-prepare-prod --keep-env-prod; else ./rdkit-prepare-prod; fi
+else
+  echo "Usage: $0 [--skip-prepare]" >&2; exit 2
+fi
+
+get_env_var() { grep -E "^$2=" "$1" | tail -n1 | cut -d= -f2- || true; }
+APP_NAME="$(get_env_var .env.prod APP_NAME)"; APP_NAME="${APP_NAME:-app}"
+PROJECT_NAME="$(printf '%s' "$APP_NAME" | tr '[:upper:]' '[:lower:]' | tr '.' '-')-prod"
+[[ "$PROJECT_NAME" =~ ^[a-z0-9][a-z0-9_-]*$ ]] || { echo "APP_NAME must form a valid Compose project name: $APP_NAME" >&2; exit 2; }
+COMPOSE=(docker compose --project-name "$PROJECT_NAME" --env-file .env.prod -f docker-compose.prod.yml -f docker-compose.prod.self-hosted.yml)
+echo "🚀 Starting self-hosted RDKit production stack as ${PROJECT_NAME}..."
+"${COMPOSE[@]}" up -d
+echo "✅ RDKit production stack is running as ${PROJECT_NAME}."

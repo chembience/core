@@ -1,0 +1,23 @@
+services:
+  jupyter:
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: ${CHEMBIENCE_POSTGRES_IMAGE:?Set CHEMBIENCE_POSTGRES_IMAGE in .env.prod}
+    env_file: .env.prod
+    volumes:
+      - postgres-data:/home/postgres
+    restart: unless-stopped
+    entrypoint: ["/docker-entrypoint.sh"]
+    command: ["gosu", "app", "postgres", "-D", "/home/postgres/postgres_data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_NAME -p 5432"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+volumes:
+  postgres-data:

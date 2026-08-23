@@ -19,17 +19,23 @@ COPY .dockerignore /
 COPY fastapi/docker-compose.yml /fastapi/docker-compose.yml
 COPY fastapi/app/docker-compose.override.yml /fastapi/docker-compose.override.yml
 COPY fastapi/app/Dockerfile /fastapi/Dockerfile
+COPY fastapi/app/Dockerfile.prod /fastapi/Dockerfile.prod
+COPY fastapi/app/docker-compose.prod.yml /fastapi/docker-compose.prod.yml
+COPY fastapi/app/docker-compose.prod.self-hosted.yml /fastapi/docker-compose.prod.self-hosted.yml
 COPY fastapi/app/requirements.txt /fastapi/requirements.txt
 COPY fastapi/app/README.md /fastapi/README.md
-COPY fastapi/app/db_backup /fastapi/db_backup
-COPY fastapi/app/db_restore /fastapi/db_restore
-COPY fastapi/app/db_cleanup /fastapi/db_cleanup
+COPY fastapi/app/db-backup /fastapi/db-backup
+COPY fastapi/app/db-restore /fastapi/db-restore
+COPY fastapi/app/db-cleanup /fastapi/db-cleanup
 COPY fastapi/app/fastapi-init /fastapi/fastapi-init
+COPY fastapi/app/fastapi-migrate /fastapi/fastapi-migrate
+COPY fastapi/app/fastapi-makemigrations /fastapi/fastapi-makemigrations
 COPY fastapi/app/fastapi-configure /fastapi/fastapi-configure
-COPY fastapi/app/src /fastapi/src
+COPY fastapi/app/fastapi-prepare-prod /fastapi/fastapi-prepare-prod
+COPY fastapi/app/fastapi-prod-self-hosted /fastapi/fastapi-prod-self-hosted
 COPY psql /fastapi/psql
 COPY share /opt/share
-COPY .env.example /fastapi/.env.example
+COPY .env.template /fastapi/.env.template
 COPY fastapi/requirements.txt /opt/fastapi
 
 # Do not bake the project source into the image — rely on bind mounts in dev
@@ -47,5 +53,7 @@ RUN if grep -qE '^\s*[^#\s]' /opt/fastapi/requirements.txt; then \
     find /opt/conda/ -follow -type f -name '*.a' -delete && \
     find /opt/conda/ -follow -type f -name '*.pyc' -delete && \
     find /opt/conda/ -follow -type f -name '*.js.map' -delete
+
+COPY fastapi/app/src /fastapi/src
 
 WORKDIR /home/app/src
