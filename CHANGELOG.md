@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Renamed the root environment template from `.env.example` to `.env.template`.
 - Updated build scripts, CI workflows, Dockerfiles, and documentation to use `.env.template` consistently.
+- Refreshed the root contributor and agent guidance (`README.md`, `CLAUDE.md`,
+  and `AGENTS.md`) to distinguish core-repository and generated-app workflows.
+- Updated the Django, FastAPI, JupyterLab, and RDKit application README
+  templates with current setup, database-networking, migration, and token-auth
+  guidance.
 
 ## [0.5.1] - 2026-06-03
 
