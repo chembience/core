@@ -1,10 +1,20 @@
 import os
+from pathlib import Path
 
 from setuptools import setup, find_packages
 
-# Single source of truth: prefer CHEMBIENCE_VERSION env var (set by docker-compose / CI),
-# fall back to a sensible default for local installs.
-VERSION = os.environ.get("CHEMBIENCE_VERSION", "0.5.0")
+
+def read_version() -> str:
+    """Read the release version from the source tree or a core-image copy."""
+    for version_file in (Path(__file__).resolve().parents[1] / "VERSION", Path("/opt/VERSION")):
+        if version_file.is_file():
+            value = version_file.read_text(encoding="utf-8").strip()
+            if value:
+                return value
+    return os.environ.get("CHEMBIENCE_VERSION", "0.0.0+unknown")
+
+
+VERSION = read_version()
 
 setup(
     name="chembience",

@@ -5,9 +5,11 @@ Run from the project root (where `docker-compose.yml` lives) unless noted.
 
 ### Lifecycle
 - Build all images: `docker compose build`
-- Bootstrap a new app: `./build <type> <target>` (e.g. `./build django myapp`)
+- Install a new app from published core images: `./install <type> <target>`
+  (e.g. `./install django myapp`)
+- Bootstrap an app with locally built core images: `./build <type> <target>`
   - `<type>`: `django`, `fastapi`, `jupyter`, or `rdkit`
-  - Custom parent dir: `./build django myapp -d /path/to/dir`
+  - Both commands accept `-d /path/to/dir` for a custom parent directory.
   - The default setup run exits after initialization; work with the generated
     app from its own directory. Use `--no-quit` to keep that setup run attached.
 - Tear down an app: `./remove <target>` (or `./remove <target> -d /path/to/dir`)
@@ -81,6 +83,8 @@ Run from the project root (where `docker-compose.yml` lives) unless noted.
 - **Generated apps**: Treat the files in `*/app/` as templates. Verify a
   generated project when changing them, because entrypoints copy helpers and
   README files into the project directory during development-mode bootstrap.
+- **Release version**: `VERSION` is the single source of truth. `install` and
+  `build` derive `CHEMBIENCE_VERSION` in `.env`; do not edit that key manually.
 
 ## Project Architecture
 - Project root: top-level of the Chembience platform (contains

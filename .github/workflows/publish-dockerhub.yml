@@ -38,9 +38,9 @@ jobs:
             exit 1
           fi
 
-          template_version="$(sed -n 's/^CHEMBIENCE_VERSION=//p' .env.template | head -n 1)"
-          if [ "$version" != "$template_version" ]; then
-            echo "Release version $version does not match .env.template version $template_version." >&2
+          source_version="$(tr -d '[:space:]' < VERSION)"
+          if [ "$version" != "$source_version" ]; then
+            echo "Release version $version does not match VERSION $source_version." >&2
             exit 1
           fi
 
@@ -55,6 +55,7 @@ jobs:
         run: |
           set -euo pipefail
           cp .env.template .env
+          printf '\nCHEMBIENCE_VERSION=%s\n' "$(tr -d '[:space:]' < VERSION)" >> .env
           sed -i 's/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=ci-release-validation-only-9f4c2b7a/' .env
 
       - name: Validate Compose configuration

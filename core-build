@@ -1,0 +1,270 @@
+#!/bin/bash
+set -euo pipefail
+umask 077
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+VERSION_FILE="${SCRIPT_DIR}/VERSION"
+
+if [ ! -f "$VERSION_FILE" ]; then
+  echo "❌ Error: Missing release version file: $VERSION_FILE" >&2
+  exit 1
+fi
+
+CHEMBIENCE_VERSION="$(tr -d '[:space:]' < "$VERSION_FILE")"
+if ! [[ "$CHEMBIENCE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+  echo "❌ Error: VERSION must contain a Docker-compatible semantic version." >&2
+  exit 1
+fi
+export CHEMBIENCE_VERSION
+
+# Create .env once from template; don't overwrite local settings
+if [ ! -f .env ]; then
+  cp .env.template .env
+  echo "Created .env from template (.env.template)."
+else
+  # Check if .env.template is newer and different
+  if [ .env.template -nt .env ] && ! cmp -s .env.template .env; then
+    echo "⚠️  The template .env.template is newer than your current .env and contains changes."
+    if [ "${NO_PROMPT:-false}" = true ]; then
+      echo "⏩ Non-interactive mode: leaving your existing .env unchanged."
+    else
+      read -p "Do you want to overwrite your .env with the new template? (y/N) " -n 1 -r
+      echo
+      if [[ $REPLY =~ ^[Yy]$ ]]; then
+        cp .env.template .env
+        echo "✅ .env updated from template."
+      else
+        echo "⏩ Skipping .env update."
+      fi
+    fi
+  fi
+fi
+
+# The root VERSION file is the release-version source of truth. Keep the
+# Compose runtime value aligned without overwriting any user-owned settings.
+if grep -q '^CHEMBIENCE_VERSION=' .env; then
+  sed -i "s/^CHEMBIENCE_VERSION=.*/CHEMBIENCE_VERSION=${CHEMBIENCE_VERSION}/" .env
+else
+  printf '\n# Derived from the repository VERSION file; do not edit here.\nCHEMBIENCE_VERSION=%s\n' "$CHEMBIENCE_VERSION" >> .env
+fi
+
+# Load environment variables from .env
+set -o allexport
+source .env
+set +o allexport
+chmod 600 .env
+
+case "${POSTGRES_PASSWORD:-}" in
+  ""|CHANGE_ME_BEFORE_RUNNING|secure-password-here|change-me-immediately)
+    echo "❌ Error: Set POSTGRES_PASSWORD in .env to a non-placeholder value." >&2
+    exit 1
+    ;;
+esac
+
+# Match container UID/GID to current user (WSL2/macOS/Linux)
+export CHEMBIENCE_UID="${CHEMBIENCE_UID:-$(id -u)}"
+export CHEMBIENCE_GID="${CHEMBIENCE_GID:-$(id -g)}"
+
+# Positional arguments and flags
+BUILD_FLAGS=()
+QUIT_AFTER_SETUP=true
+POSITIONAL_ARGS=()
+NO_PROMPT=false
+BUILD_CORE=false
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --no-cache|--pull|--progress=*)
+      BUILD_FLAGS+=("$1")
+      shift
+      ;;
+    --no-quit)
+      QUIT_AFTER_SETUP=false
+      shift
+      ;;
+    --build-core)
+      BUILD_CORE=true
+      shift
+      ;;
+    --no-prompt|-y)
+      NO_PROMPT=true
+      export NO_PROMPT
+      shift
+      ;;
+    --dir|-d)
+      CUSTOM_DIR="$2"
+      shift 2
+      ;;
+    -*)
+      echo "Unknown argument: $1"
+      echo "Supported: --build-core, --no-cache, --pull, --progress=plain, --no-quit, --no-prompt|-y, --dir|-d"
+      exit 2
+      ;;
+    *)
+      POSITIONAL_ARGS+=("$1")
+      shift
+      ;;
+  esac
+done
+
+TYPE="${POSITIONAL_ARGS[0]:-django}"
+TARGET="${POSITIONAL_ARGS[1]:-app}"
+
+if [ "$TYPE" != "django" ] && [ "$TYPE" != "rdkit" ] && [ "$TYPE" != "fastapi" ] && [ "$TYPE" != "jupyter" ]; then
+  echo "Error: Only 'django', 'rdkit', 'fastapi' and 'jupyter' types are currently supported."
+  exit 1
+fi
+
+if [[ ! "$TARGET" =~ ^[a-z0-9][a-z0-9._-]*$ ]]; then
+  echo "Error: Application name '$TARGET' is not valid for a Docker image repository."
+  echo "Use lowercase letters, digits, dots, underscores, or dashes; start with a letter or digit."
+  exit 2
+fi
+
+export APP_ID="$TARGET"
+export APP_NAME="$TARGET"
+if [ -n "${CUSTOM_DIR:-}" ]; then
+  export APP_HOME="$CUSTOM_DIR/$TARGET"
+else
+  export APP_HOME="$HOME/$TARGET"
+fi
+
+cleanup() {
+  echo "🧹 Cleaning up containers..."
+  # Generated database state lives in APP_HOME. Never remove volumes as an
+  # implicit side effect of --no-quit; explicit removal belongs to ./remove.
+  APP_NAME="$APP_NAME" docker compose down
+}
+trap cleanup EXIT
+
+# Expand APP_HOME if it starts with ~
+if [[ "$APP_HOME" == "~"* ]]; then
+  APP_HOME="${APP_HOME/#\~/$HOME}"
+fi
+
+# Check if target directory already exists
+if [ -d "$APP_HOME" ]; then
+  echo "❌ Error: Target directory '$APP_HOME' already exists."
+  echo "Please use a different target name or remove the existing directory first."
+  exit 1
+fi
+
+# Ensure APP_HOME exists locally so Docker doesn't create it as root
+mkdir -p "$APP_HOME"
+APP_HOME=$(cd "$APP_HOME" && pwd)
+export APP_HOME
+
+# Create .chembience marker for a Chembience app with metadata
+cat <<EOF > "$APP_HOME/.chembience"
+CHEMBIENCE_VERSION=${CHEMBIENCE_VERSION:-unknown}
+INSTALLATION_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+INSTALLATION_ID=$(od -An -N16 -tx1 /dev/urandom | tr -d '[:space:]')
+GIT_REVISION=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
+EOF
+
+# Copy .gitignore and .dockerignore to app directory and add postgres/ to them
+if [ -f .gitignore ]; then
+  cp .gitignore "$APP_HOME/.gitignore"
+  [ -f .gitattributes ] && cp .gitattributes "$APP_HOME/.gitattributes"
+  # Use a more robust check that handles potential whitespace and avoids partial matches
+  if ! grep -Eq "^postgres/postgres_data/?([[:space:]]|#|$)" "$APP_HOME/.gitignore"; then
+    echo "" >> "$APP_HOME/.gitignore"
+    echo "# Added by build script" >> "$APP_HOME/.gitignore"
+    echo "postgres/postgres_data" >> "$APP_HOME/.gitignore"
+  fi
+fi
+
+if [ -f .dockerignore ]; then
+  cp .dockerignore "$APP_HOME/.dockerignore"
+  if ! grep -Eq "^postgres/postgres_data/?([[:space:]]|#|$)" "$APP_HOME/.dockerignore"; then
+    echo "" >> "$APP_HOME/.dockerignore"
+    echo "# Added by build script" >> "$APP_HOME/.dockerignore"
+    echo "postgres/postgres_data" >> "$APP_HOME/.dockerignore"
+  fi
+fi
+
+# posix shell variable expansion for JUPYTER_CONNECTION_PORT if not set
+export JUPYTER_CONNECTION_PORT="${JUPYTER_CONNECTION_PORT:-8888}"
+
+echo "📂 Using APP_HOME: $APP_HOME for target: $TARGET (type: $TYPE)"
+
+# Check if the application port is already in use
+if [ "$TYPE" = "django" ]; then
+    APP_PORT="${DJANGO_CONNECTION_PORT:-8001}"
+elif [ "$TYPE" = "fastapi" ]; then
+    APP_PORT="${FASTAPI_CONNECTION_PORT:-8002}"
+elif [ "$TYPE" = "jupyter" ]; then
+    APP_PORT="${JUPYTER_CONNECTION_PORT:-8888}"
+else
+    APP_PORT=""
+fi
+
+if [ -n "$APP_PORT" ]; then
+    if netstat -tuln | grep -q ":$APP_PORT "; then
+        echo "❌ Error: Application port $APP_PORT (type: $TYPE) is already in use."
+        echo "Please stop the service using this port or change the corresponding *_CONNECTION_PORT in .env"
+        exit 1
+    fi
+fi
+
+# Build local core images for contributors, or pull published core images for
+# regular installations. The RDKit application itself is project-specific, so
+# it is always built from its generated-app Dockerfile.
+UP_FLAGS=()
+if [ "$BUILD_CORE" = true ]; then
+  echo "🔨 Building core images from the checked-out source..."
+  if [ "$TYPE" = "rdkit" ]; then
+      docker compose build "${BUILD_FLAGS[@]}" rdkit postgres
+      APP_NAME="$APP_NAME" docker compose build "${BUILD_FLAGS[@]}" rdkit-app
+  elif [ "$TYPE" = "fastapi" ]; then
+      docker compose build "${BUILD_FLAGS[@]}" rdkit postgres
+      APP_NAME="$APP_NAME" docker compose build "${BUILD_FLAGS[@]}" fastapi
+  elif [ "$TYPE" = "jupyter" ]; then
+      docker compose build "${BUILD_FLAGS[@]}" rdkit postgres
+      APP_NAME="$APP_NAME" docker compose build "${BUILD_FLAGS[@]}" jupyter
+  else
+      docker compose build "${BUILD_FLAGS[@]}" rdkit postgres
+      APP_NAME="$APP_NAME" docker compose build "${BUILD_FLAGS[@]}" django
+  fi
+else
+  echo "📥 Pulling published Chembience ${CHEMBIENCE_VERSION} core images..."
+  if [ "$TYPE" = "rdkit" ]; then
+    docker compose pull --policy always rdkit postgres || {
+      echo "❌ Could not pull the published ${CHEMBIENCE_VERSION} core images." >&2
+      echo "Use ./build to build them from this checkout instead." >&2
+      exit 1
+    }
+    APP_NAME="$APP_NAME" docker compose build "${BUILD_FLAGS[@]}" rdkit-app
+  else
+    docker compose pull --policy always "$TYPE" postgres || {
+      echo "❌ Could not pull the published ${CHEMBIENCE_VERSION} core images." >&2
+      echo "Use ./build to build them from this checkout instead." >&2
+      exit 1
+    }
+  fi
+  UP_FLAGS=(--no-build --pull never)
+fi
+
+if [ "$QUIT_AFTER_SETUP" = true ]; then
+  echo "🚀 Starting containers in setup mode (will quit once healthy)..."
+  if [ "$TYPE" = "rdkit" ]; then
+    APP_NAME="$APP_NAME" docker compose up --wait "${UP_FLAGS[@]}" rdkit-app postgres
+  elif [ "$TYPE" = "fastapi" ]; then
+    APP_NAME="$APP_NAME" docker compose up --wait "${UP_FLAGS[@]}" fastapi postgres
+  elif [ "$TYPE" = "jupyter" ]; then
+    APP_NAME="$APP_NAME" docker compose up --wait "${UP_FLAGS[@]}" jupyter postgres
+  else
+    APP_NAME="$APP_NAME" docker compose up --wait "${UP_FLAGS[@]}" django postgres
+  fi
+  echo "✅ Everything is setup. Exiting..."
+else
+  if [ "$TYPE" = "rdkit" ]; then
+    APP_NAME="$APP_NAME" docker compose up --abort-on-container-exit "${UP_FLAGS[@]}" rdkit-app postgres
+  elif [ "$TYPE" = "fastapi" ]; then
+    APP_NAME="$APP_NAME" docker compose up --abort-on-container-exit "${UP_FLAGS[@]}" fastapi postgres
+  elif [ "$TYPE" = "jupyter" ]; then
+    APP_NAME="$APP_NAME" docker compose up --abort-on-container-exit "${UP_FLAGS[@]}" jupyter postgres
+  else
+    APP_NAME="$APP_NAME" docker compose up --abort-on-container-exit "${UP_FLAGS[@]}" django postgres
+  fi
+fi

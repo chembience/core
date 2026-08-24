@@ -34,6 +34,7 @@ COPY fastapi/app/fastapi-configure /fastapi/fastapi-configure
 COPY fastapi/app/fastapi-prepare-prod /fastapi/fastapi-prepare-prod
 COPY fastapi/app/fastapi-prod-self-hosted /fastapi/fastapi-prod-self-hosted
 COPY psql /fastapi/psql
+COPY VERSION /opt/VERSION
 COPY share /opt/share
 COPY .env.template /fastapi/.env.template
 COPY fastapi/requirements.txt /opt/fastapi

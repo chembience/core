@@ -29,6 +29,7 @@ COPY django/app/requirements.txt /django/requirements.txt
 COPY django/app/README.md /django/README.md
 COPY django/psql /django/psql
 COPY django/app/django-rdkit-test-app /django/django-rdkit-test-app/
+COPY VERSION /opt/VERSION
 COPY share /opt/share
 COPY .env.template /django/.env.template
 COPY django/requirements.txt /opt/django

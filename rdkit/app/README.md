@@ -4,7 +4,7 @@ This is the RDKit service for your Chembience project. It provides specialized c
 
 ## Important Files
 
-- `.env`: Per-app runtime configuration and secrets. It is created during initialization; do not commit it. `APP_NAME` is set when the app is created (for example, `./build rdkit my-project`) and identifies the app images: `chembience/<app_name>:<tag>` and `chembience/<app_name>-prod:<tag>`.
+- `.env`: Per-app runtime configuration and secrets. It is created during initialization; do not commit it. `APP_NAME` is set when the app is created (for example, `./install rdkit my-project`) and identifies the app images: `chembience/<app_name>:<tag>` and `chembience/<app_name>-prod:<tag>`.
 - `docker-compose.yml`: Defines the RDKit sidecar and PostgreSQL services for this app.
 - `requirements.txt`: Add Python dependencies for RDKit scripts.
 - `Dockerfile`: Development image extension that installs `requirements.txt`; `Dockerfile.prod` creates a source-baked production image.
@@ -59,8 +59,9 @@ or add a local Compose override if host access is needed.
 
 Use this workflow when you want a fully self-contained production image for RDKit scripts and runtime tooling.
 
-Prerequisite:
-- The base core image must exist locally: `chembience/core-rdkit:${CHEMBIENCE_VERSION}` from your app `.env` (for example, run `./build` from repository root first).
+`rdkit-prepare-prod` pulls the matching published core image
+`chembience/core-rdkit:${CHEMBIENCE_VERSION}` before building the source-baked
+application image. No local core-image build is required.
 
 ```bash
 ./rdkit-prepare-prod
@@ -92,16 +93,16 @@ Examples:
 
 ```bash
 # Repeatable release image build
-./rdkit-prepare-prod --image-tag 0.6.0-rdkit.1
+./rdkit-prepare-prod --image-tag 0.6.1-rdkit.1
 
 # Custom production image repository/name
-./rdkit-prepare-prod --image-name registry.example.com/chem/rdkit-prod --image-tag 0.6.0-rdkit.1
+./rdkit-prepare-prod --image-name registry.example.com/chem/rdkit-prod --image-tag 0.6.1-rdkit.1
 ```
 
 Run the produced image (example):
 
 ```bash
-docker run --rm --entrypoint /opt/conda/envs/chembience/bin/python chembience/app-prod:0.6.0-rdkit.1 - <<'PY'
+docker run --rm --entrypoint /opt/conda/envs/chembience/bin/python chembience/app-prod:0.6.1-rdkit.1 - <<'PY'
 from rdkit import Chem
 print(bool(Chem.MolFromSmiles('CCO')))
 PY

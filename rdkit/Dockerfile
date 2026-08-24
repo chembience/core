@@ -51,6 +51,7 @@ COPY psql /opt/rdkit/psql
 COPY .gitignore /
 COPY .dockerignore /
 COPY .env.template /opt/rdkit/.env.template
+COPY VERSION /opt/VERSION
 COPY share /opt/share
 
 # Ensure editable install target is writable by non-root user

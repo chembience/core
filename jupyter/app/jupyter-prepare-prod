@@ -85,11 +85,8 @@ CORE_IMAGE_TAG="$(get_env_var .env CHEMBIENCE_VERSION)"
 CORE_IMAGE_TAG="${CORE_IMAGE_TAG:-latest}"
 CORE_IMAGE="chembience/core-jupyter:${CORE_IMAGE_TAG}"
 
-if ! docker image inspect "${CORE_IMAGE}" >/dev/null 2>&1; then
-  echo "Missing required core image: ${CORE_IMAGE}" >&2
-  echo "Build it first (for example from repo root: ./build)" >&2
-  exit 1
-fi
+echo "📥 Pulling required core image: ${CORE_IMAGE}..."
+docker pull "${CORE_IMAGE}"
 
 set_env_var .env.prod CHEMBIENCE_VERSION "$IMAGE_TAG"
 set_env_var .env.prod CHEMBIENCE_IMAGE_TAG "$IMAGE_TAG"

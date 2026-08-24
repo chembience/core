@@ -31,6 +31,7 @@ jobs:
         run: |
           if [ -f .env.template ]; then
             cp .env.template .env
+            printf '\nCHEMBIENCE_VERSION=%s\n' "$(tr -d '[:space:]' < VERSION)" >> .env
             sed -i 's/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=ci-smoke-test-only-9f4c2b7a/' .env
           fi
 

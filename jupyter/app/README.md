@@ -91,8 +91,9 @@ It uses the Compose project name `<app_name>-prod` and assigns a newly created
 `.env.prod` the development port plus 1000 (normally `9888`). Use
 `--skip-prepare` to start an already prepared image without rebuilding it.
 
-Prerequisite:
-- The base core image must exist locally: `chembience/core-jupyter:${CHEMBIENCE_VERSION}` from your app `.env` (for example, run `./build` from repository root first).
+`jupyter-prepare-prod` pulls the matching published core image
+`chembience/core-jupyter:${CHEMBIENCE_VERSION}` before building the source-baked
+application image. No local core-image build is required.
 
 ```bash
 ./jupyter-prepare-prod
@@ -115,16 +116,16 @@ Examples:
 
 ```bash
 # Repeatable release image build
-./jupyter-prepare-prod --image-tag 0.6.0-jupyter.1
+./jupyter-prepare-prod --image-tag 0.6.1-jupyter.1
 
 # Custom production image repository/name
-./jupyter-prepare-prod --image-name registry.example.com/chem/jupyter-prod --image-tag 0.6.0-jupyter.1
+./jupyter-prepare-prod --image-name registry.example.com/chem/jupyter-prod --image-tag 0.6.1-jupyter.1
 ```
 
 Run the produced image (example):
 
 ```bash
-docker run --rm -p 8888:8888 chembience/app-prod:0.6.0-jupyter.1 \
+docker run --rm -p 8888:8888 chembience/app-prod:0.6.1-jupyter.1 \
   jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root
 ```
 

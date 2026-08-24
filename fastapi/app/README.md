@@ -4,7 +4,7 @@ This is the async REST API service for your Chembience project. It is built usin
 
 ## Important Files
 
-- `.env`: Per-app runtime configuration and secrets. It is created during initialization; do not commit it. `APP_NAME` is set when the app is created (for example, `./build fastapi my-project`) and identifies the app images: `chembience/<app_name>:<tag>` and `chembience/<app_name>-prod:<tag>`.
+- `.env`: Per-app runtime configuration and secrets. It is created during initialization; do not commit it. `APP_NAME` is set when the app is created (for example, `./install fastapi my-project`) and identifies the app images: `chembience/<app_name>:<tag>` and `chembience/<app_name>-prod:<tag>`.
 - `docker-compose.yml`: Defines the FastAPI and PostgreSQL services; `docker-compose.override.yml` is available for local overrides.
 - `src/main.py`: FastAPI application entry point and router registration.
 - `src/db/schema.py`: SQLAlchemy metadata and database schema definitions.
@@ -75,8 +75,9 @@ For platform documentation, see the [Chembience core README](https://github.com/
 
 Use this workflow when you want a fully self-contained production image that does not depend on bind mounts.
 
-Prerequisite:
-- The base core image must exist locally: `chembience/core-fastapi:${CHEMBIENCE_VERSION}` from your app `.env` (for example, run `./build` from repository root first).
+`fastapi-prepare-prod` pulls the matching published core image
+`chembience/core-fastapi:${CHEMBIENCE_VERSION}` before building the source-baked
+application image. No local core-image build is required.
 
 ```bash
 ./fastapi-prepare-prod
@@ -110,16 +111,16 @@ Examples:
 
 ```bash
 # Repeatable release image build
-./fastapi-prepare-prod --image-tag 0.6.0-fastapi.1
+./fastapi-prepare-prod --image-tag 0.6.1-fastapi.1
 
 # Custom production image repository/name
-./fastapi-prepare-prod --image-name registry.example.com/chem/fastapi-prod --image-tag 0.6.0-fastapi.1
+./fastapi-prepare-prod --image-name registry.example.com/chem/fastapi-prod --image-tag 0.6.1-fastapi.1
 ```
 
 Run the produced image (example):
 
 ```bash
-docker run --rm -p 8002:8000 chembience/app-prod:0.6.0-fastapi.1 \
+docker run --rm -p 8002:8000 chembience/app-prod:0.6.1-fastapi.1 \
   sh -c "alembic upgrade head && exec uvicorn main:app --host 0.0.0.0 --port 8000 --workers 2"
 ```
 

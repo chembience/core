@@ -25,7 +25,7 @@ All images are built with **micromamba** to ensure minimal image size and fast b
 
 All services are wired together with Docker Compose and share a common application directory mounted into the containers.
 
-## Quick Start
+## Quick Start (Jupyter)
 
 For instance, get a JupyterLab environment with RDKit + PostgreSQL running in a few commands:
 
@@ -34,8 +34,8 @@ For instance, get a JupyterLab environment with RDKit + PostgreSQL running in a 
 git clone https://github.com/chembience/core.git chembience
 cd chembience
 
-# 2. Build a Jupyter app (creates ~/myapp by default)
-./build jupyter myapp
+# 2. Install a Jupyter app from published core images (creates ~/myapp by default)
+./install jupyter myapp
 
 # 3. Switch to the generated app directory and start it
 cd ~/myapp
@@ -50,15 +50,78 @@ token in their local `.env`, and `jupyter-init` prints the corresponding URL.
 Swap `jupyter` for `django`, `fastapi`, or `rdkit` in step 2 to bootstrap a
 different stack.
 
+## Quick Start (FastAPI)
+
+Create a development instance from the published core images, then initialize
+and test the API:
+
+```bash
+git clone https://github.com/chembience/core.git chembience
+cd chembience
+./install fastapi myapi
+
+cd ~/myapi
+docker compose up -d
+./fastapi-init
+# Development API: http://localhost:8002/docs
+
+# After changing SQLAlchemy models:
+./fastapi-makemigrations "describe the schema change"
+./fastapi-migrate
+docker compose exec fastapi pytest
+```
+
+When the development source is ready, create an isolated self-hosted production
+stack. The helper pulls the matching published core image, bakes your `src/`
+source into a production image, applies Alembic migrations, and starts the API:
+
+```bash
+./fastapi-prod-self-hosted
+# Production API: http://localhost:9002/docs
+```
+
+## Quick Start (Django)
+
+Create and initialize a Django development instance from the published core
+images:
+
+```bash
+git clone https://github.com/chembience/core.git chembience
+cd chembience
+./install django mysite
+
+cd ~/mysite
+docker compose up -d
+./django-init
+# Development admin: http://localhost:8001/admin/
+
+# After changing Django models:
+./django-manage-py makemigrations
+./django-manage-py migrate
+./django-manage-py test
+```
+
+When ready to deploy the current development source, create an isolated
+self-hosted production stack. The helper pulls the matching published core
+image, bakes `src/` into a production image, applies migrations, and starts
+Django:
+
+```bash
+./django-prod-self-hosted
+# Production admin: http://localhost:9001/admin/
+```
+
 ## Prerequisites
 
 - **Docker**: Version 20.10.0 or higher
 - **Docker Compose**: Version 2.0.0 or higher
-- **Bash**: Linux, macOS, or WSL2
+- **Bash**: Linux (on WSL2) [tested], macOS [not tested yet]
 
 ## Major Software Components
 
-Versions are controlled through `.env` / `.env.template` and Docker build arguments.
+The root [`VERSION`](VERSION) file is the release-version source of truth.
+`install` and `build` derive `CHEMBIENCE_VERSION` in `.env` from it; `.env`
+continues to hold user-specific runtime configuration and secrets.
 
 - **Python**: 3.14 (configurable via `CONDA_PY`)
 - **[RDKit](https://github.com/rdkit/rdkit)**: 2026.03.4 (configurable via `RDKIT_VERSION`)
@@ -81,7 +144,7 @@ the [`chembience`](https://hub.docker.com/u/chembience) namespace:
 - `chembience/core-jupyter`
 
 Use an exact release tag in deployments (for example,
-`chembience/core-rdkit:0.6.0`). Stable releases also update `latest`; prerelease
+`chembience/core-rdkit:0.6.1`). Stable releases also update `latest`; prerelease
 images receive only their exact version tag.
 
 
@@ -89,6 +152,7 @@ images receive only their exact version tag.
 
 | Release | Date       | Notes                                                               |
 |---------|------------|---------------------------------------------------------------------|
+| 0.6.1   | 2026‑08‑25 | Added Docker Hub-backed installation and centralized release versioning |
 | 0.6.0   | 2026‑08‑01 | Renamed environment template to `.env.template` and updated project references |
 | 0.5.1   | 2026‑06‑03 | Smaller Docker images, switch to mamba as build system, many minor improvements and bug fixes |
 | 0.5.0   | 2026‑05‑27 | Initial release of the re-implemented core architecture |
@@ -105,21 +169,25 @@ Release older than 0.5.0 are no longer supported but are still available in the 
 3. ```bash
     cd chembience
     ```
-3.  **Build and set up an application:**
+3.  **Install and set up an application from Docker Hub:**
     ```bash
-    ./build <type> <target>
+    ./install <type> <target>
     ```
     - `<type>`: `django`, `fastapi`, `jupyter` or `rdkit`
     - `<target>`: Name of your application (e.g., `myapp`)
 
   Example:
   ```bash
-  ./build django myapp
+  ./install django myapp
   ```
 
-  `build` creates the project, builds the required images, and performs an
-  initial setup run. The generated project is left in the target directory;
+  `install` creates the project, pulls the matching published core images, and
+  performs an initial setup run. The generated project is left in the target directory;
   start it later with `docker compose up -d` from that directory.
+
+  Contributors who need to test or modify the core images should use
+  `./build <type> <target>` instead. It follows the same interface but builds
+  the core images from the checked-out source.
 
   The target is also the published application image name. It must use
   lowercase letters, digits, dots, underscores, or dashes and start with a
@@ -129,7 +197,7 @@ Release older than 0.5.0 are no longer supported but are still available in the 
 
   By default, the application is created in `~/myapp`. You can specify a custom directory with the `-d` option:
   ```bash
-  ./build rdkit|django|fastapi|jupyter myapp -d /path/to/parent_dir
+  ./install rdkit|django|fastapi|jupyter myapp -d /path/to/parent_dir
   ```
   This will create the app in `/path/to/parent_dir/myapp`.
 
@@ -149,13 +217,13 @@ CHEMBIENCE_RUNTIME_MODE=prod
 
 ## Secrets
 
-`DJANGO_SECRET_KEY` is auto-generated on first `./build` and persisted in the
+`DJANGO_SECRET_KEY` is auto-generated on first `./install` (or `./build`) and persisted in the
 per-project `.env` inside `APP_HOME` (e.g. `~/myapp/.env`). The same key is
 reused on every container restart, so sessions, signed cookies, and password
 reset tokens remain valid. Treat that `.env` as a secret.
 
 - To inject your own key (e.g. from Vault or a CI secret store), set
-  `DJANGO_SECRET_KEY` in the project's `.env` *before* running `./build`; it will be
+  `DJANGO_SECRET_KEY` in the project's `.env` *before* running `./install`; it will be
   forwarded to the container and persisted into the project `.env`.
 - Rotating the key (replacing it in the project `.env` and restarting) will
   log out all existing users and invalidate any outstanding signed tokens.
@@ -164,7 +232,7 @@ reset tokens remain valid. Treat that `.env` as a secret.
 
 ### PostgreSQL Password
 
-`POSTGRES_PASSWORD` must be set in the project's `.env` before running `./build`.
+`POSTGRES_PASSWORD` must be set in the project's `.env` before running `./install`.
 The `.env.template` file contains a placeholder (`CHANGE_ME_BEFORE_RUNNING`) as a reminder.
 The build and database entrypoint reject empty and known placeholder passwords.
 
@@ -197,7 +265,7 @@ The script automatically handles the Postgres `ALTER USER` statement with the ol
 `DJANGO_SUPERUSER_PASSWORD` (together with `DJANGO_SUPERUSER_USERNAME` and
 `DJANGO_SUPERUSER_EMAIL`) is read from the project's `.env` and used by the
 Django init flow to create the initial admin user. Treat it as a secret:
-set it in `.env` before running `./build`, never commit it, and rotate it
+set it in `.env` before running `./install`, never commit it, and rotate it
 via `python manage.py changepassword` inside the `django` container if
 needed.
 
@@ -273,12 +341,14 @@ dir(db)
 
 Thin Bash wrappers around `docker compose` and the per-service entrypoints.
 
-- `./build <type> <target> [-d <parent_dir>]` — bootstrap a new project.
+- `./install <type> <target> [-d <parent_dir>]` — bootstrap a project with published core images.
+- `./build <type> <target> [-d <parent_dir>]` — bootstrap a project with locally built core images.
+- `./core-build` — shared implementation used by `install` and `build`.
 - `./remove <target> [-d <parent_dir>] [-i|--images] [--silent|-s]` — tear it down.
 - `./psql` — open a `psql` shell on the Postgres container.
 - `./test-build-all` — Test script to build and init all app types.
 
-The paths below are the source templates in this repository. During `./build`,
+The paths below are the source templates in this repository. During `./install` or `./build`,
 the relevant helpers are copied to the root of the generated application
 directory, where they should be run:
 
