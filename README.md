@@ -8,8 +8,10 @@ applications. This repository supersedes the original
 reimplementation of the original project.
 
 [![Release](https://img.shields.io/github/v/release/chembience/core?sort=semver&label=release&style=flat-square&logo=github)](https://github.com/chembience/core/releases/latest)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22088022.svg)](https://doi.org/10.5281/zenodo.22088022)
 [![Build & Smoke Test](https://github.com/chembience/core/actions/workflows/build-test.yml/badge.svg?branch=main)](https://github.com/chembience/core/actions/workflows/build-test.yml)
 [![Compose Validate](https://github.com/chembience/core/actions/workflows/compose-validate.yml/badge.svg?branch=main)](https://github.com/chembience/core/actions/workflows/compose-validate.yml)
+
 
 ## What Chembience Provides
 
