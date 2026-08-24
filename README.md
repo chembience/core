@@ -65,7 +65,7 @@ docker compose up -d
 ./fastapi-init
 # Development API: http://localhost:8002/docs
 
-# After changing SQLAlchemy models:
+# After changing SQLAlchemy models (Alembic-based):
 ./fastapi-makemigrations "describe the schema change"
 ./fastapi-migrate
 docker compose exec fastapi pytest
@@ -373,4 +373,4 @@ This project is licensed under the BSD 3-Clause License - see the [LICENSE](LICE
 ## Bugs, Comments and anything else
 For any bug reports, comments or suggestion please use the tools here at Github or contact me by email.
 
-Markus Sitzmann, 2026-06-03
+Markus Sitzmann, 2026-08-23
