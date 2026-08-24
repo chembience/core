@@ -5,7 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.6.0] - 2026-08-24
+## [0.6.1] - 2026-08-25
+
+### Added
+- Added `VERSION` as the single source of truth for the Chembience release
+  version.
+- Added Docker Hub-backed `install` and local-core `build` bootstrap commands.
+
+### Changed
+- Production image-preparation helpers now pull their matching published core
+  images before building source-baked application images.
+- Release and validation workflows derive `CHEMBIENCE_VERSION` from `VERSION`.
+
+## [0.6.0] - 2026-08-01
 
 ### Changed
 - Renamed the root environment template from `.env.example` to `.env.template`.

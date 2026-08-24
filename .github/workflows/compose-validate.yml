@@ -18,6 +18,7 @@ jobs:
         run: |
           if [ -f .env.template ]; then
             cp .env.template .env
+            printf '\nCHEMBIENCE_VERSION=%s\n' "$(tr -d '[:space:]' < VERSION)" >> .env
           fi
 
       - name: Validate base compose file

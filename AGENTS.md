@@ -37,7 +37,8 @@ optional cross-stack wiring.
 - `docker-compose.dev.yml`: Development overlay applied on top of the
   main compose file.
 - `llms.txt`: Project metadata for LLM-based tooling.
-- `.env` (and `.env.template`): Central configuration. Check these
+- `VERSION`: Single source of truth for the Chembience release version.
+- `.env` (and `.env.template`): Central runtime configuration. Check these
   for environment variables (`DJANGO_*`, `FASTAPI_*`, `JUPYTER_*`,
   `POSTGRES_*`, `CHEMBIENCE_*`, `APP_HOME`, etc.). Additional build-time
   args used by `docker-compose.yml` include `CONDA_PY`, `RDKIT_VERSION`,
@@ -46,7 +47,7 @@ optional cross-stack wiring.
 - `share/chembience/`: Shared Python module imported by services
   (`from chembience import db`) to access a pre-configured SQLAlchemy
   engine and Postgres connection settings.
-- `build`, `remove`, `psql`, `test-build-all`: Top-level
+- `install`, `build`, `core-build`, `remove`, `psql`, `test-build-all`: Top-level
   helper scripts (run from the project root).
 - `*/app/`: Templates copied into the root of generated applications by the
   corresponding service entrypoint. When editing a template helper or README,
@@ -79,6 +80,9 @@ optional cross-stack wiring.
   can cause issues in Docker containers and shell scripts.
 - **Docker is the primary execution environment.** Assume commands should be
   run via `docker compose exec <service> ...` from the project root.
+- **Install vs. build**: `./install` pulls the exact published core images for
+  `VERSION`; `./build` builds those core images from the local checkout and is
+  the required path for source changes and CI smoke tests.
 - **Generated application context**: The core repository and a generated app
   use different compose files. For generated-app work, `cd` into the generated
   directory before running `docker compose`; its copied helper scripts live at
@@ -100,6 +104,6 @@ optional cross-stack wiring.
   and database round-trips.
 - **Do not commit runtime artifacts**: `test-builds/` and Postgres data
   directories must stay out of version control (already in `.gitignore`).
-- **Secrets**: `DJANGO_SECRET_KEY` is auto-generated on first `./build` and
+- **Secrets**: `DJANGO_SECRET_KEY` is auto-generated on first `./install` or `./build` and
   persisted in the per-project `.env`. Treat that file as a secret. See
   README §Secrets.

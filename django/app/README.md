@@ -4,7 +4,7 @@ This is the web service for your Chembience project. It is built using Django an
 
 ## Important Files
 
-- `.env`: Per-app runtime configuration and secrets. It is created during initialization; do not commit it. `APP_NAME` is set when the app is created (for example, `./build django my-project`) and identifies the app images: `chembience/<app_name>:<tag>` and `chembience/<app_name>-prod:<tag>`.
+- `.env`: Per-app runtime configuration and secrets. It is created during initialization; do not commit it. `APP_NAME` is set when the app is created (for example, `./install django my-project`) and identifies the app images: `chembience/<app_name>:<tag>` and `chembience/<app_name>-prod:<tag>`.
 - `docker-compose.yml`: Defines the Django and PostgreSQL services for this app.
 - `src/`: Django project source. `manage.py` is the entry point; edit application code, settings, URLs, and migrations here.
 - `requirements.txt`: Add Python dependencies for this Django app.
@@ -75,8 +75,9 @@ override if host access is required.
 
 Use this workflow when you want a fully self-contained production image that includes your Django project source.
 
-Prerequisite:
-- The base core image must exist locally: `chembience/core-django:${CHEMBIENCE_VERSION}` from your app `.env` (for example, run `./build` from repository root first).
+`django-prepare-prod` pulls the matching published core image
+`chembience/core-django:${CHEMBIENCE_VERSION}` before building the source-baked
+application image. No local core-image build is required.
 
 ```bash
 ./django-prepare-prod
@@ -110,16 +111,16 @@ Examples:
 
 ```bash
 # Repeatable release image build
-./django-prepare-prod --image-tag 0.6.0-django.1
+./django-prepare-prod --image-tag 0.6.1-django.1
 
 # Custom production image repository/name
-./django-prepare-prod --image-name registry.example.com/chem/django-prod --image-tag 0.6.0-django.1
+./django-prepare-prod --image-name registry.example.com/chem/django-prod --image-tag 0.6.1-django.1
 ```
 
 Run the produced image (example):
 
 ```bash
-docker run --rm -p 8001:8000 chembience/app-prod:0.6.0-django.1 \
+docker run --rm -p 8001:8000 chembience/app-prod:0.6.1-django.1 \
   python -m gunicorn src.wsgi:application --bind 0.0.0.0:8000 --workers 8
 ```
 
