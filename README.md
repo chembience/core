@@ -124,7 +124,7 @@ The root [`VERSION`](VERSION) file is the release-version source of truth.
 continues to hold user-specific runtime configuration and secrets.
 
 - **Python**: 3.14 (configurable via `CONDA_PY`)
-- **[RDKit](https://github.com/rdkit/rdkit)**: 2026.03.4 (configurable via `RDKIT_VERSION`)
+- **[RDKit](https://github.com/rdkit/rdkit)**: 2026.03.5 (configurable via `RDKIT_VERSION`)
 - **PostgreSQL**: 18 (RDKit-cartridge-enabled)
 - **Django**: 5.x-compatible
 - **FastAPI**: 0.115+-compatible
@@ -144,7 +144,7 @@ the [`chembience`](https://hub.docker.com/u/chembience) namespace:
 - `chembience/core-jupyter`
 
 Use an exact release tag in deployments (for example,
-`chembience/core-rdkit:0.6.1`). Stable releases also update `latest`; prerelease
+`chembience/core-rdkit:0.6.2`). Stable releases also update `latest`; prerelease
 images receive only their exact version tag.
 
 
@@ -152,6 +152,7 @@ images receive only their exact version tag.
 
 | Release | Date       | Notes                                                               |
 |---------|------------|---------------------------------------------------------------------|
+| 0.6.2   | 2026‑08‑26 | Updated RDKit to 2026.03.5 |
 | 0.6.1   | 2026‑08‑25 | Added Docker Hub-backed installation and centralized release versioning |
 | 0.6.0   | 2026‑08‑01 | Renamed environment template to `.env.template` and updated project references |
 | 0.5.1   | 2026‑06‑03 | Smaller Docker images, switch to mamba as build system, many minor improvements and bug fixes |
@@ -373,4 +374,4 @@ This project is licensed under the BSD 3-Clause License - see the [LICENSE](LICE
 ## Bugs, Comments and anything else
 For any bug reports, comments or suggestion please use the tools here at Github or contact me by email.
 
-Markus Sitzmann, 2026-08-23
+Markus Sitzmann, 2026-08-26
