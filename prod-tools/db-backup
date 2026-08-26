@@ -1,0 +1,22 @@
+#!/bin/bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR"
+
+[[ -f .env ]] || { echo "Missing PROD/.env." >&2; exit 1; }
+set -o allexport
+source .env
+set +o allexport
+
+POSTGRES_NAME="${POSTGRES_NAME:-chembience}"
+BACKUP_FILE="${1:-backups/${POSTGRES_NAME}_$(date +%Y%m%d_%H%M%S).sql}"
+mkdir -p "$(dirname "$BACKUP_FILE")"
+TEMP_FILE="${BACKUP_FILE}.tmp.$$"
+trap 'rm -f "$TEMP_FILE"' EXIT
+
+docker compose exec -T -e "PGPASSWORD=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}" postgres \
+  pg_dump -p "${POSTGRES_INTERNAL_PORT:-5432}" -U "${POSTGRES_USER:-chembience}" -d "$POSTGRES_NAME" > "$TEMP_FILE"
+mv "$TEMP_FILE" "$BACKUP_FILE"
+trap - EXIT
+echo "✅ Backup created: $BACKUP_FILE"

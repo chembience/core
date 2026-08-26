@@ -38,8 +38,8 @@ COPY rdkit/app/shell /opt/rdkit/shell
 COPY rdkit/app/Dockerfile /opt/rdkit/Dockerfile
 COPY rdkit/app/Dockerfile.prod /opt/rdkit/Dockerfile.prod
 COPY rdkit/app/docker-compose.yml /opt/rdkit/docker-compose.yml
-COPY rdkit/app/docker-compose.prod.yml /opt/rdkit/docker-compose.prod.yml
-COPY rdkit/app/docker-compose.prod.self-hosted.yml /opt/rdkit/docker-compose.prod.self-hosted.yml
+COPY rdkit/app/PROD /opt/rdkit/PROD
+COPY prod-tools /opt/rdkit/prod-tools
 COPY rdkit/app/requirements.txt /opt/rdkit/app-requirements.txt
 COPY rdkit/app/rdkit-init /opt/rdkit/rdkit-init
 COPY rdkit/app/rdkit-configure /opt/rdkit/rdkit-configure

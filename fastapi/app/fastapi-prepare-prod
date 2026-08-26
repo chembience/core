@@ -3,6 +3,9 @@ set -euo pipefail
 
 APP_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$APP_DIR"
+PROD_DIR="$APP_DIR/PROD"
+PROD_ENV="$PROD_DIR/.env"
+LEGACY_PROD_ENV="$APP_DIR/.env.prod"
 
 KEEP_ENV_PROD=0
 SKIP_BUILD=0
@@ -33,14 +36,35 @@ if [[ ! -f .env ]]; then
   exit 1
 fi
 
-if [[ $KEEP_ENV_PROD -eq 0 ]]; then
-  cp -f .env .env.prod
+LEGACY_PROD_DIR="$(find "$APP_DIR" -maxdepth 1 -mindepth 1 -type d -name 'prod' -print -quit)"
+CANONICAL_PROD_DIR="$(find "$APP_DIR" -maxdepth 1 -mindepth 1 -type d -name 'PROD' -print -quit)"
+if [[ -n "$LEGACY_PROD_DIR" && -n "$CANONICAL_PROD_DIR" ]]; then
+  echo "Both prod/ and PROD/ exist. Resolve the production directory manually." >&2
+  exit 1
+fi
+if [[ -n "$LEGACY_PROD_DIR" ]]; then
+  TEMP_PROD_DIR="$APP_DIR/.chembience-prod-migrate-$$"
+  [[ ! -e "$TEMP_PROD_DIR" ]] || { echo "Temporary production migration path already exists: $TEMP_PROD_DIR" >&2; exit 1; }
+  mv "$LEGACY_PROD_DIR" "$TEMP_PROD_DIR"
+  mv "$TEMP_PROD_DIR" "$PROD_DIR"
+  echo "ℹ️  Renamed legacy prod/ directory to PROD/."
+fi
+mkdir -p "$PROD_DIR"
+MIGRATED_LEGACY_ENV=0
+if [[ ! -f "$PROD_ENV" && -f "$LEGACY_PROD_ENV" ]]; then
+  mv "$LEGACY_PROD_ENV" "$PROD_ENV"
+  MIGRATED_LEGACY_ENV=1
+  echo "ℹ️  Moved legacy .env.prod to PROD/.env."
 fi
 
-if grep -q '^CHEMBIENCE_RUNTIME_MODE=' .env.prod; then
-  sed -i 's/^CHEMBIENCE_RUNTIME_MODE=.*/CHEMBIENCE_RUNTIME_MODE=prod/' .env.prod
+if [[ $KEEP_ENV_PROD -eq 0 && $MIGRATED_LEGACY_ENV -eq 0 ]]; then
+  cp -f .env "$PROD_ENV"
+fi
+
+if grep -q '^CHEMBIENCE_RUNTIME_MODE=' "$PROD_ENV"; then
+  sed -i 's/^CHEMBIENCE_RUNTIME_MODE=.*/CHEMBIENCE_RUNTIME_MODE=prod/' "$PROD_ENV"
 else
-  echo 'CHEMBIENCE_RUNTIME_MODE=prod' >> .env.prod
+  echo 'CHEMBIENCE_RUNTIME_MODE=prod' >> "$PROD_ENV"
 fi
 
 set_env_var() {
@@ -61,21 +85,21 @@ get_env_var() {
 # published HTTP port. Preserve an explicitly distinct production port.
 DEV_PORT="$(get_env_var .env FASTAPI_CONNECTION_PORT)"
 DEV_PORT="${DEV_PORT:-8002}"
-PROD_PORT="$(get_env_var .env.prod FASTAPI_CONNECTION_PORT)"
+PROD_PORT="$(get_env_var "$PROD_ENV" FASTAPI_CONNECTION_PORT)"
 [[ "$DEV_PORT" =~ ^[0-9]+$ ]] || { echo "FASTAPI_CONNECTION_PORT must be numeric" >&2; exit 2; }
 if [[ $KEEP_ENV_PROD -eq 0 || -z "$PROD_PORT" || "$PROD_PORT" == "$DEV_PORT" ]]; then
-  set_env_var .env.prod FASTAPI_CONNECTION_PORT "$((DEV_PORT + 1000))"
+  set_env_var "$PROD_ENV" FASTAPI_CONNECTION_PORT "$((DEV_PORT + 1000))"
 fi
 
 if [[ -z "$IMAGE_TAG" ]]; then
-  IMAGE_TAG="$(get_env_var .env.prod CHEMBIENCE_VERSION)"
+  IMAGE_TAG="$(get_env_var "$PROD_ENV" CHEMBIENCE_VERSION)"
 fi
 if [[ -z "$IMAGE_TAG" ]]; then
   IMAGE_TAG="prod-$(date +%Y%m%d%H%M%S)"
 fi
 
 if [[ -z "$IMAGE_NAME" ]]; then
-  APP_NAME_VALUE="$(get_env_var .env.prod APP_NAME)"
+  APP_NAME_VALUE="$(get_env_var "$PROD_ENV" APP_NAME)"
   APP_NAME_VALUE="${APP_NAME_VALUE:-app}"
   [[ "$APP_NAME_VALUE" =~ ^[a-z0-9][a-z0-9._-]*$ ]] || { echo "APP_NAME must be a valid lowercase Docker image name" >&2; exit 2; }
   IMAGE_NAME="chembience/${APP_NAME_VALUE}-prod"
@@ -85,13 +109,20 @@ CORE_IMAGE_TAG="$(get_env_var .env CHEMBIENCE_VERSION)"
 CORE_IMAGE_TAG="${CORE_IMAGE_TAG:-latest}"
 CORE_IMAGE="chembience/core-fastapi:${CORE_IMAGE_TAG}"
 
-echo "📥 Pulling required core image: ${CORE_IMAGE}..."
-docker pull "${CORE_IMAGE}"
+if docker image inspect "${CORE_IMAGE}" >/dev/null 2>&1; then
+  echo "📦 Using locally available core image: ${CORE_IMAGE}"
+else
+  echo "📥 Pulling required core image: ${CORE_IMAGE}..."
+  docker pull "${CORE_IMAGE}"
+fi
 
-set_env_var .env.prod CHEMBIENCE_VERSION "$IMAGE_TAG"
-set_env_var .env.prod CHEMBIENCE_IMAGE_TAG "$IMAGE_TAG"
-set_env_var .env.prod CHEMBIENCE_PROD_IMAGE_NAME "$IMAGE_NAME"
-set_env_var .env.prod CHEMBIENCE_POSTGRES_IMAGE "chembience/core-rdkit-postgres:${CORE_IMAGE_TAG}"
+PROJECT_NAME="$(printf '%s' "$APP_NAME_VALUE" | tr '[:upper:]' '[:lower:]' | tr '.' '-')-prod"
+[[ "$PROJECT_NAME" =~ ^[a-z0-9][a-z0-9_-]*$ ]] || { echo "APP_NAME must form a valid Compose project name: $APP_NAME_VALUE" >&2; exit 2; }
+set_env_var "$PROD_ENV" CHEMBIENCE_VERSION "$IMAGE_TAG"
+set_env_var "$PROD_ENV" CHEMBIENCE_IMAGE_TAG "$IMAGE_TAG"
+set_env_var "$PROD_ENV" CHEMBIENCE_PROD_IMAGE_NAME "$IMAGE_NAME"
+set_env_var "$PROD_ENV" CHEMBIENCE_POSTGRES_IMAGE "chembience/core-rdkit-postgres:${CORE_IMAGE_TAG}"
+set_env_var "$PROD_ENV" COMPOSE_PROJECT_NAME "$PROJECT_NAME"
 
 if [[ $SKIP_BUILD -eq 0 ]]; then
   echo "📦 Building source-baked FastAPI production image ${IMAGE_NAME}:${IMAGE_TAG}..."
@@ -106,6 +137,23 @@ else
   echo "ℹ️  Skipping build and in-image verification (--skip-build)."
 fi
 
+POSTGRES_HOST_VALUE="$(get_env_var "$PROD_ENV" POSTGRES_HOST)"
+if [[ "${POSTGRES_HOST_VALUE:-postgres}" == "postgres" ]]; then
+  echo "🚀 Initializing the self-hosted production database..."
+  (
+    cd "$PROD_DIR"
+    docker compose down
+    docker compose up -d postgres
+    if ! docker compose run --rm migrate; then
+      docker compose down
+      exit 1
+    fi
+    docker compose down
+  )
+else
+  echo "ℹ️  External PostgreSQL configured; its migration lifecycle is managed by the database operator."
+fi
+
 echo "✅ fastapi-prepare-prod completed."
 echo "ℹ️  Created image: ${IMAGE_NAME}:${IMAGE_TAG}"
-echo "ℹ️  Dev environment was not changed."
+echo "ℹ️  Dev environment was not changed; the prepared production stack is stopped."

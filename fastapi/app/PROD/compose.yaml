@@ -1,0 +1,50 @@
+name: ${COMPOSE_PROJECT_NAME:?Run fastapi-prepare-prod first}
+
+services:
+  fastapi:
+    image: ${CHEMBIENCE_PROD_IMAGE_NAME:?Run fastapi-prepare-prod first}:${CHEMBIENCE_IMAGE_TAG:?Set CHEMBIENCE_IMAGE_TAG in .env}
+    env_file: .env
+    environment:
+      CHEMBIENCE_RUNTIME_MODE: prod
+    ports:
+      - "${FASTAPI_CONNECTION_PORT:-8002}:8000"
+    restart: unless-stopped
+    command: ["sh", "-c", "exec uvicorn main:app --host 0.0.0.0 --port 8000 --workers ${UVICORN_WORKERS:-2}"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
+  migrate:
+    image: ${CHEMBIENCE_PROD_IMAGE_NAME:?Run fastapi-prepare-prod first}:${CHEMBIENCE_IMAGE_TAG:?Set CHEMBIENCE_IMAGE_TAG in .env}
+    env_file: .env
+    environment:
+      CHEMBIENCE_RUNTIME_MODE: prod
+    profiles: ["migration"]
+    command: ["alembic", "-c", "/home/app/src/alembic.ini", "upgrade", "head"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: ${CHEMBIENCE_POSTGRES_IMAGE:?Set CHEMBIENCE_POSTGRES_IMAGE in .env}
+    env_file: .env
+    volumes:
+      - postgres-data:/home/postgres
+    restart: unless-stopped
+    entrypoint: ["/docker-entrypoint.sh"]
+    command: ["gosu", "app", "postgres", "-D", "/home/postgres/postgres_data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_NAME -p 5432"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+volumes:
+  postgres-data:

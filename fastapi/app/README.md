@@ -12,12 +12,13 @@ This is the async REST API service for your Chembience project. It is built usin
 - `src/tests/`: API and RDKit integration tests; `pytest.ini` configures pytest.
 - `requirements.txt`: Add Python dependencies for this FastAPI app.
 - `Dockerfile`: Development image extension that installs `requirements.txt`; `Dockerfile.prod` bakes `src/` into the production image.
-- `docker-compose.prod.yml`: Production deployment for an external RDKit-enabled PostgreSQL database.
-- `docker-compose.prod.self-hosted.yml`: Overlay that runs the bundled RDKit PostgreSQL image with a named persistent volume.
+- `PROD/compose.yaml`: Self-hosted production stack, including the bundled RDKit PostgreSQL image.
+- `PROD/compose.external.yaml`: Production deployment for an external RDKit-enabled PostgreSQL database.
 - `fastapi-init`: Starts the service if needed and applies migrations.
 - `fastapi-makemigrations`, `fastapi-migrate`: Generate/review and apply Alembic migrations.
-- `fastapi-configure`, `fastapi-prepare-prod`: Safely apply configuration changes or create a production image.
-- `fastapi-prod-self-hosted`: Builds (or refreshes) the production image, applies Alembic migrations, and starts the isolated self-hosted production stack.
+- `fastapi-configure`, `fastapi-prepare-prod`: Safely apply configuration changes or create a production image and `PROD/.env`.
+- `fastapi-prod-self-hosted`: Compatibility shortcut that prepares the production bundle and starts it.
+- `PROD/psql`, `PROD/db-backup`, `PROD/db-restore`, `PROD/db-cleanup`: Self-contained database tools for the prepared self-hosted production bundle.
 - `db-backup`, `db-restore`, `db-cleanup`, `psql`: Database maintenance and access helpers.
 
 ## Getting Started
@@ -83,26 +84,28 @@ application image. No local core-image build is required.
 ./fastapi-prepare-prod
 ```
 
-For the complete self-hosted deployment, use:
+Prepare the self-hosted production bundle from the development workspace:
 
 ```bash
-./fastapi-prod-self-hosted
+./fastapi-prepare-prod
+cd PROD
+docker compose up -d
 ```
 
-It uses the Compose project name `<app_name>-prod`, applies Alembic migrations
-before starting the API, and assigns a newly created `.env.prod` the development
-port plus 1000 (normally `9002`). Use `--skip-prepare` to start an already
-prepared image without rebuilding it.
+It uses the Compose project name `<app_name>-prod`, initializes the named
+PostgreSQL volume, applies Alembic migrations, then stops the prepared stage.
+`docker compose up -d` from `PROD/` starts it later.
 
 What the script does:
-- Creates/reuses `./.env.prod` from `./.env` and forces `CHEMBIENCE_RUNTIME_MODE=prod` there.
+- Creates/reuses `PROD/.env` from `./.env` and forces `CHEMBIENCE_RUNTIME_MODE=prod` there.
 - Builds a dedicated source-baked production image via `Dockerfile.prod`.
+- Initializes self-hosted PostgreSQL and applies Alembic migrations, then stops the stack without removing its volume.
 - Uses the production image name: `chembience/<app_name>-prod:<tag>`.
 - Verifies the image contains `/home/app/src/main.py`.
 - Does **not** run `fastapi-configure`, does **not** restart compose services, and does **not** mutate your active dev `.env`.
 
 Optional flags:
-- `--keep-env-prod` → reuses existing `./.env.prod`.
+- `--keep-env-prod` → reuses existing `PROD/.env`.
 - `--image-tag <tag>` → release tag for the produced image.
 - `--image-name <name>` → override default production image repository/name.
 - `--skip-build` → skip the build step (metadata prep only).
@@ -130,30 +133,31 @@ step before starting or replacing API workers, rather than once per replica.
 ## Production deployment
 
 `fastapi-prepare-prod` writes the immutable application image reference and the
-matching `CHEMBIENCE_POSTGRES_IMAGE` to `.env.prod`. Deploy with one of the
+matching `CHEMBIENCE_POSTGRES_IMAGE` to `PROD/.env`. Deploy with one of the
 following profiles.
 
 ### External database
 
 Set `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, and
-`POSTGRES_NAME` in `.env.prod` for a reachable PostgreSQL database that already
+`POSTGRES_NAME` in `PROD/.env` for a reachable PostgreSQL database that already
 has the RDKit extension installed. Apply migrations before starting workers:
 
 ```bash
-docker compose --env-file .env.prod -f docker-compose.prod.yml run --rm migrate
-docker compose --env-file .env.prod -f docker-compose.prod.yml up -d fastapi
+cd PROD
+docker compose -f compose.external.yaml run --rm migrate
+docker compose -f compose.external.yaml up -d fastapi
 ```
 
 ### Self-hosted RDKit PostgreSQL
 
-Leave `POSTGRES_HOST=postgres` in `.env.prod`. The overlay starts the bundled
+Leave `POSTGRES_HOST=postgres` in `PROD/.env`. `compose.yaml` starts the bundled
 RDKit PostgreSQL image with a named `postgres-data` volume and keeps its port
 private to the Compose network:
 
 ```bash
-docker compose --env-file .env.prod -f docker-compose.prod.yml -f docker-compose.prod.self-hosted.yml up -d postgres
-docker compose --env-file .env.prod -f docker-compose.prod.yml -f docker-compose.prod.self-hosted.yml run --rm migrate
-docker compose --env-file .env.prod -f docker-compose.prod.yml -f docker-compose.prod.self-hosted.yml up -d fastapi
+cd PROD
+docker compose up -d postgres
+docker compose up -d
 ```
 
 For an external database, backups, TLS, and network access are managed by its

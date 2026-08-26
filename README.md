@@ -71,12 +71,15 @@ docker compose up -d
 docker compose exec fastapi pytest
 ```
 
-When the development source is ready, create an isolated self-hosted production
-stack. The helper pulls the matching published core image, bakes your `src/`
-source into a production image, applies Alembic migrations, and starts the API:
+When the development source is ready, prepare an isolated self-hosted production
+bundle. The helper bakes your `src/` source into a production image, initializes
+the production database, and applies Alembic migrations:
 
 ```bash
-./fastapi-prod-self-hosted
+./fastapi-prepare-prod
+
+cd PROD
+docker compose up -d
 # Production API: http://localhost:9002/docs
 ```
 
@@ -101,13 +104,15 @@ docker compose up -d
 ./django-manage-py test
 ```
 
-When ready to deploy the current development source, create an isolated
-self-hosted production stack. The helper pulls the matching published core
-image, bakes `src/` into a production image, applies migrations, and starts
-Django:
+When ready to deploy the current development source, prepare an isolated
+self-hosted production bundle. The helper bakes `src/` into a production image,
+initializes the production database, and applies migrations:
 
 ```bash
-./django-prod-self-hosted
+./django-prepare-prod
+
+cd PROD
+docker compose up -d
 # Production admin: http://localhost:9001/admin/
 ```
 
@@ -345,7 +350,7 @@ Thin Bash wrappers around `docker compose` and the per-service entrypoints.
 - `./install <type> <target> [-d <parent_dir>]` — bootstrap a project with published core images.
 - `./build <type> <target> [-d <parent_dir>]` — bootstrap a project with locally built core images.
 - `./core-build` — shared implementation used by `install` and `build`.
-- `./remove <target> [-d <parent_dir>] [-i|--images] [--silent|-s]` — tear it down.
+- `./remove <target> [-d <parent_dir>] [-i|--images] [--silent|-s]` — tear it down. It aborts after production preparation has created `PROD/.env`; handle that deployment and its data manually first. Use `--force-prod` only to confirm that its production Compose stack should be brought down before removal; its named volume is retained.
 - `./psql` — open a `psql` shell on the Postgres container.
 - `./test-build-all` — Test script to build and init all app types.
 

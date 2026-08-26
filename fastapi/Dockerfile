@@ -20,8 +20,8 @@ COPY fastapi/docker-compose.yml /fastapi/docker-compose.yml
 COPY fastapi/app/docker-compose.override.yml /fastapi/docker-compose.override.yml
 COPY fastapi/app/Dockerfile /fastapi/Dockerfile
 COPY fastapi/app/Dockerfile.prod /fastapi/Dockerfile.prod
-COPY fastapi/app/docker-compose.prod.yml /fastapi/docker-compose.prod.yml
-COPY fastapi/app/docker-compose.prod.self-hosted.yml /fastapi/docker-compose.prod.self-hosted.yml
+COPY fastapi/app/PROD /fastapi/PROD
+COPY prod-tools /fastapi/prod-tools
 COPY fastapi/app/requirements.txt /fastapi/requirements.txt
 COPY fastapi/app/README.md /fastapi/README.md
 COPY fastapi/app/db-backup /fastapi/db-backup

@@ -15,6 +15,7 @@ SKIP_CORE=false
 CLEANUP_IMAGES=false
 CUSTOM_DIR=""
 SILENT=false
+FORCE_PROD=false
 POSITIONAL_ARGS=()
 
 while [[ $# -gt 0 ]]; do
@@ -32,13 +33,17 @@ while [[ $# -gt 0 ]]; do
       SILENT=true
       shift
       ;;
+    --force|--force-prod)
+      FORCE_PROD=true
+      shift
+      ;;
     --dir|-d)
       CUSTOM_DIR="$2"
       shift 2
       ;;
     -*)
       echo "Unknown argument: $1"
-      echo "Supported: --images, -i, --no-core-images, -c, --dir, -d, --silent, -s"
+      echo "Supported: --images, -i, --no-core-images, -c, --dir, -d, --silent, -s, --force-prod"
       exit 2
       ;;
     *)
@@ -139,6 +144,45 @@ remove_apps() {
       echo "❌ Error: $APP_HOME does not look like a chembience app (missing .chembience or docker-compose.yml)."
       echo "Aborting removal of $APP_HOME."
       return 1
+    fi
+
+    PROD_RUNTIME_DIR=""
+    if [ -f "$APP_HOME/PROD/.env" ]; then
+      PROD_RUNTIME_DIR="$APP_HOME/PROD"
+    elif [ -f "$APP_HOME/prod/.env" ]; then
+      PROD_RUNTIME_DIR="$APP_HOME/prod"
+    fi
+
+    if [ -n "$PROD_RUNTIME_DIR" ] && [ "$FORCE_PROD" != true ]; then
+      echo "" >&2
+      echo "🚨🚨🚨 PRODUCTION STAGE DETECTED — REMOVAL ABORTED 🚨🚨🚨" >&2
+      echo "" >&2
+      echo "The app at $APP_HOME contains a prepared production environment." >&2
+      echo "Its production configuration, deployment, and persistent data may be active." >&2
+      echo "Chembience will not remove this app automatically." >&2
+      echo "Handle the production deployment and its data yourself, then remove PROD/.env" >&2
+      echo "only when you are certain it is safe to delete the app." >&2
+      echo "" >&2
+      exit 1
+    fi
+
+    if [ -n "$PROD_RUNTIME_DIR" ]; then
+      echo "" >&2
+      echo "🚨🚨🚨 FORCED PRODUCTION REMOVAL 🚨🚨🚨" >&2
+      echo "" >&2
+      echo "The prepared production stack at $PROD_RUNTIME_DIR will be brought down." >&2
+      echo "Its named Docker volume is not removed, but the app directory will then be deleted." >&2
+      read -r -p "Continue and bring down PROD before removal? (y/N): " confirm_prod
+      if [[ ! "$confirm_prod" =~ ^[Yy]$ ]]; then
+        echo "Production removal aborted." >&2
+        return 1
+      fi
+
+      echo "🛑 Bringing down the production stack in $PROD_RUNTIME_DIR..."
+      if ! (cd "$PROD_RUNTIME_DIR" && docker compose down); then
+        echo "❌ Failed to bring down the production stack. Aborting removal." >&2
+        return 1
+      fi
     fi
 
     if [ "$SILENT" != true ]; then

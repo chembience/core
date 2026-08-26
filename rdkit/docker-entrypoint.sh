@@ -69,8 +69,17 @@ if [ "${CHEMBIENCE_RUNTIME_MODE}" != "prod" ] && { [ ! -f "/home/app/.rdkit-init
         [ ! -f "/home/app/docker-compose.yml" ] && cp /opt/rdkit/docker-compose.yml /home/app/docker-compose.yml
         [ ! -f "/home/app/Dockerfile" ] && cp /opt/rdkit/Dockerfile /home/app/Dockerfile
         [ ! -f "/home/app/Dockerfile.prod" ] && cp /opt/rdkit/Dockerfile.prod /home/app/Dockerfile.prod
-        [ ! -f "/home/app/docker-compose.prod.yml" ] && cp /opt/rdkit/docker-compose.prod.yml /home/app/docker-compose.prod.yml
-        [ ! -f "/home/app/docker-compose.prod.self-hosted.yml" ] && cp /opt/rdkit/docker-compose.prod.self-hosted.yml /home/app/docker-compose.prod.self-hosted.yml
+        if [ ! -d "/home/app/prod" ]; then
+            mkdir -p /home/app/PROD
+            [ ! -f "/home/app/PROD/compose.yaml" ] && cp /opt/rdkit/PROD/compose.yaml /home/app/PROD/compose.yaml
+            [ ! -f "/home/app/PROD/compose.external.yaml" ] && cp /opt/rdkit/PROD/compose.external.yaml /home/app/PROD/compose.external.yaml
+            [ ! -f "/home/app/PROD/psql" ] && cp /opt/rdkit/prod-tools/psql /home/app/PROD/psql
+            [ ! -f "/home/app/PROD/db-backup" ] && cp /opt/rdkit/prod-tools/db-backup /home/app/PROD/db-backup
+            [ ! -f "/home/app/PROD/db-restore" ] && cp /opt/rdkit/prod-tools/db-restore /home/app/PROD/db-restore
+            [ ! -f "/home/app/PROD/db-cleanup" ] && cp /opt/rdkit/prod-tools/db-cleanup /home/app/PROD/db-cleanup
+            [ ! -f "/home/app/PROD/README.md" ] && cp /opt/rdkit/prod-tools/README.md /home/app/PROD/README.md
+            chmod +x /home/app/PROD/psql /home/app/PROD/db-backup /home/app/PROD/db-restore /home/app/PROD/db-cleanup
+        fi
         [ ! -f "/home/app/README.md" ] && cp /opt/rdkit/README.md /home/app/README.md
         [ -f "/.gitignore" ] && [ ! -f "/home/app/.gitignore" ] && cp "/.gitignore" "/home/app/.gitignore"
         [ -f "/.dockerignore" ] && [ ! -f "/home/app/.dockerignore" ] && cp "/.dockerignore" "/home/app/.dockerignore"

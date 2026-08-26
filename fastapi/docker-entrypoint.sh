@@ -90,8 +90,16 @@ if [ "${CHEMBIENCE_RUNTIME_MODE}" != "prod" ]; then
     sync_config "/fastapi/docker-compose.override.yml" "/home/app/docker-compose.override.yml"
     sync_config "/fastapi/Dockerfile"                  "/home/app/Dockerfile"
     sync_config "/fastapi/Dockerfile.prod"             "/home/app/Dockerfile.prod"
-    sync_config "/fastapi/docker-compose.prod.yml"     "/home/app/docker-compose.prod.yml"
-    sync_config "/fastapi/docker-compose.prod.self-hosted.yml" "/home/app/docker-compose.prod.self-hosted.yml"
+    if [ ! -d "/home/app/prod" ]; then
+        mkdir -p "/home/app/PROD"
+        sync_config "/fastapi/PROD/compose.yaml"           "/home/app/PROD/compose.yaml"
+        sync_config "/fastapi/PROD/compose.external.yaml"  "/home/app/PROD/compose.external.yaml"
+        sync_script "/fastapi/prod-tools/psql" "/home/app/PROD/psql"
+        sync_script "/fastapi/prod-tools/db-backup" "/home/app/PROD/db-backup"
+        sync_script "/fastapi/prod-tools/db-restore" "/home/app/PROD/db-restore"
+        sync_script "/fastapi/prod-tools/db-cleanup" "/home/app/PROD/db-cleanup"
+        sync_config "/fastapi/prod-tools/README.md" "/home/app/PROD/README.md"
+    fi
     sync_config "/fastapi/requirements.txt"            "/home/app/requirements.txt"
     sync_config "/fastapi/README.md"                   "/home/app/README.md"
     sync_script "/fastapi/psql"                        "/home/app/psql"

@@ -35,12 +35,13 @@ one yourself.
 - `notebooks/`: Your notebooks and supporting Python files. `notebooks/check_env.py` verifies RDKit and database connectivity.
 - `app-requirements.txt`: Add Python dependencies for notebooks and scripts. The generated app also has `requirements.txt`, which contains the core Jupyter dependencies.
 - `Dockerfile`: Development image extension that installs `app-requirements.txt`; `Dockerfile.prod` bakes notebooks into the production image.
-- `docker-compose.prod.yml`: Production deployment for an external RDKit-enabled PostgreSQL database.
-- `docker-compose.prod.self-hosted.yml`: Overlay that runs the bundled RDKit PostgreSQL image with a named persistent volume.
+- `PROD/compose.yaml`: Self-hosted production stack, including the bundled RDKit PostgreSQL image.
+- `PROD/compose.external.yaml`: Production deployment for an external RDKit-enabled PostgreSQL database.
 - `jupyter-init`: Starts JupyterLab if necessary, validates the environment, and prints the access URL/token.
 - `jupyter-configure`: Safely applies `.env` updates and refreshes the service.
-- `jupyter-prepare-prod`: Builds the production image and writes `.env.prod`.
-- `jupyter-prod-self-hosted`: Builds (or refreshes) the production image and starts the isolated self-hosted production stack.
+- `jupyter-prepare-prod`: Builds the production image and writes `PROD/.env`.
+- `jupyter-prod-self-hosted`: Compatibility shortcut that prepares the production bundle and starts it.
+- `PROD/psql`, `PROD/db-backup`, `PROD/db-restore`, `PROD/db-cleanup`: Self-contained database tools for the prepared self-hosted production bundle.
 - `psql`: Opens a PostgreSQL client connected to this app's database.
 
 ## Verifying the Environment
@@ -81,15 +82,17 @@ needed.
 
 Use this workflow when you want a fully self-contained production image that includes your notebooks and app dependencies.
 
-For the complete self-hosted deployment, use:
+Prepare the self-hosted production bundle from the development workspace:
 
 ```bash
-./jupyter-prod-self-hosted
+./jupyter-prepare-prod
+cd PROD
+docker compose up -d
 ```
 
-It uses the Compose project name `<app_name>-prod` and assigns a newly created
-`.env.prod` the development port plus 1000 (normally `9888`). Use
-`--skip-prepare` to start an already prepared image without rebuilding it.
+It uses the Compose project name `<app_name>-prod`, initializes the named
+PostgreSQL volume, then stops the prepared stage. `docker compose up -d` from
+`PROD/` starts it later.
 
 `jupyter-prepare-prod` pulls the matching published core image
 `chembience/core-jupyter:${CHEMBIENCE_VERSION}` before building the source-baked
@@ -100,14 +103,15 @@ application image. No local core-image build is required.
 ```
 
 What the script does:
-- Creates/reuses `./.env.prod` from `./.env` and forces `CHEMBIENCE_RUNTIME_MODE=prod` there.
+- Creates/reuses `PROD/.env` from `./.env` and forces `CHEMBIENCE_RUNTIME_MODE=prod` there.
 - Builds a dedicated source-baked production image via `Dockerfile.prod`.
+- Initializes self-hosted PostgreSQL, then stops the stack without removing its volume.
 - Uses the production image name: `chembience/<app_name>-prod:<tag>`.
 - Verifies the image contains `/home/app/notebooks`.
 - Does **not** run `jupyter-configure`, does **not** restart compose services, and does **not** mutate your active dev `.env`.
 
 Optional flags:
-- `--keep-env-prod` → reuses existing `./.env.prod`.
+- `--keep-env-prod` → reuses existing `PROD/.env`.
 - `--image-tag <tag>` → release tag for the produced image.
 - `--image-name <name>` → override default production image repository/name.
 - `--skip-build` → skip the build step (metadata prep only).
@@ -132,20 +136,22 @@ docker run --rm -p 8888:8888 chembience/app-prod:0.6.1-jupyter.1 \
 ## Production deployment
 
 `jupyter-prepare-prod` writes the immutable application image reference and the
-matching `CHEMBIENCE_POSTGRES_IMAGE` to `.env.prod`. For an external database,
+matching `CHEMBIENCE_POSTGRES_IMAGE` to `PROD/.env`. For an external database,
 set `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, and
-`POSTGRES_NAME` in `.env.prod`; that database must already have the RDKit
+`POSTGRES_NAME` in `PROD/.env`; that database must already have the RDKit
 extension installed:
 
 ```bash
-docker compose --env-file .env.prod -f docker-compose.prod.yml up -d jupyter
+cd PROD
+docker compose -f compose.external.yaml up -d jupyter
 ```
 
 For a self-hosted database, leave `POSTGRES_HOST=postgres`; the overlay creates
 a private RDKit PostgreSQL service with a named `postgres-data` volume:
 
 ```bash
-docker compose --env-file .env.prod -f docker-compose.prod.yml -f docker-compose.prod.self-hosted.yml up -d
+cd PROD
+docker compose up -d
 ```
 
 For an external database, backups, TLS, and network access are managed by its

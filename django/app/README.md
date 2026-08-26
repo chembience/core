@@ -10,13 +10,14 @@ This is the web service for your Chembience project. It is built using Django an
 - `requirements.txt`: Add Python dependencies for this Django app.
 - `Dockerfile`: Development image extension that installs `requirements.txt`.
 - `Dockerfile.prod`: Production image recipe that bakes `src/` into an immutable image.
-- `docker-compose.prod.yml`: Production deployment for an external RDKit-enabled PostgreSQL database.
-- `docker-compose.prod.self-hosted.yml`: Overlay that runs the bundled RDKit PostgreSQL image with a named persistent volume.
+- `PROD/compose.yaml`: Self-hosted production stack, including the bundled RDKit PostgreSQL image.
+- `PROD/compose.external.yaml`: Production deployment for an external RDKit-enabled PostgreSQL database.
 - `django-init`: Runs migrations, creates the configured superuser, collects static files, and runs the test suite.
 - `django-manage-py`: Runs any `manage.py` command as the container's application user.
 - `django-configure`: Safely applies `.env` updates, including database-password rotation.
-- `django-prepare-prod`: Builds the production image and writes `.env.prod`.
-- `django-prod-self-hosted`: Builds (or refreshes) the production image, applies migrations, and starts the isolated self-hosted production stack.
+- `django-prepare-prod`: Builds the production image and writes `PROD/.env`.
+- `django-prod-self-hosted`: Compatibility shortcut that prepares the production bundle and starts it.
+- `PROD/psql`, `PROD/db-backup`, `PROD/db-restore`, `PROD/db-cleanup`: Self-contained database tools for the prepared self-hosted production bundle.
 - `psql`: Opens a PostgreSQL client connected to this app's database.
 - `src/django_rdkit_test_app/`: Retained RDKit integration smoke-test app and its tests.
 
@@ -83,26 +84,28 @@ application image. No local core-image build is required.
 ./django-prepare-prod
 ```
 
-For the complete self-hosted deployment, use:
+Prepare the self-hosted production bundle from the development workspace:
 
 ```bash
-./django-prod-self-hosted
+./django-prepare-prod
+cd PROD
+docker compose up -d
 ```
 
-It uses the Compose project name `<app_name>-prod`, applies Django migrations
-before starting the web service, and assigns a newly created `.env.prod` the
-development port plus 1000 (normally `9001`). Use `--skip-prepare` to start an
-already prepared image without rebuilding it.
+It uses the Compose project name `<app_name>-prod`, initializes the named
+PostgreSQL volume, applies Django migrations, then stops the prepared stage.
+`docker compose up -d` from `PROD/` starts it later.
 
 What the script does:
-- Creates/reuses `./.env.prod` from `./.env` and forces `CHEMBIENCE_RUNTIME_MODE=prod` there.
+- Creates/reuses `PROD/.env` from `./.env` and forces `CHEMBIENCE_RUNTIME_MODE=prod` there.
 - Builds a dedicated source-baked production image via `Dockerfile.prod`.
+- Initializes self-hosted PostgreSQL and applies Django migrations, then stops the stack without removing its volume.
 - Uses the production image name: `chembience/<app_name>-prod:<tag>`.
 - Verifies the image contains `/home/app/src/manage.py`.
 - Does **not** run `django-configure`, does **not** restart compose services, and does **not** mutate your active dev `.env`.
 
 Optional flags:
-- `--keep-env-prod` → reuses existing `./.env.prod`.
+- `--keep-env-prod` → reuses existing `PROD/.env`.
 - `--image-tag <tag>` → release tag for the produced image.
 - `--image-name <name>` → override default production image repository/name.
 - `--skip-build` → skip the build step (metadata prep only).
@@ -127,30 +130,31 @@ docker run --rm -p 8001:8000 chembience/app-prod:0.6.1-django.1 \
 ## Production deployment
 
 `django-prepare-prod` writes the immutable application image reference and the
-matching `CHEMBIENCE_POSTGRES_IMAGE` to `.env.prod`. Deploy with one of the
+matching `CHEMBIENCE_POSTGRES_IMAGE` to `PROD/.env`. Deploy with one of the
 following profiles.
 
 ### External database
 
 Set `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, and
-`POSTGRES_NAME` in `.env.prod` for a reachable PostgreSQL database that already
+`POSTGRES_NAME` in `PROD/.env` for a reachable PostgreSQL database that already
 has the RDKit extension installed. Apply migrations before starting workers:
 
 ```bash
-docker compose --env-file .env.prod -f docker-compose.prod.yml run --rm migrate
-docker compose --env-file .env.prod -f docker-compose.prod.yml up -d django
+cd PROD
+docker compose -f compose.external.yaml run --rm migrate
+docker compose -f compose.external.yaml up -d django
 ```
 
 ### Self-hosted RDKit PostgreSQL
 
-Leave `POSTGRES_HOST=postgres` in `.env.prod`. The overlay starts the bundled
+Leave `POSTGRES_HOST=postgres` in `PROD/.env`. `compose.yaml` starts the bundled
 RDKit PostgreSQL image with a named `postgres-data` volume and keeps its port
 private to the Compose network:
 
 ```bash
-docker compose --env-file .env.prod -f docker-compose.prod.yml -f docker-compose.prod.self-hosted.yml up -d postgres
-docker compose --env-file .env.prod -f docker-compose.prod.yml -f docker-compose.prod.self-hosted.yml run --rm migrate
-docker compose --env-file .env.prod -f docker-compose.prod.yml -f docker-compose.prod.self-hosted.yml up -d django
+cd PROD
+docker compose up -d postgres
+docker compose up -d
 ```
 
 For an external database, backups, TLS, and network access are managed by its

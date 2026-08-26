@@ -1,0 +1,10 @@
+name: ${COMPOSE_PROJECT_NAME:?Run rdkit-prepare-prod first}
+
+services:
+  rdkit:
+    image: ${CHEMBIENCE_PROD_IMAGE_NAME:?Run rdkit-prepare-prod first}:${CHEMBIENCE_IMAGE_TAG:?Set CHEMBIENCE_IMAGE_TAG in .env}
+    env_file: .env
+    environment:
+      CHEMBIENCE_RUNTIME_MODE: prod
+    restart: unless-stopped
+    command: ["tail", "-f", "/dev/null"]

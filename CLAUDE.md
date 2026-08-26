@@ -12,7 +12,7 @@ Run from the project root (where `docker-compose.yml` lives) unless noted.
   - Both commands accept `-d /path/to/dir` for a custom parent directory.
   - The default setup run exits after initialization; work with the generated
     app from its own directory. Use `--no-quit` to keep that setup run attached.
-- Tear down an app: `./remove <target>` (or `./remove <target> -d /path/to/dir`)
+- Tear down an app: `./remove <target>` (or `./remove <target> -d /path/to/dir`). It aborts once production preparation creates `PROD/.env`; use `--force-prod` only after confirming that the production stack may be brought down.
 - Start services: `docker compose up -d`
 - Stop services: `docker compose down`
 - Tail logs: `docker compose logs -f [<service>]`
