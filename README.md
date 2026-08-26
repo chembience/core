@@ -116,6 +116,10 @@ docker compose up -d
 # Production admin: http://localhost:9001/admin/
 ```
 
+`django-prepare-prod` writes matching local CSRF origins to `PROD/.env`. For a
+public hostname or HTTPS reverse proxy, set `DJANGO_CSRF_TRUSTED_ORIGINS` to the
+full public origin (for example, `https://chem.example.org`) before starting it.
+
 ## Prerequisites
 
 - **Docker**: Version 20.10.0 or higher

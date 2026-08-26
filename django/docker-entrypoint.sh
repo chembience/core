@@ -143,7 +143,6 @@ sync_script "/django/django-init"        "/home/app/django-init"
 sync_script "/django/django-manage-py"   "/home/app/django-manage-py"
 sync_script "/django/django-configure"   "/home/app/django-configure"
 sync_script "/django/django-prepare-prod"   "/home/app/django-prepare-prod"
-sync_script "/django/django-prod-self-hosted" "/home/app/django-prod-self-hosted"
 [ -f "/.gitignore" ] && [ ! -f "/home/app/.gitignore" ] && cp "/.gitignore" "/home/app/.gitignore"
 [ -f "/.dockerignore" ] && [ ! -f "/home/app/.dockerignore" ] && cp "/.dockerignore" "/home/app/.dockerignore"
 [ -f "/.gitattributes" ] && [ ! -f "/home/app/.gitattributes" ] && cp "/.gitattributes" "/home/app/.gitattributes"
@@ -300,6 +299,19 @@ ALLOWED_HOSTS = os.environ.get('DJANGO_VIRTUAL_HOSTNAME', 'localhost').split(","
 for _h in ('localhost', '127.0.0.1'):
     if _h not in ALLOWED_HOSTS:
         ALLOWED_HOSTS.append(_h)
+
+# Browser origins must include their scheme and, when non-default, their port.
+# This is deliberately separate from ALLOWED_HOSTS, which contains hostnames only.
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get('DJANGO_CSRF_TRUSTED_ORIGINS', '').split(',')
+    if origin.strip()
+]
+
+# Enable only for a deployment behind a reverse proxy that overwrites, rather
+# than merely forwards, this header. Without it Django cannot see HTTPS.
+if os.environ.get('DJANGO_TRUST_X_FORWARDED_PROTO', 'False').lower() in ('1', 'true', 'yes', 'on'):
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 INSTALLED_APPS = [
     'simple.apps.SimpleConfig',
@@ -496,6 +508,8 @@ EOF
         echo "CHEMBIENCE_GID=${CHEMBIENCE_GID}"
         echo "DJANGO_VIRTUAL_HOSTNAME=${DJANGO_VIRTUAL_HOSTNAME}"
         echo "DJANGO_CONNECTION_PORT=${DJANGO_CONNECTION_PORT:-8001}"
+        echo "DJANGO_CSRF_TRUSTED_ORIGINS=${DJANGO_CSRF_TRUSTED_ORIGINS:-}"
+        echo "DJANGO_TRUST_X_FORWARDED_PROTO=${DJANGO_TRUST_X_FORWARDED_PROTO:-False}"
         # Use the inbound DJANGO_SECRET_KEY if the user set one in the host .env;
         # otherwise generate a strong one (persisted here so it survives restarts).
         _env_key="${DJANGO_SECRET_KEY:-}"

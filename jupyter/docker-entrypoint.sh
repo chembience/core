@@ -107,7 +107,6 @@ if [ "${CHEMBIENCE_RUNTIME_MODE}" != "prod" ]; then
     sync_script "/jupyter/jupyter-init"          "/home/app/jupyter-init"
     sync_script "/jupyter/jupyter-configure"     "/home/app/jupyter-configure"
     sync_script "/jupyter/jupyter-prepare-prod"  "/home/app/jupyter-prepare-prod"
-    sync_script "/jupyter/jupyter-prod-self-hosted" "/home/app/jupyter-prod-self-hosted"
     [ -f "/.gitignore" ] && [ ! -f "/home/app/.gitignore" ] && cp "/.gitignore" "/home/app/.gitignore"
     [ -f "/.dockerignore" ] && [ ! -f "/home/app/.dockerignore" ] && cp "/.dockerignore" "/home/app/.dockerignore"
     [ -f "/.gitattributes" ] && [ ! -f "/home/app/.gitattributes" ] && cp "/.gitattributes" "/home/app/.gitattributes"

@@ -15,7 +15,6 @@ This is the RDKit service for your Chembience project. It provides specialized c
 - `rdkit-init`: Starts the RDKit service if necessary and verifies the installed RDKit version.
 - `rdkit-configure`: Safely applies `.env` updates and refreshes the environment.
 - `rdkit-prepare-prod`: Builds the production image and writes `PROD/.env`.
-- `rdkit-prod-self-hosted`: Compatibility shortcut that prepares the production bundle and starts it.
 - `PROD/psql`, `PROD/db-backup`, `PROD/db-restore`, `PROD/db-cleanup`: Self-contained database tools for the prepared self-hosted production bundle.
 - `psql`: Opens a PostgreSQL client connected to this app's database.
 

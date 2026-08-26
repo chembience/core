@@ -17,7 +17,6 @@ This is the async REST API service for your Chembience project. It is built usin
 - `fastapi-init`: Starts the service if needed and applies migrations.
 - `fastapi-makemigrations`, `fastapi-migrate`: Generate/review and apply Alembic migrations.
 - `fastapi-configure`, `fastapi-prepare-prod`: Safely apply configuration changes or create a production image and `PROD/.env`.
-- `fastapi-prod-self-hosted`: Compatibility shortcut that prepares the production bundle and starts it.
 - `PROD/psql`, `PROD/db-backup`, `PROD/db-restore`, `PROD/db-cleanup`: Self-contained database tools for the prepared self-hosted production bundle.
 - `db-backup`, `db-restore`, `db-cleanup`, `psql`: Database maintenance and access helpers.
 

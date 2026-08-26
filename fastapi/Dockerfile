@@ -32,7 +32,6 @@ COPY fastapi/app/fastapi-migrate /fastapi/fastapi-migrate
 COPY fastapi/app/fastapi-makemigrations /fastapi/fastapi-makemigrations
 COPY fastapi/app/fastapi-configure /fastapi/fastapi-configure
 COPY fastapi/app/fastapi-prepare-prod /fastapi/fastapi-prepare-prod
-COPY fastapi/app/fastapi-prod-self-hosted /fastapi/fastapi-prod-self-hosted
 COPY psql /fastapi/psql
 COPY VERSION /opt/VERSION
 COPY share /opt/share

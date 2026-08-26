@@ -112,7 +112,6 @@ if [ "${CHEMBIENCE_RUNTIME_MODE}" != "prod" ]; then
     sync_script "/fastapi/fastapi-makemigrations"      "/home/app/fastapi-makemigrations"
     sync_script "/fastapi/fastapi-configure"           "/home/app/fastapi-configure"
     sync_script "/fastapi/fastapi-prepare-prod"        "/home/app/fastapi-prepare-prod"
-    sync_script "/fastapi/fastapi-prod-self-hosted"    "/home/app/fastapi-prod-self-hosted"
     [ -f "/.gitignore" ] && [ ! -f "/home/app/.gitignore" ] && cp "/.gitignore" "/home/app/.gitignore"
     [ -f "/.dockerignore" ] && [ ! -f "/home/app/.dockerignore" ] && cp "/.dockerignore" "/home/app/.dockerignore"
     [ -f "/.gitattributes" ] && [ ! -f "/home/app/.gitattributes" ] && cp "/.gitattributes" "/home/app/.gitattributes"

@@ -91,6 +91,27 @@ if [[ $KEEP_ENV_PROD -eq 0 || -z "$PROD_PORT" || "$PROD_PORT" == "$DEV_PORT" ]];
   set_env_var "$PROD_ENV" DJANGO_CONNECTION_PORT "$((DEV_PORT + 1000))"
 fi
 
+# CSRF trusted origins use full browser URLs, unlike DJANGO_VIRTUAL_HOSTNAME.
+# Seed direct-access HTTP origins for every configured hostname; public HTTPS
+# deployments should replace this in PROD/.env before starting the stack.
+PROD_PORT="$(get_env_var "$PROD_ENV" DJANGO_CONNECTION_PORT)"
+CSRF_ORIGINS="$(get_env_var "$PROD_ENV" DJANGO_CSRF_TRUSTED_ORIGINS)"
+if [[ $KEEP_ENV_PROD -eq 0 || -z "$CSRF_ORIGINS" ]]; then
+  DJANGO_HOSTS="$(get_env_var "$PROD_ENV" DJANGO_VIRTUAL_HOSTNAME)"
+  DJANGO_HOSTS="${DJANGO_HOSTS:-localhost}"
+  DEFAULT_CSRF_ORIGINS=""
+  IFS=',' read -r -a DJANGO_HOST_ARRAY <<< "$DJANGO_HOSTS"
+  for DJANGO_HOST in "${DJANGO_HOST_ARRAY[@]}"; do
+    DJANGO_HOST="${DJANGO_HOST//[[:space:]]/}"
+    [[ -n "$DJANGO_HOST" && "$DJANGO_HOST" != "*" && "$DJANGO_HOST" != .* ]] || continue
+    DJANGO_ORIGIN="http://${DJANGO_HOST}:${PROD_PORT}"
+    if [[ ",$DEFAULT_CSRF_ORIGINS," != *",$DJANGO_ORIGIN,"* ]]; then
+      DEFAULT_CSRF_ORIGINS+="${DEFAULT_CSRF_ORIGINS:+,}${DJANGO_ORIGIN}"
+    fi
+  done
+  set_env_var "$PROD_ENV" DJANGO_CSRF_TRUSTED_ORIGINS "$DEFAULT_CSRF_ORIGINS"
+fi
+
 if [[ -z "$IMAGE_TAG" ]]; then
   IMAGE_TAG="$(get_env_var "$PROD_ENV" CHEMBIENCE_VERSION)"
 fi

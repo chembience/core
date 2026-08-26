@@ -40,7 +40,6 @@ one yourself.
 - `jupyter-init`: Starts JupyterLab if necessary, validates the environment, and prints the access URL/token.
 - `jupyter-configure`: Safely applies `.env` updates and refreshes the service.
 - `jupyter-prepare-prod`: Builds the production image and writes `PROD/.env`.
-- `jupyter-prod-self-hosted`: Compatibility shortcut that prepares the production bundle and starts it.
 - `PROD/psql`, `PROD/db-backup`, `PROD/db-restore`, `PROD/db-cleanup`: Self-contained database tools for the prepared self-hosted production bundle.
 - `psql`: Opens a PostgreSQL client connected to this app's database.
 

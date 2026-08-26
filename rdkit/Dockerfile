@@ -44,7 +44,6 @@ COPY rdkit/app/requirements.txt /opt/rdkit/app-requirements.txt
 COPY rdkit/app/rdkit-init /opt/rdkit/rdkit-init
 COPY rdkit/app/rdkit-configure /opt/rdkit/rdkit-configure
 COPY rdkit/app/rdkit-prepare-prod /opt/rdkit/rdkit-prepare-prod
-COPY rdkit/app/rdkit-prod-self-hosted /opt/rdkit/rdkit-prod-self-hosted
 COPY rdkit/app/README.md /opt/rdkit/README.md
 COPY rdkit/environment.yml /opt/rdkit/environment.yml
 COPY psql /opt/rdkit/psql

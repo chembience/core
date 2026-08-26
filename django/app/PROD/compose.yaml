@@ -6,6 +6,7 @@ services:
     env_file: .env
     environment:
       CHEMBIENCE_RUNTIME_MODE: prod
+      DJANGO_SETTINGS_MODULE: chembience.django_prod_settings
     ports:
       - "${DJANGO_CONNECTION_PORT:-8001}:8000"
     restart: unless-stopped
@@ -25,6 +26,7 @@ services:
     env_file: .env
     environment:
       CHEMBIENCE_RUNTIME_MODE: prod
+      DJANGO_SETTINGS_MODULE: chembience.django_prod_settings
     profiles: ["migration"]
     command: ["python", "manage.py", "migrate", "--noinput"]
     depends_on:

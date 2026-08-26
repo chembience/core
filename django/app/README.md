@@ -16,7 +16,6 @@ This is the web service for your Chembience project. It is built using Django an
 - `django-manage-py`: Runs any `manage.py` command as the container's application user.
 - `django-configure`: Safely applies `.env` updates, including database-password rotation.
 - `django-prepare-prod`: Builds the production image and writes `PROD/.env`.
-- `django-prod-self-hosted`: Compatibility shortcut that prepares the production bundle and starts it.
 - `PROD/psql`, `PROD/db-backup`, `PROD/db-restore`, `PROD/db-cleanup`: Self-contained database tools for the prepared self-hosted production bundle.
 - `psql`: Opens a PostgreSQL client connected to this app's database.
 - `src/django_rdkit_test_app/`: Retained RDKit integration smoke-test app and its tests.
@@ -98,6 +97,7 @@ PostgreSQL volume, applies Django migrations, then stops the prepared stage.
 
 What the script does:
 - Creates/reuses `PROD/.env` from `./.env` and forces `CHEMBIENCE_RUNTIME_MODE=prod` there.
+- Seeds `DJANGO_CSRF_TRUSTED_ORIGINS` with direct HTTP origins derived from the production port and `DJANGO_VIRTUAL_HOSTNAME`.
 - Builds a dedicated source-baked production image via `Dockerfile.prod`.
 - Initializes self-hosted PostgreSQL and applies Django migrations, then stops the stack without removing its volume.
 - Uses the production image name: `chembience/<app_name>-prod:<tag>`.
@@ -132,6 +132,28 @@ docker run --rm -p 8001:8000 chembience/app-prod:0.6.1-django.1 \
 `django-prepare-prod` writes the immutable application image reference and the
 matching `CHEMBIENCE_POSTGRES_IMAGE` to `PROD/.env`. Deploy with one of the
 following profiles.
+
+### Public URL and CSRF
+
+`DJANGO_VIRTUAL_HOSTNAME` controls Django's allowed hostnames. CSRF protection
+uses the separate `DJANGO_CSRF_TRUSTED_ORIGINS` setting, whose entries must be
+full browser origins (scheme and port included). `django-prepare-prod` seeds
+local HTTP defaults such as `http://localhost:9001`. Before deploying through a
+public URL, replace them in `PROD/.env`, for example:
+
+```env
+DJANGO_VIRTUAL_HOSTNAME=chem.example.org
+DJANGO_CSRF_TRUSTED_ORIGINS=https://chem.example.org
+```
+
+The PROD Compose files load these values through Chembience's production
+settings overlay, so this also applies when the application was created with an
+older core image.
+
+When TLS terminates at a trusted reverse proxy, set
+`DJANGO_TRUST_X_FORWARDED_PROTO=True` only if that proxy supplies and sanitizes
+the `X-Forwarded-Proto` header. This allows Django to recognize the original
+HTTPS request.
 
 ### External database
 
