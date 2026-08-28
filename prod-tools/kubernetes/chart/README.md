@@ -1,9 +1,10 @@
-Ich wo# Chembience Helm chart
+# Chembience Helm chart
 
 This chart deploys one frozen Chembience application image (`django`, `fastapi`,
 `jupyter`, or `rdkit`) and, by default, a single-node RDKit PostgreSQL instance.
 It is the Kubernetes alternative to a generated application's self-hosted
-`PROD/` Compose bundle; it does not replace that bundle.
+`PROD/` Compose bundle; it does not replace that bundle. In a generated app,
+run the commands below from `PROD/kubernetes/`, where this chart is `./chart`.
 
 ## Install
 
@@ -17,7 +18,7 @@ kubectl -n production create secret generic chembience-secrets \
   --from-literal=django-secret-key='replace-me' \
   --from-literal=jupyter-token='replace-me'
 
-helm upgrade --install chemistry ./charts/chembience \
+helm upgrade --install chemistry ./chart \
   --namespace production \
   --set app.kind=django \
   --set app.image.repository=registry.example/chemistry-prod \
@@ -39,12 +40,14 @@ Deployment receives the new image. On first install it is a `post-install` hook;
 keep Ingress disabled until that first migration completes.
 
 ```bash
-helm upgrade --install chemistry ./charts/chembience -n production \
-  -f production-values.yaml --set migration.enabled=true --wait
+helm upgrade --install chemistry ./chart -n production \
+  -f values.generated.yaml -f values.override.yaml \
+  --set migration.enabled=true --wait
 kubectl -n production wait --for=condition=complete job \
   -l app.kubernetes.io/component=migration --timeout=10m
-helm upgrade chemistry ./charts/chembience -n production \
-  -f production-values.yaml --set migration.enabled=false
+helm upgrade chemistry ./chart -n production \
+  -f values.generated.yaml -f values.override.yaml \
+  --set migration.enabled=false
 ```
 
 The migration Job name includes the application image tag, allowing a new Job

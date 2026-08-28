@@ -79,6 +79,10 @@ if [ "${CHEMBIENCE_RUNTIME_MODE}" != "prod" ] && { [ ! -f "/home/app/.rdkit-init
             [ ! -f "/home/app/PROD/README.md" ] && cp /opt/rdkit/prod-tools/README.md /home/app/PROD/README.md
             chmod +x /home/app/PROD/psql /home/app/PROD/db-backup /home/app/PROD/db-restore /home/app/PROD/db-cleanup
         fi
+        mkdir -p /home/app/PROD/kubernetes
+        [ ! -d "/home/app/PROD/kubernetes/chart" ] && cp -a /opt/rdkit/prod-tools/kubernetes/chart /home/app/PROD/kubernetes/chart
+        [ ! -f "/home/app/PROD/kubernetes/README.md" ] && cp /opt/rdkit/prod-tools/kubernetes/README.md /home/app/PROD/kubernetes/README.md
+        [ ! -f "/home/app/PROD/kubernetes/values.override.yaml.example" ] && cp /opt/rdkit/prod-tools/kubernetes/values.override.yaml.example /home/app/PROD/kubernetes/values.override.yaml.example
         [ ! -f "/home/app/README.md" ] && cp /opt/rdkit/README.md /home/app/README.md
         [ -f "/.gitignore" ] && [ ! -f "/home/app/.gitignore" ] && cp "/.gitignore" "/home/app/.gitignore"
         [ -f "/.dockerignore" ] && [ ! -f "/home/app/.dockerignore" ] && cp "/.dockerignore" "/home/app/.dockerignore"
@@ -88,6 +92,10 @@ if [ "${CHEMBIENCE_RUNTIME_MODE}" != "prod" ] && { [ ! -f "/home/app/.rdkit-init
                 echo "" >> "/home/app/.gitignore"
                 echo "# Added by entrypoint" >> "/home/app/.gitignore"
                 echo "postgres/postgres_data" >> "/home/app/.gitignore"
+            fi
+            if ! grep -Eq "^PROD/kubernetes/values\.generated\.yaml([[:space:]]|#|$)" "/home/app/.gitignore"; then
+                echo "PROD/kubernetes/values.generated.yaml" >> "/home/app/.gitignore"
+                echo "PROD/kubernetes/values.override.yaml" >> "/home/app/.gitignore"
             fi
         fi
         if [ -f "/home/app/.dockerignore" ]; then

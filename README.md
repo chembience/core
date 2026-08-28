@@ -128,11 +128,12 @@ full public origin (for example, `https://chem.example.org`) before starting it.
 
 ## Kubernetes
 
-Chembience provides a Helm chart at [`charts/chembience`](charts/chembience)
-for deploying frozen generated-app images to Kubernetes. It supports Django,
-FastAPI, Jupyter, and RDKit workloads plus the bundled single-node RDKit
-PostgreSQL StatefulSet. The generated `PROD/` directory remains the
-self-hosted Docker Compose deployment path.
+Each generated application receives its Kubernetes Helm bundle in
+`PROD/kubernetes/`. Run its `*-prepare-prod` helper to bind the bundle to the
+frozen application image, then deploy from that directory; a core checkout is
+not required. The bundle supports Django, FastAPI, Jupyter, and RDKit workloads
+plus the bundled single-node RDKit PostgreSQL StatefulSet. `PROD/` also remains
+the self-hosted Docker Compose deployment path.
 
 Use `production` for namespaces and other human-facing environment names. The
 runtime value `CHEMBIENCE_RUNTIME_MODE=prod` remains the compatible immutable
@@ -290,6 +291,10 @@ Django init flow to create the initial admin user. Treat it as a secret:
 set it in `.env` before running `./install`, never commit it, and rotate it
 via `python manage.py changepassword` inside the `django` container if
 needed.
+
+For a self-hosted Django `PROD` bundle, all three variables must be set and the
+password must not be a placeholder. `django-prepare-prod` creates or updates
+that administrator in the separate production database.
 
 ### JupyterLab Token
 

@@ -100,6 +100,12 @@ if [ "${CHEMBIENCE_RUNTIME_MODE}" != "prod" ]; then
         sync_script "/jupyter/prod-tools/db-cleanup" "/home/app/PROD/db-cleanup"
         sync_config "/jupyter/prod-tools/README.md" "/home/app/PROD/README.md"
     fi
+    mkdir -p "/home/app/PROD/kubernetes"
+    if [ ! -d "/home/app/PROD/kubernetes/chart" ]; then
+        cp -a "/jupyter/prod-tools/kubernetes/chart" "/home/app/PROD/kubernetes/chart"
+    fi
+    sync_config "/jupyter/prod-tools/kubernetes/README.md" "/home/app/PROD/kubernetes/README.md"
+    sync_config "/jupyter/prod-tools/kubernetes/values.override.yaml.example" "/home/app/PROD/kubernetes/values.override.yaml.example"
     sync_config "/jupyter/requirements.txt"      "/home/app/requirements.txt"
     sync_config "/jupyter/app-requirements.txt"  "/home/app/app-requirements.txt"
     sync_config "/jupyter/README.md"             "/home/app/README.md"
@@ -115,6 +121,10 @@ if [ "${CHEMBIENCE_RUNTIME_MODE}" != "prod" ]; then
             echo "" >> "/home/app/.gitignore"
             echo "# Added by entrypoint" >> "/home/app/.gitignore"
             echo "postgres/postgres_data" >> "/home/app/.gitignore"
+        fi
+        if ! grep -Eq "^PROD/kubernetes/values\.generated\.yaml([[:space:]]|#|$)" "/home/app/.gitignore"; then
+            echo "PROD/kubernetes/values.generated.yaml" >> "/home/app/.gitignore"
+            echo "PROD/kubernetes/values.override.yaml" >> "/home/app/.gitignore"
         fi
     fi
     if [ -f "/home/app/.dockerignore" ]; then

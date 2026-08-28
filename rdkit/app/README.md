@@ -143,19 +143,19 @@ Repeatability note:
 ## Kubernetes deployment
 
 Chembience's Helm chart is the Kubernetes alternative to this application's
-self-hosted `PROD/` Compose bundle. See the
-[core chart documentation](https://github.com/chembience/core/tree/main/charts/chembience)
-for storage, database, and Secret values. Publish the immutable image built by
-`rdkit-prepare-prod`, then deploy the long-running RDKit workload:
+self-hosted `PROD/` Compose bundle. After `rdkit-prepare-prod`, the complete
+chart and deployment documentation live in `PROD/kubernetes/`; no core checkout
+is required. Publish the immutable image, then deploy the long-running RDKit
+workload from that directory:
 
 ```bash
 kubectl -n production create secret generic chembience-secrets \
   --from-literal=postgres-password='replace-me'
 
-helm upgrade --install rdkit-tools /path/to/core/charts/chembience -n production \
-  --set app.kind=rdkit \
-  --set app.image.repository=registry.example.com/chem/rdkit-tools-prod \
-  --set app.image.tag=0.6.1-rdkit.1
+cd PROD/kubernetes
+cp values.override.yaml.example values.override.yaml
+helm upgrade --install rdkit-tools ./chart -n production \
+  -f values.generated.yaml -f values.override.yaml
 ```
 
 The RDKit workload has no public Service or Ingress; run scripts with

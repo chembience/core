@@ -98,6 +98,8 @@ coverage.xml
 .env.prod
 PROD/.env
 PROD/backups/
+PROD/kubernetes/values.generated.yaml
+PROD/kubernetes/values.override.yaml
 .env.new
 .venv
 env/
@@ -114,4 +116,3 @@ venv.bak/
 
 # Test builds
 test-builds/
-

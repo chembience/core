@@ -53,7 +53,17 @@ jobs:
         uses: azure/setup-helm@v4
 
       - name: Lint and render workload variants
-        run: bash charts/chembience/tests/render.sh
+        run: bash prod-tools/kubernetes/chart/tests/render.sh
+
+  django-production-bootstrap:
+    name: Django production bootstrap
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Validate administrator credential policy
+        run: python3 -m unittest share.tests.test_django_superuser
 
   line-endings:
     name: Enforce LF line endings

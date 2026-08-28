@@ -169,19 +169,19 @@ Repeatability note:
 ## Kubernetes deployment
 
 Chembience's Helm chart is the Kubernetes alternative to this application's
-self-hosted `PROD/` Compose bundle. Its complete reference lives in the
-[core chart documentation](https://github.com/chembience/core/tree/main/charts/chembience).
-Publish the immutable image built by `fastapi-prepare-prod`, create a
-Kubernetes Secret outside Helm, and install the chart into `production`:
+self-hosted `PROD/` Compose bundle. After `fastapi-prepare-prod`, the complete
+chart and deployment documentation live in `PROD/kubernetes/`; no core checkout
+is required. Publish the immutable image, create a Kubernetes Secret outside
+Helm, and deploy from that directory:
 
 ```bash
 kubectl -n production create secret generic chembience-secrets \
   --from-literal=postgres-password='replace-me'
 
-helm upgrade --install myapi /path/to/core/charts/chembience -n production \
-  --set app.kind=fastapi \
-  --set app.image.repository=registry.example.com/chem/myapi-prod \
-  --set app.image.tag=0.6.1-fastapi.1
+cd PROD/kubernetes
+cp values.override.yaml.example values.override.yaml
+helm upgrade --install myapi ./chart -n production \
+  -f values.generated.yaml -f values.override.yaml
 ```
 
 For schema changes, run the release with `--set migration.enabled=true --wait`.

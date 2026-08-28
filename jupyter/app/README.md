@@ -175,20 +175,20 @@ Repeatability note:
 ## Kubernetes deployment
 
 Chembience's Helm chart is the Kubernetes alternative to this application's
-self-hosted `PROD/` Compose bundle. See the
-[core chart documentation](https://github.com/chembience/core/tree/main/charts/chembience)
-for every value. Publish the immutable image built by `jupyter-prepare-prod`,
-then create its credentials outside Helm and deploy it to `production`:
+self-hosted `PROD/` Compose bundle. After `jupyter-prepare-prod`, the complete
+chart and deployment documentation live in `PROD/kubernetes/`; no core checkout
+is required. Publish the immutable image, then create its credentials outside
+Helm and deploy from that directory:
 
 ```bash
 kubectl -n production create secret generic chembience-secrets \
   --from-literal=postgres-password='replace-me' \
   --from-literal=jupyter-token='replace-me'
 
-helm upgrade --install notebooks /path/to/core/charts/chembience -n production \
-  --set app.kind=jupyter \
-  --set app.image.repository=registry.example.com/chem/notebooks-prod \
-  --set app.image.tag=0.6.1-jupyter.1
+cd PROD/kubernetes
+cp values.override.yaml.example values.override.yaml
+helm upgrade --install notebooks ./chart -n production \
+  -f values.generated.yaml -f values.override.yaml
 ```
 
 Enable optional Ingress only with a chosen controller and TLS configuration;

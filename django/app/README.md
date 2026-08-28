@@ -133,6 +133,16 @@ docker run --rm -p 8001:8000 chembience/app-prod:0.6.1-django.1 \
 matching `CHEMBIENCE_POSTGRES_IMAGE` to `PROD/.env`. Deploy with one of the
 following profiles.
 
+### Production administrator
+
+Before preparation, set non-placeholder `DJANGO_SUPERUSER_USERNAME`,
+`DJANGO_SUPERUSER_EMAIL`, and `DJANGO_SUPERUSER_PASSWORD` in the app `.env`.
+For the self-hosted database, `django-prepare-prod` runs migrations and then
+creates or updates that administrator in the separate production database. It
+fails rather than prepare a bundle with a missing or placeholder administrator
+password. Rerun `./django-prepare-prod` after changing the password to apply
+the new value to an existing `PROD` database.
+
 ### Public URL and CSRF
 
 `DJANGO_VIRTUAL_HOSTNAME` controls Django's allowed hostnames. CSRF protection
@@ -189,23 +199,20 @@ Repeatability note:
 ## Kubernetes deployment
 
 Chembience's Helm chart is the Kubernetes alternative to this application's
-self-hosted `PROD/` Compose bundle. Its complete reference lives in the
-[core chart documentation](https://github.com/chembience/core/tree/main/charts/chembience).
-Publish the immutable image built by `django-prepare-prod`, create the required
-Kubernetes Secret outside Helm, then install the chart into a `production`
-namespace:
+self-hosted `PROD/` Compose bundle. After `django-prepare-prod`, the complete
+chart and deployment documentation live in `PROD/kubernetes/`; no core checkout
+is required. Publish the immutable image, create the required Kubernetes Secret
+outside Helm, then deploy from that directory:
 
 ```bash
 kubectl -n production create secret generic chembience-secrets \
   --from-literal=postgres-password='replace-me' \
   --from-literal=django-secret-key='replace-me'
 
-helm upgrade --install mysite /path/to/core/charts/chembience -n production \
-  --set app.kind=django \
-  --set app.image.repository=registry.example.com/chem/mysite-prod \
-  --set app.image.tag=0.6.1-django.1 \
-  --set django.virtualHostname=chem.example.org \
-  --set django.csrfTrustedOrigins=https://chem.example.org
+cd PROD/kubernetes
+cp values.override.yaml.example values.override.yaml
+helm upgrade --install mysite ./chart -n production \
+  -f values.generated.yaml -f values.override.yaml
 ```
 
 Enable the chart's optional Ingress only after selecting an Ingress controller
