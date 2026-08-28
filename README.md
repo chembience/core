@@ -126,6 +126,27 @@ full public origin (for example, `https://chem.example.org`) before starting it.
 - **Docker Compose**: Version 2.0.0 or higher
 - **Bash**: Linux (on WSL2) [tested], macOS [not tested yet]
 
+## Testing
+
+Run the fast local suite from the repository root:
+
+```bash
+./test
+```
+
+It validates shell workflows, shared Python checks, Helm rendering, and Compose
+configuration without building images. For the full Docker suite, including
+development and self-hosted `PROD` flows for all app types, run:
+
+```bash
+./test --integration
+```
+
+The integration suite copies the current working tree to a temporary directory,
+creates test-only credentials, and removes generated apps, containers, and
+volumes afterward. It retains Docker image cache and may take substantial time
+and disk space.
+
 ## Kubernetes
 
 Each generated application receives its Kubernetes Helm bundle in
@@ -382,7 +403,7 @@ Thin Bash wrappers around `docker compose` and the per-service entrypoints.
 - `./core-build` — shared implementation used by `install` and `build`.
 - `./remove <target> [-d <parent_dir>] [-i|--images] [--silent|-s]` — tear it down. It aborts after production preparation has created `PROD/.env`; handle that deployment and its data manually first. Use `--force-prod` only to confirm that its production Compose stack should be brought down before removal; its named volume is retained.
 - `./psql` — open a `psql` shell on the Postgres container.
-- `./test-build-all` — Test script to build and init all app types.
+- `./test-build-all` — Compatibility alias for `./test --integration`.
 
 The paths below are the source templates in this repository. During `./install` or `./build`,
 the relevant helpers are copied to the root of the generated application

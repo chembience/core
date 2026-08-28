@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+integration=false
+
+if [[ $# -gt 1 || ${1:-} == "--help" ]]; then
+  echo "Usage: ./test [--integration]" >&2
+  exit 2
+fi
+if [[ ${1:-} == "--integration" ]]; then
+  integration=true
+elif [[ $# -eq 1 ]]; then
+  echo "Unknown option: $1" >&2
+  exit 2
+fi
+
+require_command() {
+  command -v "$1" >/dev/null 2>&1 || {
+    echo "Missing required command: $1" >&2
+    exit 1
+  }
+}
+
+require_command bash
+require_command python3
+require_command helm
+require_command docker
+
+cd "$root_dir"
+export CHEMBIENCE_VERSION="$(tr -d '[:space:]' < VERSION)"
+bash -n django/app/*-configure django/app/*-prepare-prod \
+  fastapi/app/*-configure fastapi/app/*-prepare-prod \
+  jupyter/app/*-configure jupyter/app/*-prepare-prod \
+  rdkit/app/*-configure rdkit/app/*-prepare-prod \
+  tests/test-prod-env-workflow.sh
+python3 -m unittest share.tests.test_django_superuser
+bash tests/test-prod-env-workflow.sh
+bash prod-tools/kubernetes/chart/tests/render.sh
+docker compose --env-file .env.template -f docker-compose.yml config --quiet
+docker compose --env-file .env.template -f docker-compose.yml -f docker-compose.dev.yml config --quiet
+
+if [[ "$integration" == true ]]; then
+  bash tests/test-integration.sh
+fi
+
+echo "✅ Chembience tests passed."
