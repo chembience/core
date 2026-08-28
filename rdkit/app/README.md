@@ -50,7 +50,8 @@ or add a local Compose override if host access is needed.
 
 ## Configuration
 
-- Use `./rdkit-configure [--rebuild] [NEW_ENV_FILE]` to manage environment updates safely.
+- Use `./rdkit-configure [--rebuild] [NEW_ENV_FILE]` to manage development environment updates safely.
+- Use `./rdkit-configure --prod` to create or deliberately refresh `.env.prod` from `.env` before editing production settings.
   - First run creates `./.env.new` from the current `./.env` and prints edit instructions.
   - After editing, rerun with the same file to apply changes and refresh the environment.
   - Add `--rebuild` to force a rebuild/restart after applying changes.
@@ -80,7 +81,7 @@ PostgreSQL volume, then stops the prepared stage. `docker compose up -d` from
 `PROD/` starts it later.
 
 What the script does:
-- Creates/reuses `PROD/.env` from `./.env` and forces `CHEMBIENCE_RUNTIME_MODE=prod` there.
+- Copies `./.env.prod` to `PROD/.env` when it exists; otherwise copies `./.env`, then forces `CHEMBIENCE_RUNTIME_MODE=prod`.
 - Builds a dedicated source-baked production image via `Dockerfile.prod`.
 - Initializes self-hosted PostgreSQL, then stops the stack without removing its volume.
 - Uses the production image name: `chembience/<app_name>-prod:<tag>`.
@@ -92,6 +93,10 @@ Optional flags:
 - `--image-tag <tag>` → release tag for the produced image.
 - `--image-name <name>` → override default production image repository/name.
 - `--skip-build` → skip the build step (metadata prep only).
+
+To maintain separate production settings, run `./rdkit-configure --prod`, edit
+the generated `.env.prod`, then run `./rdkit-prepare-prod`. `.env.prod` is
+copied on each preparation run unless `--keep-env-prod` is supplied.
 
 Examples:
 

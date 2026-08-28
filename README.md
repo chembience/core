@@ -283,6 +283,15 @@ The configure script follows a safe two-phase workflow:
 
 The script automatically handles the Postgres `ALTER USER` statement with the old credentials before switching to the new ones, so no manual SQL is needed.
 
+### Production configuration
+
+Each generated app can maintain a separate ignored `.env.prod` file. Run
+`./<app>-configure --prod` to copy the current `.env` into it (with an
+interactive overwrite confirmation), edit the production values, then run
+`./<app>-prepare-prod`. Preparation copies `.env.prod` to `PROD/.env`; when no
+such file exists, it retains the current `.env` fallback. Pass `--keep-env-prod`
+to keep an already prepared `PROD/.env` unchanged.
+
 ### Django Superuser Password
 
 `DJANGO_SUPERUSER_PASSWORD` (together with `DJANGO_SUPERUSER_USERNAME` and

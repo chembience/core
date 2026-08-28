@@ -5,7 +5,7 @@ APP_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$APP_DIR"
 PROD_DIR="$APP_DIR/PROD"
 PROD_ENV="$PROD_DIR/.env"
-LEGACY_PROD_ENV="$APP_DIR/.env.prod"
+PROD_SOURCE_ENV="$APP_DIR/.env.prod"
 
 KEEP_ENV_PROD=0
 SKIP_BUILD=0
@@ -50,15 +50,13 @@ if [[ -n "$LEGACY_PROD_DIR" ]]; then
   echo "ℹ️  Renamed legacy prod/ directory to PROD/."
 fi
 mkdir -p "$PROD_DIR"
-MIGRATED_LEGACY_ENV=0
-if [[ ! -f "$PROD_ENV" && -f "$LEGACY_PROD_ENV" ]]; then
-  mv "$LEGACY_PROD_ENV" "$PROD_ENV"
-  MIGRATED_LEGACY_ENV=1
-  echo "ℹ️  Moved legacy .env.prod to PROD/.env."
-fi
-
-if [[ $KEEP_ENV_PROD -eq 0 && $MIGRATED_LEGACY_ENV -eq 0 ]]; then
-  cp -f .env "$PROD_ENV"
+if [[ $KEEP_ENV_PROD -eq 0 ]]; then
+  if [[ -f "$PROD_SOURCE_ENV" ]]; then
+    cp -f "$PROD_SOURCE_ENV" "$PROD_ENV"
+    echo "ℹ️  Copied .env.prod to PROD/.env."
+  else
+    cp -f .env "$PROD_ENV"
+  fi
 fi
 
 if grep -q '^CHEMBIENCE_RUNTIME_MODE=' "$PROD_ENV"; then

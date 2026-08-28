@@ -65,6 +65,16 @@ jobs:
       - name: Validate administrator credential policy
         run: python3 -m unittest share.tests.test_django_superuser
 
+  production-environment-workflow:
+    name: Production environment workflow
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Validate configure and prepare environment precedence
+        run: bash tests/test-prod-env-workflow.sh
+
   line-endings:
     name: Enforce LF line endings
     runs-on: ubuntu-latest
