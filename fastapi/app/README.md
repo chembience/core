@@ -165,3 +165,27 @@ settings without adding TLS-specific options.
 
 Repeatability note:
 - Running the script again with the same `--image-name` and `--image-tag` rebuilds/replaces the same image tag deterministically from the current source state.
+
+## Kubernetes deployment
+
+Chembience's Helm chart is the Kubernetes alternative to this application's
+self-hosted `PROD/` Compose bundle. Its complete reference lives in the
+[core chart documentation](https://github.com/chembience/core/tree/main/charts/chembience).
+Publish the immutable image built by `fastapi-prepare-prod`, create a
+Kubernetes Secret outside Helm, and install the chart into `production`:
+
+```bash
+kubectl -n production create secret generic chembience-secrets \
+  --from-literal=postgres-password='replace-me'
+
+helm upgrade --install myapi /path/to/core/charts/chembience -n production \
+  --set app.kind=fastapi \
+  --set app.image.repository=registry.example.com/chem/myapi-prod \
+  --set app.image.tag=0.6.1-fastapi.1
+```
+
+For schema changes, run the release with `--set migration.enabled=true --wait`.
+The chart runs Alembic as a pre-upgrade hook before API pods use the new image;
+follow with the normal chart upgrade with migrations disabled. Enable optional
+Ingress only after selecting its controller and TLS configuration. The runtime
+mode remains `prod`; use `production` for the namespace/environment name.

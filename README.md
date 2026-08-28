@@ -126,6 +126,18 @@ full public origin (for example, `https://chem.example.org`) before starting it.
 - **Docker Compose**: Version 2.0.0 or higher
 - **Bash**: Linux (on WSL2) [tested], macOS [not tested yet]
 
+## Kubernetes
+
+Chembience provides a Helm chart at [`charts/chembience`](charts/chembience)
+for deploying frozen generated-app images to Kubernetes. It supports Django,
+FastAPI, Jupyter, and RDKit workloads plus the bundled single-node RDKit
+PostgreSQL StatefulSet. The generated `PROD/` directory remains the
+self-hosted Docker Compose deployment path.
+
+Use `production` for namespaces and other human-facing environment names. The
+runtime value `CHEMBIENCE_RUNTIME_MODE=prod` remains the compatible immutable
+container-mode identifier.
+
 ## Major Software Components
 
 The root [`VERSION`](VERSION) file is the release-version source of truth.

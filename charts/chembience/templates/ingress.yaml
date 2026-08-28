@@ -1,0 +1,34 @@
+{{- if .Values.ingress.enabled }}
+{{- if eq .Values.app.kind "rdkit" }}{{ fail "ingress is not supported for app.kind=rdkit" }}{{ end }}
+{{- if not .Values.ingress.host }}{{ fail "ingress.host is required when ingress.enabled=true" }}{{ end }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "chembience.appName" . }}
+  labels:
+    {{- include "chembience.labels" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with .Values.ingress.className }}
+  ingressClassName: {{ . | quote }}
+  {{- end }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    - hosts: [{{ .Values.ingress.host | quote }}]
+      secretName: {{ required "ingress.tls.secretName is required when TLS is enabled" .Values.ingress.tls.secretName | quote }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.host | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "chembience.appName" . }}
+                port:
+                  name: http
+{{- end }}

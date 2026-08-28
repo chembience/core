@@ -1,0 +1,12 @@
+apiVersion: v2
+name: chembience
+description: Deploy an immutable Chembience application with RDKit PostgreSQL
+type: application
+version: 0.1.0
+appVersion: "0.6.2"
+kubeVersion: ">=1.25.0-0"
+keywords:
+  - chembience
+  - rdkit
+  - postgresql
+  - cheminformatics

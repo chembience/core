@@ -139,3 +139,25 @@ settings without adding TLS-specific options.
 
 Repeatability note:
 - Running the script again with the same `--image-name` and `--image-tag` rebuilds/replaces the same image tag deterministically from the current source state.
+
+## Kubernetes deployment
+
+Chembience's Helm chart is the Kubernetes alternative to this application's
+self-hosted `PROD/` Compose bundle. See the
+[core chart documentation](https://github.com/chembience/core/tree/main/charts/chembience)
+for storage, database, and Secret values. Publish the immutable image built by
+`rdkit-prepare-prod`, then deploy the long-running RDKit workload:
+
+```bash
+kubectl -n production create secret generic chembience-secrets \
+  --from-literal=postgres-password='replace-me'
+
+helm upgrade --install rdkit-tools /path/to/core/charts/chembience -n production \
+  --set app.kind=rdkit \
+  --set app.image.repository=registry.example.com/chem/rdkit-tools-prod \
+  --set app.image.tag=0.6.1-rdkit.1
+```
+
+The RDKit workload has no public Service or Ingress; run scripts with
+`kubectl exec` or add a purpose-built worker/API separately. The chart uses
+runtime mode `prod`; use `production` for the namespace/environment name.

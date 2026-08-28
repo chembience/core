@@ -185,3 +185,31 @@ settings without adding TLS-specific options.
 
 Repeatability note:
 - Running the script again with the same `--image-name` and `--image-tag` rebuilds/replaces the same image tag deterministically from the current source state.
+
+## Kubernetes deployment
+
+Chembience's Helm chart is the Kubernetes alternative to this application's
+self-hosted `PROD/` Compose bundle. Its complete reference lives in the
+[core chart documentation](https://github.com/chembience/core/tree/main/charts/chembience).
+Publish the immutable image built by `django-prepare-prod`, create the required
+Kubernetes Secret outside Helm, then install the chart into a `production`
+namespace:
+
+```bash
+kubectl -n production create secret generic chembience-secrets \
+  --from-literal=postgres-password='replace-me' \
+  --from-literal=django-secret-key='replace-me'
+
+helm upgrade --install mysite /path/to/core/charts/chembience -n production \
+  --set app.kind=django \
+  --set app.image.repository=registry.example.com/chem/mysite-prod \
+  --set app.image.tag=0.6.1-django.1 \
+  --set django.virtualHostname=chem.example.org \
+  --set django.csrfTrustedOrigins=https://chem.example.org
+```
+
+Enable the chart's optional Ingress only after selecting an Ingress controller
+and TLS strategy. The chart sets `CHEMBIENCE_RUNTIME_MODE=prod`; `production`
+is the namespace/environment name. For releases with migrations, enable the
+migration Job during the Helm upgrade and use `--wait`; its pre-upgrade hook
+completes before new Django workers are rolled out.

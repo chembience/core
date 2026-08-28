@@ -1,0 +1,17 @@
+{{- if ne .Values.app.kind "rdkit" }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "chembience.appName" . }}
+  labels:
+    {{- include "chembience.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+  selector:
+    {{- include "chembience.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: app
+{{- end }}

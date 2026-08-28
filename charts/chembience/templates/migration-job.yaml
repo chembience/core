@@ -1,0 +1,52 @@
+{{- if .Values.migration.enabled }}
+{{- if and (ne .Values.app.kind "django") (ne .Values.app.kind "fastapi") }}{{ fail "migration is supported only for app.kind=django or app.kind=fastapi" }}{{ end }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "chembience.migrationName" . }}
+  labels:
+    {{- include "chembience.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: post-install,pre-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  backoffLimit: {{ .Values.migration.backoffLimit }}
+  ttlSecondsAfterFinished: {{ .Values.migration.ttlSecondsAfterFinished }}
+  template:
+    metadata:
+      labels:
+        {{- include "chembience.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: migration
+    spec:
+      restartPolicy: Never
+      {{- if .Values.postgres.enabled }}
+      initContainers:
+        - name: wait-for-postgres
+          image: {{ include "chembience.image" .Values.postgres.image | quote }}
+          command: ["sh", "-c", "until pg_isready -h $POSTGRES_HOST -U $POSTGRES_USER -d $POSTGRES_NAME -p 5432; do sleep 2; done"]
+          envFrom:
+            - configMapRef:
+                name: {{ include "chembience.appConfigName" . }}
+      {{- end }}
+      containers:
+        - name: migrate
+          image: {{ include "chembience.image" .Values.app.image | quote }}
+          imagePullPolicy: {{ .Values.app.image.pullPolicy }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "chembience.appConfigName" . }}
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.app.existingSecret }}
+                  key: {{ .Values.postgres.passwordKey }}
+            {{- if eq .Values.app.kind "django" }}
+            - name: DJANGO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.app.existingSecret }}
+                  key: {{ .Values.django.secretKeyKey }}
+            {{- end }}
+          command: {{ if eq .Values.app.kind "django" }}["python", "manage.py", "migrate", "--noinput"]{{ else }}["alembic", "-c", "/home/app/src/alembic.ini", "upgrade", "head"]{{ end }}
+{{- end }}

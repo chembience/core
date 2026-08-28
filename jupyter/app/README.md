@@ -171,3 +171,26 @@ Repeatability note:
   ```
 - To choose a stable token, set `JUPYTER_TOKEN` in `.env`; no compose override
   is needed.
+
+## Kubernetes deployment
+
+Chembience's Helm chart is the Kubernetes alternative to this application's
+self-hosted `PROD/` Compose bundle. See the
+[core chart documentation](https://github.com/chembience/core/tree/main/charts/chembience)
+for every value. Publish the immutable image built by `jupyter-prepare-prod`,
+then create its credentials outside Helm and deploy it to `production`:
+
+```bash
+kubectl -n production create secret generic chembience-secrets \
+  --from-literal=postgres-password='replace-me' \
+  --from-literal=jupyter-token='replace-me'
+
+helm upgrade --install notebooks /path/to/core/charts/chembience -n production \
+  --set app.kind=jupyter \
+  --set app.image.repository=registry.example.com/chem/notebooks-prod \
+  --set app.image.tag=0.6.1-jupyter.1
+```
+
+Enable optional Ingress only with a chosen controller and TLS configuration;
+keep the Jupyter token enabled in production. The chart uses immutable runtime
+mode `prod`, while `production` is the namespace/environment name.
