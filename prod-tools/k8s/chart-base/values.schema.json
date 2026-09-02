@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "title": "Chembience chart values",
+  "type": "object",
+  "required": ["app", "postgres", "migration", "ingress"],
+  "properties": {
+    "app": {"type": "object", "required": ["replicaCount", "image", "existingSecret"], "properties": {"replicaCount": {"type": "integer", "minimum": 1}, "existingSecret": {"type": "string", "minLength": 1}, "image": {"type": "object", "required": ["repository", "tag", "pullPolicy"]}}},
+    "postgres": {"type": "object", "required": ["enabled", "image", "existingSecret", "user", "database", "passwordKey", "persistence"], "properties": {"enabled": {"type": "boolean"}, "existingSecret": {"type": "string", "minLength": 1}, "user": {"type": "string", "minLength": 1}, "database": {"type": "string", "minLength": 1}, "passwordKey": {"type": "string", "minLength": 1}, "image": {"type": "object", "required": ["repository", "tag", "pullPolicy"]}, "persistence": {"type": "object", "required": ["accessModes", "size"]}}},
+    "migration": {"type": "object", "required": ["enabled"]},
+    "ingress": {"type": "object", "required": ["enabled"]}
+  }
+}
