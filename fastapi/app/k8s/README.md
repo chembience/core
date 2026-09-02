@@ -18,7 +18,7 @@ kubectl create namespace chembience
 kubectl -n chembience create secret generic chembience-secrets \
   --from-literal=postgres-password='replace-me'
 
-helm upgrade --install "${APP_NAME:-chembience}" ./chart \
+helm upgrade --install "{{APP_NAME}}" ./chart \
   --namespace chembience --create-namespace \
   -f values.generated.yaml -f values.override.yaml
 ```

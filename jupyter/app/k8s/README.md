@@ -19,7 +19,7 @@ kubectl -n chembience create secret generic chembience-secrets \
   --from-literal=postgres-password='replace-me' \
   --from-literal=jupyter-token='replace-me'
 
-helm upgrade --install "${APP_NAME:-chembience}" ./chart \
+helm upgrade --install "{{APP_NAME}}" ./chart \
   --namespace chembience --create-namespace \
   -f values.generated.yaml -f values.override.yaml
 ```
