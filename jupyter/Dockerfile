@@ -21,7 +21,6 @@ COPY jupyter/requirements.txt /jupyter/requirements.txt
 COPY jupyter/app/Dockerfile /jupyter/Dockerfile
 COPY jupyter/app/Dockerfile.prod /jupyter/Dockerfile.prod
 COPY jupyter/app/PROD /jupyter/PROD
-COPY prod-tools /jupyter/prod-tools
 COPY jupyter/app/requirements.txt /jupyter/app-requirements.txt
 COPY jupyter/app/jupyter-init /jupyter/jupyter-init
 COPY jupyter/app/jupyter-configure /jupyter/jupyter-configure
@@ -46,5 +45,11 @@ RUN if grep -qE '^\s*[^#\s]' /jupyter/requirements.txt; then \
     find /opt/conda/ -follow -type f -name '*.a' -delete && \
     find /opt/conda/ -follow -type f -name '*.pyc' -delete && \
     find /opt/conda/ -follow -type f -name '*.js.map' -delete
+
+# Runtime deployment tooling is intentionally copied after dependencies so
+# chart and documentation edits do not invalidate the Python dependency layer.
+COPY prod-tools /jupyter/prod-tools
+COPY prod-tools/k8s/chart-base /jupyter/k8s
+COPY jupyter/app/k8s /jupyter/k8s
 
 WORKDIR /home/app

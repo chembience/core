@@ -175,7 +175,7 @@ Repeatability note:
 
 Chembience's Helm chart is the Kubernetes alternative to this application's
 self-hosted `PROD/` Compose bundle. After `fastapi-prepare-prod`, the complete
-chart and deployment documentation live in `PROD/kubernetes/`; no core checkout
+chart and deployment documentation live in `PROD/k8s/`; no core checkout
 is required. Publish the immutable image, create a Kubernetes Secret outside
 Helm, and deploy from that directory:
 
@@ -183,7 +183,7 @@ Helm, and deploy from that directory:
 kubectl -n production create secret generic chembience-secrets \
   --from-literal=postgres-password='replace-me'
 
-cd PROD/kubernetes
+cd PROD/k8s
 cp values.override.yaml.example values.override.yaml
 helm upgrade --install myapi ./chart -n production \
   -f values.generated.yaml -f values.override.yaml

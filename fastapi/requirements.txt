@@ -10,4 +10,4 @@ psycopg-binary==3.3.4
 psycopg2-binary==2.9.12
 pydantic-settings==2.14.2
 # RDKit comes from the version-pinned Micromamba base image.
-git+https://github.com/rvianello/razi.git@542ee5f6d5a0c708a13c0e8b295d95b3da0b2700
+https://github.com/rvianello/razi/archive/542ee5f6d5a0c708a13c0e8b295d95b3da0b2700.tar.gz

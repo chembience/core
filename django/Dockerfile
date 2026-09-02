@@ -23,7 +23,6 @@ COPY django/docker-compose.yml /django/docker-compose.yml
 COPY django/app/Dockerfile /django/Dockerfile
 COPY django/app/Dockerfile.prod /django/Dockerfile.prod
 COPY django/app/PROD /django/PROD
-COPY prod-tools /django/prod-tools
 COPY django/app/requirements.txt /django/requirements.txt
 COPY django/app/README.md /django/README.md
 COPY django/psql /django/psql
@@ -49,5 +48,11 @@ RUN if grep -qE '^\s*[^#\s]' /opt/django/requirements.txt; then \
     find /opt/conda/ -follow -type f -name '*.a' -delete && \
     find /opt/conda/ -follow -type f -name '*.pyc' -delete && \
     find /opt/conda/ -follow -type f -name '*.js.map' -delete
+
+# Runtime deployment tooling is intentionally copied after dependencies so
+# chart and documentation edits do not invalidate the Python dependency layer.
+COPY prod-tools /django/prod-tools
+COPY prod-tools/k8s/chart-base /django/k8s
+COPY django/app/k8s /django/k8s
 
 WORKDIR /home/app/src

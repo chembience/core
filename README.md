@@ -150,7 +150,7 @@ and disk space.
 ## Kubernetes
 
 Each generated application receives its Kubernetes Helm bundle in
-`PROD/kubernetes/`. Run its `*-prepare-prod` helper to bind the bundle to the
+`PROD/k8s/`. Run its `*-prepare-prod` helper to bind the bundle to the
 frozen application image, then deploy from that directory; a core checkout is
 not required. The bundle supports Django, FastAPI, Jupyter, and RDKit workloads
 plus the bundled single-node RDKit PostgreSQL StatefulSet. `PROD/` also remains

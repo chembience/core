@@ -36,7 +36,7 @@ bash -n django/app/*-configure django/app/*-prepare-prod \
   tests/test-prod-env-workflow.sh
 python3 -m unittest share.tests.test_django_superuser
 bash tests/test-prod-env-workflow.sh
-bash prod-tools/kubernetes/chart/tests/render.sh
+bash prod-tools/k8s/tests/render.sh
 docker compose --env-file .env.template -f docker-compose.yml config --quiet
 docker compose --env-file .env.template -f docker-compose.yml -f docker-compose.dev.yml config --quiet
 

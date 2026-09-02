@@ -53,7 +53,7 @@ jobs:
         uses: azure/setup-helm@v4
 
       - name: Lint and render workload variants
-        run: bash prod-tools/kubernetes/chart/tests/render.sh
+        run: bash prod-tools/k8s/tests/render.sh
 
   django-production-bootstrap:
     name: Django production bootstrap

@@ -100,12 +100,12 @@ if [ "${CHEMBIENCE_RUNTIME_MODE}" != "prod" ]; then
         sync_script "/fastapi/prod-tools/db-cleanup" "/home/app/PROD/db-cleanup"
         sync_config "/fastapi/prod-tools/README.md" "/home/app/PROD/README.md"
     fi
-    mkdir -p "/home/app/PROD/kubernetes"
-    if [ ! -d "/home/app/PROD/kubernetes/chart" ]; then
-        cp -a "/fastapi/prod-tools/kubernetes/chart" "/home/app/PROD/kubernetes/chart"
+    mkdir -p "/home/app/PROD/k8s"
+    if [ ! -d "/home/app/PROD/k8s/chart" ]; then
+    cp -a "/fastapi/k8s" "/home/app/PROD/k8s/chart"
     fi
-    sync_config "/fastapi/prod-tools/kubernetes/README.md" "/home/app/PROD/kubernetes/README.md"
-    sync_config "/fastapi/prod-tools/kubernetes/values.override.yaml.example" "/home/app/PROD/kubernetes/values.override.yaml.example"
+    sync_config "/fastapi/prod-tools/k8s/README.md" "/home/app/PROD/k8s/README.md"
+    sync_config "/fastapi/prod-tools/k8s/values.override.yaml.example" "/home/app/PROD/k8s/values.override.yaml.example"
     sync_config "/fastapi/requirements.txt"            "/home/app/requirements.txt"
     sync_config "/fastapi/README.md"                   "/home/app/README.md"
     sync_script "/fastapi/psql"                        "/home/app/psql"
@@ -127,9 +127,9 @@ if [ "${CHEMBIENCE_RUNTIME_MODE}" != "prod" ]; then
             echo "# Added by entrypoint" >> "/home/app/.gitignore"
             echo "postgres/postgres_data" >> "/home/app/.gitignore"
         fi
-        if ! grep -Eq "^PROD/kubernetes/values\.generated\.yaml([[:space:]]|#|$)" "/home/app/.gitignore"; then
-            echo "PROD/kubernetes/values.generated.yaml" >> "/home/app/.gitignore"
-            echo "PROD/kubernetes/values.override.yaml" >> "/home/app/.gitignore"
+        if ! grep -Eq "^PROD/k8s/values\.generated\.yaml([[:space:]]|#|$)" "/home/app/.gitignore"; then
+            echo "PROD/k8s/values.generated.yaml" >> "/home/app/.gitignore"
+            echo "PROD/k8s/values.override.yaml" >> "/home/app/.gitignore"
         fi
     fi
     if [ -f "/home/app/.dockerignore" ]; then

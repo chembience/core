@@ -21,7 +21,6 @@ COPY fastapi/app/docker-compose.override.yml /fastapi/docker-compose.override.ym
 COPY fastapi/app/Dockerfile /fastapi/Dockerfile
 COPY fastapi/app/Dockerfile.prod /fastapi/Dockerfile.prod
 COPY fastapi/app/PROD /fastapi/PROD
-COPY prod-tools /fastapi/prod-tools
 COPY fastapi/app/requirements.txt /fastapi/requirements.txt
 COPY fastapi/app/README.md /fastapi/README.md
 COPY fastapi/app/db-backup /fastapi/db-backup
@@ -53,6 +52,12 @@ RUN if grep -qE '^\s*[^#\s]' /opt/fastapi/requirements.txt; then \
     find /opt/conda/ -follow -type f -name '*.a' -delete && \
     find /opt/conda/ -follow -type f -name '*.pyc' -delete && \
     find /opt/conda/ -follow -type f -name '*.js.map' -delete
+
+# Runtime deployment tooling is intentionally copied after dependencies so
+# chart and documentation edits do not invalidate the Python dependency layer.
+COPY prod-tools /fastapi/prod-tools
+COPY prod-tools/k8s/chart-base /fastapi/k8s
+COPY fastapi/app/k8s /fastapi/k8s
 
 COPY fastapi/app/src /fastapi/src
 
