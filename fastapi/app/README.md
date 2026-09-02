@@ -180,12 +180,12 @@ is required. Publish the immutable image, create a Kubernetes Secret outside
 Helm, and deploy from that directory:
 
 ```bash
-kubectl -n production create secret generic chembience-secrets \
+kubectl -n chembience create secret generic chembience-secrets \
   --from-literal=postgres-password='replace-me'
 
 cd PROD/k8s
 cp values.override.yaml.example values.override.yaml
-helm upgrade --install myapi ./chart -n production \
+helm upgrade --install myapi ./chart -n chembience \
   -f values.generated.yaml -f values.override.yaml
 ```
 
@@ -193,4 +193,4 @@ For schema changes, run the release with `--set migration.enabled=true --wait`.
 The chart runs Alembic as a pre-upgrade hook before API pods use the new image;
 follow with the normal chart upgrade with migrations disabled. Enable optional
 Ingress only after selecting its controller and TLS configuration. The runtime
-mode remains `prod`; use `production` for the namespace/environment name.
+mode remains `prod`; use `chembience` for the namespace/environment name.

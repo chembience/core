@@ -140,8 +140,8 @@ mkdir -p "/home/app/PROD/k8s"
 if [ ! -d "/home/app/PROD/k8s/chart" ]; then
     cp -a "/django/k8s" "/home/app/PROD/k8s/chart"
 fi
-sync_config "/django/prod-tools/k8s/README.md" "/home/app/PROD/k8s/README.md"
-sync_config "/django/prod-tools/k8s/values.override.yaml.example" "/home/app/PROD/k8s/values.override.yaml.example"
+sync_config "/django/k8s/README.md" "/home/app/PROD/k8s/README.md"
+sync_config "/django/k8s/values.override.yaml.example" "/home/app/PROD/k8s/values.override.yaml.example"
 sync_config "/django/requirements.txt"   "/home/app/requirements.txt"
 sync_config "/django/README.md"          "/home/app/README.md"
 sync_script "/django/psql"               "/home/app/psql"

@@ -210,18 +210,18 @@ is required. Publish the immutable image, create the required Kubernetes Secret
 outside Helm, then deploy from that directory:
 
 ```bash
-kubectl -n production create secret generic chembience-secrets \
+kubectl -n chembience create secret generic chembience-secrets \
   --from-literal=postgres-password='replace-me' \
   --from-literal=django-secret-key='replace-me'
 
 cd PROD/k8s
 cp values.override.yaml.example values.override.yaml
-helm upgrade --install mysite ./chart -n production \
+helm upgrade --install mysite ./chart -n chembience \
   -f values.generated.yaml -f values.override.yaml
 ```
 
 Enable the chart's optional Ingress only after selecting an Ingress controller
-and TLS strategy. The chart sets `CHEMBIENCE_RUNTIME_MODE=prod`; `production`
+and TLS strategy. The chart sets `CHEMBIENCE_RUNTIME_MODE=prod`; `chembience`
 is the namespace/environment name. For releases with migrations, enable the
 migration Job during the Helm upgrade and use `--wait`; its pre-upgrade hook
 completes before new Django workers are rolled out.

@@ -104,8 +104,8 @@ if [ "${CHEMBIENCE_RUNTIME_MODE}" != "prod" ]; then
     if [ ! -d "/home/app/PROD/k8s/chart" ]; then
         cp -a "/jupyter/k8s" "/home/app/PROD/k8s/chart"
     fi
-    sync_config "/jupyter/prod-tools/k8s/README.md" "/home/app/PROD/k8s/README.md"
-    sync_config "/jupyter/prod-tools/k8s/values.override.yaml.example" "/home/app/PROD/k8s/values.override.yaml.example"
+    sync_config "/jupyter/k8s/README.md" "/home/app/PROD/k8s/README.md"
+    sync_config "/jupyter/k8s/values.override.yaml.example" "/home/app/PROD/k8s/values.override.yaml.example"
     sync_config "/jupyter/requirements.txt"      "/home/app/requirements.txt"
     sync_config "/jupyter/app-requirements.txt"  "/home/app/app-requirements.txt"
     sync_config "/jupyter/README.md"             "/home/app/README.md"

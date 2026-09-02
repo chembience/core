@@ -154,15 +154,15 @@ is required. Publish the immutable image, then deploy the long-running RDKit
 workload from that directory:
 
 ```bash
-kubectl -n production create secret generic chembience-secrets \
+kubectl -n chembience create secret generic chembience-secrets \
   --from-literal=postgres-password='replace-me'
 
 cd PROD/k8s
 cp values.override.yaml.example values.override.yaml
-helm upgrade --install rdkit-tools ./chart -n production \
+helm upgrade --install rdkit-tools ./chart -n chembience \
   -f values.generated.yaml -f values.override.yaml
 ```
 
 The RDKit workload has no public Service or Ingress; run scripts with
 `kubectl exec` or add a purpose-built worker/API separately. The chart uses
-runtime mode `prod`; use `production` for the namespace/environment name.
+runtime mode `prod`; use `chembience` for the namespace/environment name.

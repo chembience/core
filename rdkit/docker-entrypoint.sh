@@ -81,8 +81,8 @@ if [ "${CHEMBIENCE_RUNTIME_MODE}" != "prod" ] && { [ ! -f "/home/app/.rdkit-init
         fi
         mkdir -p /home/app/PROD/k8s
         [ ! -d "/home/app/PROD/k8s/chart" ] && cp -a /opt/rdkit/k8s /home/app/PROD/k8s/chart
-        [ ! -f "/home/app/PROD/k8s/README.md" ] && cp /opt/rdkit/prod-tools/k8s/README.md /home/app/PROD/k8s/README.md
-        [ ! -f "/home/app/PROD/k8s/values.override.yaml.example" ] && cp /opt/rdkit/prod-tools/k8s/values.override.yaml.example /home/app/PROD/k8s/values.override.yaml.example
+        [ ! -f "/home/app/PROD/k8s/README.md" ] && cp /opt/rdkit/k8s/README.md /home/app/PROD/k8s/README.md
+        [ ! -f "/home/app/PROD/k8s/values.override.yaml.example" ] && cp /opt/rdkit/k8s/values.override.yaml.example /home/app/PROD/k8s/values.override.yaml.example
         [ ! -f "/home/app/README.md" ] && cp /opt/rdkit/README.md /home/app/README.md
         [ -f "/.gitignore" ] && [ ! -f "/home/app/.gitignore" ] && cp "/.gitignore" "/home/app/.gitignore"
         [ -f "/.dockerignore" ] && [ ! -f "/home/app/.dockerignore" ] && cp "/.dockerignore" "/home/app/.dockerignore"

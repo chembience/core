@@ -186,16 +186,16 @@ is required. Publish the immutable image, then create its credentials outside
 Helm and deploy from that directory:
 
 ```bash
-kubectl -n production create secret generic chembience-secrets \
+kubectl -n chembience create secret generic chembience-secrets \
   --from-literal=postgres-password='replace-me' \
   --from-literal=jupyter-token='replace-me'
 
 cd PROD/k8s
 cp values.override.yaml.example values.override.yaml
-helm upgrade --install notebooks ./chart -n production \
+helm upgrade --install notebooks ./chart -n chembience \
   -f values.generated.yaml -f values.override.yaml
 ```
 
 Enable optional Ingress only with a chosen controller and TLS configuration;
 keep the Jupyter token enabled in production. The chart uses immutable runtime
-mode `prod`, while `production` is the namespace/environment name.
+mode `prod`, while `chembience` is the namespace/environment name.

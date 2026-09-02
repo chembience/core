@@ -104,8 +104,8 @@ if [ "${CHEMBIENCE_RUNTIME_MODE}" != "prod" ]; then
     if [ ! -d "/home/app/PROD/k8s/chart" ]; then
     cp -a "/fastapi/k8s" "/home/app/PROD/k8s/chart"
     fi
-    sync_config "/fastapi/prod-tools/k8s/README.md" "/home/app/PROD/k8s/README.md"
-    sync_config "/fastapi/prod-tools/k8s/values.override.yaml.example" "/home/app/PROD/k8s/values.override.yaml.example"
+    sync_config "/fastapi/k8s/README.md" "/home/app/PROD/k8s/README.md"
+    sync_config "/fastapi/k8s/values.override.yaml.example" "/home/app/PROD/k8s/values.override.yaml.example"
     sync_config "/fastapi/requirements.txt"            "/home/app/requirements.txt"
     sync_config "/fastapi/README.md"                   "/home/app/README.md"
     sync_script "/fastapi/psql"                        "/home/app/psql"
