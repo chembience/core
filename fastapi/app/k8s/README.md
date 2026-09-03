@@ -23,10 +23,31 @@ helm upgrade --install "{{APP_NAME}}" ./chart \
   -f values.generated.yaml -f values.override.yaml
 ```
 
-For schema changes, first deploy with `--set migration.enabled=true --wait`.
-The Alembic Job completes before API pods use the updated image; then run the
-normal command with migrations disabled. Enable Ingress only after selecting
-its controller and TLS configuration.
+## Database migrations
+
+Run migrations during the first deployment and again only for a release that
+contains new Alembic revisions (normally after a database schema change). Do
+not enable the migration Job for an image-only API release.
+
+For the first deployment, run this command instead of the normal Helm command:
+
+```bash
+helm upgrade --install "{{APP_NAME}}" ./chart \
+  --namespace chembience --create-namespace \
+  -f values.generated.yaml -f values.override.yaml \
+  --set migration.enabled=true --wait
+```
+
+For a later schema-changing release, use the same command. The Alembic Job runs
+before the upgraded API pods start; `--wait` makes Helm wait for it to succeed.
+Check a failed Job with `kubectl -n chembience get jobs` and
+`kubectl -n chembience logs job/<migration-job-name>`. Do not proceed with the
+normal deployment until the migration succeeds.
+
+After a successful migration run, deploy normally (without
+`migration.enabled=true`) so migrations remain disabled for subsequent
+image-only releases. Enable Ingress only after selecting its controller and TLS
+configuration.
 
 The bundled RDKit PostgreSQL is one persistent StatefulSet replica. To use an
 external RDKit-enabled PostgreSQL database, set `postgres.enabled=false` and
