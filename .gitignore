@@ -98,8 +98,8 @@ coverage.xml
 .env.prod
 PROD/.env
 PROD/backups/
-PROD/kubernetes/values.generated.yaml
-PROD/kubernetes/values.override.yaml
+PROD/k8s/values.generated.yaml
+PROD/k8s/values.override.yaml
 .env.new
 .venv
 env/

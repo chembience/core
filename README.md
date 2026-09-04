@@ -156,9 +156,13 @@ not required. The bundle supports Django, FastAPI, Jupyter, and RDKit workloads
 plus the bundled single-node RDKit PostgreSQL StatefulSet. `PROD/` also remains
 the self-hosted Docker Compose deployment path.
 
-Use `production` for namespaces and other human-facing environment names. The
-runtime value `CHEMBIENCE_RUNTIME_MODE=prod` remains the compatible immutable
-container-mode identifier.
+`*-prepare-prod --target compose` is the default and builds the application
+locally with Docker. `--target ghcr-k8s` is an opt-in alternative: it creates a
+GitHub Actions workflow on its first run, which publishes a private immutable
+application image to GitHub Container Registry; rerun it after that commit has
+been pushed and built to create a Docker-free Helm deployment bundle. The
+generated app's `PROD/k8s/README.md` documents the required Kubernetes image
+pull Secret and deployment steps.
 
 ## Major Software Components
 

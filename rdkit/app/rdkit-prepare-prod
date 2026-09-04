@@ -11,11 +11,17 @@ KEEP_ENV_PROD=0
 SKIP_BUILD=0
 IMAGE_TAG=""
 IMAGE_NAME=""
+TARGET="compose"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --keep-env-prod) KEEP_ENV_PROD=1; shift ;;
     --skip-build) SKIP_BUILD=1; shift ;;
+    --target)
+      [[ $# -ge 2 ]] || { echo "Missing value for --target" >&2; exit 2; }
+      TARGET="$2"
+      shift 2
+      ;;
     --image-name)
       [[ $# -ge 2 ]] || { echo "Missing value for --image-name" >&2; exit 2; }
       IMAGE_NAME="$2"
@@ -30,6 +36,11 @@ while [[ $# -gt 0 ]]; do
     *) echo "Unexpected argument: $1" >&2; exit 2 ;;
   esac
 done
+
+[[ "$TARGET" == "compose" || "$TARGET" == "ghcr-k8s" ]] || {
+  echo "--target must be either 'compose' or 'ghcr-k8s'" >&2
+  exit 2
+}
 
 if [[ ! -f .env ]]; then
   echo "Missing ./.env in $APP_DIR. Aborting." >&2
@@ -79,30 +90,116 @@ get_env_var() {
   grep -E "^${key}=" "$file" | tail -n1 | cut -d= -f2- || true
 }
 
-if [[ -z "$IMAGE_TAG" ]]; then
-  IMAGE_TAG="$(get_env_var "$PROD_ENV" CHEMBIENCE_VERSION)"
-fi
-if [[ -z "$IMAGE_TAG" ]]; then
-  IMAGE_TAG="prod-$(date +%Y%m%d%H%M%S)"
-fi
-
 APP_NAME_VALUE="$(get_env_var .env APP_NAME)"
 APP_NAME_VALUE="${APP_NAME_VALUE:-$(basename "$APP_DIR")}"
 [[ "$APP_NAME_VALUE" =~ ^[a-z0-9][a-z0-9._-]*$ ]] || { echo "APP_NAME must be a valid lowercase Docker image name" >&2; exit 2; }
-
-if [[ -z "$IMAGE_NAME" ]]; then
-  IMAGE_NAME="chembience/${APP_NAME_VALUE}-prod"
-fi
 
 CORE_IMAGE_TAG="$(get_env_var .env CHEMBIENCE_VERSION)"
 CORE_IMAGE_TAG="${CORE_IMAGE_TAG:-latest}"
 CORE_IMAGE="chembience/core-rdkit:${CORE_IMAGE_TAG}"
 
-if docker image inspect "${CORE_IMAGE}" >/dev/null 2>&1; then
-  echo "📦 Using locally available core image: ${CORE_IMAGE}"
+write_ghcr_files() {
+  mkdir -p .github/workflows
+  cat > chembience-ghcr.env <<EOF
+# Checked-in, non-secret build configuration for GitHub Actions.
+CHEMBIENCE_CORE_IMAGE=${CORE_IMAGE}
+EOF
+  cat > .github/workflows/chembience-ghcr.yml <<'EOF'
+name: Publish Chembience production image
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and publish the immutable production image
+        run: |
+          set -euo pipefail
+          source chembience-ghcr.env
+          image="ghcr.io/${GITHUB_REPOSITORY,,}"
+          docker buildx build --platform linux/amd64 --file Dockerfile.prod \
+            --build-arg "CORE_IMAGE=${CHEMBIENCE_CORE_IMAGE}" \
+            --label "org.opencontainers.image.source=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
+            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
+            --tag "${image}:${GITHUB_SHA}" --push .
+EOF
+}
+
+ensure_k8s_ignores() {
+  [[ -f .gitignore ]] || touch .gitignore
+  for ignored_path in PROD/k8s/values.generated.yaml PROD/k8s/values.override.yaml; do
+    grep -Fxq "$ignored_path" .gitignore || echo "$ignored_path" >> .gitignore
+  done
+}
+
+if [[ "$TARGET" == "ghcr-k8s" ]]; then
+  command -v git >/dev/null || { echo "ghcr-k8s preparation requires git" >&2; exit 1; }
+  [[ "$(git rev-parse --show-toplevel 2>/dev/null || true)" == "$APP_DIR" ]] || {
+    echo "ghcr-k8s preparation must run from the root of a Git repository" >&2
+    exit 1
+  }
+  if [[ ! -f chembience-ghcr.env || ! -f .github/workflows/chembience-ghcr.yml ]]; then
+    write_ghcr_files
+    ensure_k8s_ignores
+    echo "Created GitHub Actions GHCR publishing files. Commit and push them, then rerun this command." >&2
+    exit 0
+  fi
+  ensure_k8s_ignores
+  [[ -z "$(git status --porcelain)" ]] || {
+    echo "ghcr-k8s preparation requires a clean Git working tree" >&2
+    exit 1
+  }
+  GIT_ORIGIN="$(git config --get remote.origin.url || true)"
+  GIT_REPOSITORY="${GIT_ORIGIN#git@github.com:}"
+  GIT_REPOSITORY="${GIT_REPOSITORY#https://github.com/}"
+  GIT_REPOSITORY="${GIT_REPOSITORY#ssh://git@github.com/}"
+  GIT_REPOSITORY="${GIT_REPOSITORY%.git}"
+  [[ "$GIT_REPOSITORY" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || {
+    echo "ghcr-k8s preparation requires origin to be a GitHub repository" >&2
+    exit 1
+  }
+  DERIVED_IMAGE_NAME="ghcr.io/$(printf '%s' "$GIT_REPOSITORY" | tr '[:upper:]' '[:lower:]')"
+  [[ -z "$IMAGE_NAME" || "$IMAGE_NAME" == "$DERIVED_IMAGE_NAME" ]] || {
+    echo "--image-name must match the GitHub origin: $DERIVED_IMAGE_NAME" >&2
+    exit 2
+  }
+  GIT_SHA="$(git rev-parse HEAD)"
+  [[ -z "$IMAGE_TAG" || "$IMAGE_TAG" == "$GIT_SHA" ]] || {
+    echo "--image-tag must match the current Git commit: $GIT_SHA" >&2
+    exit 2
+  }
+  IMAGE_NAME="$DERIVED_IMAGE_NAME"
+  IMAGE_TAG="$GIT_SHA"
 else
-  echo "📥 Pulling required core image: ${CORE_IMAGE}..."
-  docker pull "${CORE_IMAGE}"
+  if [[ -z "$IMAGE_TAG" ]]; then
+    IMAGE_TAG="$(get_env_var "$PROD_ENV" CHEMBIENCE_VERSION)"
+  fi
+  if [[ -z "$IMAGE_TAG" ]]; then
+    IMAGE_TAG="prod-$(date +%Y%m%d%H%M%S)"
+  fi
+  if [[ -z "$IMAGE_NAME" ]]; then
+    IMAGE_NAME="chembience/${APP_NAME_VALUE}-prod"
+  fi
+  if docker image inspect "${CORE_IMAGE}" >/dev/null 2>&1; then
+    echo "📦 Using locally available core image: ${CORE_IMAGE}"
+  else
+    echo "📥 Pulling required core image: ${CORE_IMAGE}..."
+    docker pull "${CORE_IMAGE}"
+  fi
 fi
 
 PROJECT_NAME="$(printf '%s' "$APP_NAME_VALUE" | tr '[:upper:]' '[:lower:]' | tr '.' '-')-prod"
@@ -116,7 +213,7 @@ set_env_var "$PROD_ENV" COMPOSE_PROJECT_NAME "$PROJECT_NAME"
 K8S_DIR="$PROD_DIR/k8s"
 mkdir -p "$K8S_DIR"
 if [[ -f "$K8S_DIR/README.md" ]]; then
-  sed -i -e "s|{{APP_NAME}}|${APP_NAME_VALUE}|g" -e 's|${APP_NAME:-chembience}|'"${APP_NAME_VALUE}"'|g' "$K8S_DIR/README.md"
+  sed -i -e "s|YOUR_APP_NAME|${APP_NAME_VALUE}|g" -e 's|${APP_NAME:-chembience}|'"${APP_NAME_VALUE}"'|g' "$K8S_DIR/README.md"
 fi
 cat > "$K8S_DIR/values.generated.yaml" <<EOF
 # Generated by rdkit-prepare-prod. Do not edit; use values.override.yaml.
@@ -129,6 +226,16 @@ postgres:
     repository: "chembience/core-rdkit-postgres"
     tag: "${CORE_IMAGE_TAG}"
 EOF
+
+if [[ "$TARGET" == "ghcr-k8s" ]]; then
+  cat >> "$K8S_DIR/values.generated.yaml" <<'EOF'
+imagePullSecrets:
+  - name: ghcr-pull-secret
+EOF
+  echo "✅ rdkit-prepare-prod created a GHCR-backed Kubernetes bundle."
+  echo "ℹ️  Deploy ${IMAGE_NAME}:${IMAGE_TAG} only after the matching GitHub Action succeeds."
+  exit 0
+fi
 
 if [[ $SKIP_BUILD -eq 0 ]]; then
   echo "📦 Building source-baked RDKit production image ${IMAGE_NAME}:${IMAGE_TAG}..."
