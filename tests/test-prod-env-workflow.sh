@@ -62,6 +62,8 @@ for app in django fastapi jupyter rdkit; do
   write_env "$ghcr_dir/.env" "${app}-ghcr"
   printf '%s\n' 'PROD/.env' > "$ghcr_dir/.gitignore"
   git -C "$ghcr_dir" init -q
+  git -C "$ghcr_dir" config core.autocrlf false
+  git -C "$ghcr_dir" config core.eol lf
   git -C "$ghcr_dir" config user.email 'test@example.org'
   git -C "$ghcr_dir" config user.name 'Chembience test'
   git -C "$ghcr_dir" add .
