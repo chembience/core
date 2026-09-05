@@ -201,6 +201,9 @@ settings without adding TLS-specific options.
 Repeatability note:
 - Running the script again with the same `--image-name` and `--image-tag` rebuilds/replaces the same image tag deterministically from the current source state.
 
+Read [PROD/README.md](PROD/README.md) when preparing or operating this Django
+application with self-hosted Docker Compose.
+
 ## Kubernetes deployment
 
 Chembience's Helm chart is the Kubernetes alternative to this application's
@@ -225,3 +228,6 @@ and TLS strategy. The chart sets `CHEMBIENCE_RUNTIME_MODE=prod`; `chembience`
 is the namespace/environment name. For releases with migrations, enable the
 migration Job during the Helm upgrade and use `--wait`; its pre-upgrade hook
 completes before new Django workers are rolled out.
+
+Read [PROD/k8s/README.md](PROD/k8s/README.md) when deploying this Django
+application to Kubernetes, especially for GHCR, Secrets, and migrations.

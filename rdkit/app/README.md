@@ -145,6 +145,9 @@ settings without adding TLS-specific options.
 Repeatability note:
 - Running the script again with the same `--image-name` and `--image-tag` rebuilds/replaces the same image tag deterministically from the current source state.
 
+Read [PROD/README.md](PROD/README.md) when preparing or operating this RDKit
+application with self-hosted Docker Compose.
+
 ## Kubernetes deployment
 
 Chembience's Helm chart is the Kubernetes alternative to this application's
@@ -166,3 +169,6 @@ helm upgrade --install rdkit-tools ./chart -n chembience \
 The RDKit workload has no public Service or Ingress; run scripts with
 `kubectl exec` or add a purpose-built worker/API separately. The chart uses
 runtime mode `prod`; use `chembience` for the namespace/environment name.
+
+Read [PROD/k8s/README.md](PROD/k8s/README.md) when deploying this RDKit
+application to Kubernetes, especially for GHCR and Secrets.

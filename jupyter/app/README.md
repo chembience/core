@@ -177,6 +177,9 @@ Repeatability note:
 - To choose a stable token, set `JUPYTER_TOKEN` in `.env`; no compose override
   is needed.
 
+Read [PROD/README.md](PROD/README.md) when preparing or operating this
+JupyterLab application with self-hosted Docker Compose.
+
 ## Kubernetes deployment
 
 Chembience's Helm chart is the Kubernetes alternative to this application's
@@ -199,3 +202,6 @@ helm upgrade --install notebooks ./chart -n chembience \
 Enable optional Ingress only with a chosen controller and TLS configuration;
 keep the Jupyter token enabled in production. The chart uses immutable runtime
 mode `prod`, while `chembience` is the namespace/environment name.
+
+Read [PROD/k8s/README.md](PROD/k8s/README.md) when deploying this JupyterLab
+application to Kubernetes, especially for GHCR, Secrets, and Ingress.

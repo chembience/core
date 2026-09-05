@@ -171,6 +171,9 @@ settings without adding TLS-specific options.
 Repeatability note:
 - Running the script again with the same `--image-name` and `--image-tag` rebuilds/replaces the same image tag deterministically from the current source state.
 
+Read [PROD/README.md](PROD/README.md) when preparing or operating this FastAPI
+application with self-hosted Docker Compose.
+
 ## Kubernetes deployment
 
 Chembience's Helm chart is the Kubernetes alternative to this application's
@@ -194,3 +197,6 @@ The chart runs Alembic as a pre-upgrade hook before API pods use the new image;
 follow with the normal chart upgrade with migrations disabled. Enable optional
 Ingress only after selecting its controller and TLS configuration. The runtime
 mode remains `prod`; use `chembience` for the namespace/environment name.
+
+Read [PROD/k8s/README.md](PROD/k8s/README.md) when deploying this FastAPI
+application to a strictly Kubernetes-based environment setup.
