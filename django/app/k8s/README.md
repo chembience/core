@@ -5,6 +5,12 @@ its optional bundled RDKit PostgreSQL database. Run `django-prepare-prod`
 before deploying; it writes the immutable image references to
 `values.generated.yaml`. Do not edit that generated file.
 
+Create the deployment namespace once, before creating any Secrets:
+
+```bash
+kubectl create namespace chembience
+```
+
 ## Private GitHub Container Registry (GHCR)
 
 The default `django-prepare-prod --target compose` builds locally with Docker.
@@ -57,10 +63,9 @@ Adapt `values.override.yaml` for this Django deployment before using Helm—for
 example its hostname, Ingress/TLS settings, and external database settings when
 applicable.
 
-Create the namespace and required Secret outside Helm:
+Create the required application Secret outside Helm:
 
 ```bash
-kubectl create namespace chembience
 kubectl -n chembience create secret generic chembience-secrets \
   --from-literal=postgres-password='replace-me' \
   --from-literal=django-secret-key='replace-me'
