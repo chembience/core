@@ -115,20 +115,28 @@ To maintain separate production settings, run `./django-configure --prod`, edit
 the generated `.env.prod`, then run `./django-prepare-prod`. `.env.prod` is
 copied on each preparation run unless `--keep-env-prod` is supplied.
 
+For a strictly Kubernetes-based deployment, use
+`./django-prepare-prod --target ghcr-k8s`. This does not run Docker locally: on
+its first use it creates the GitHub Actions configuration that publishes a
+private image to GHCR. Commit and push that configuration, wait for the Action,
+then rerun the command from the clean pushed commit to generate the SHA-pinned
+Helm values file. See [PROD/k8s/README.md](PROD/k8s/README.md) for the complete
+workflow.
+
 Examples:
 
 ```bash
 # Repeatable release image build
-./django-prepare-prod --image-tag 0.6.1-django.1
+./django-prepare-prod --image-tag 0.6.2-pre1-django.1
 
 # Custom production image repository/name
-./django-prepare-prod --image-name registry.example.com/chem/django-prod --image-tag 0.6.1-django.1
+./django-prepare-prod --image-name registry.example.com/chem/django-prod --image-tag 0.6.2-pre1-django.1
 ```
 
 Run the produced image (example):
 
 ```bash
-docker run --rm -p 8001:8000 chembience/app-prod:0.6.1-django.1 \
+docker run --rm -p 8001:8000 chembience/app-prod:0.6.2-pre1-django.1 \
   python -m gunicorn src.wsgi:application --bind 0.0.0.0:8000 --workers 8
 ```
 
@@ -207,21 +215,12 @@ application with self-hosted Docker Compose.
 ## Kubernetes deployment
 
 Chembience's Helm chart is the Kubernetes alternative to this application's
-self-hosted `PROD/` Compose bundle. After `django-prepare-prod`, the complete
-chart and deployment documentation live in `PROD/k8s/`; no core checkout
-is required. Publish the immutable image, create the required Kubernetes Secret
-outside Helm, then deploy from that directory:
-
-```bash
-kubectl -n chembience create secret generic chembience-secrets \
-  --from-literal=postgres-password='replace-me' \
-  --from-literal=django-secret-key='replace-me'
-
-cd PROD/k8s
-cp values.override.yaml.example values.override.yaml
-helm upgrade --install mysite ./chart -n chembience \
-  -f values.generated.yaml -f values.override.yaml
-```
+self-hosted `PROD/` Compose bundle. Prepare it with
+`django-prepare-prod --target ghcr-k8s`; the generated `PROD/k8s/` directory is
+self-contained and can be copied to a Kubernetes-only host. Create the
+namespace and Secrets before Helm, adapt `values.override.yaml`, then deploy
+the SHA-pinned values with Helm. The app-specific Kubernetes README gives the
+complete ordered commands.
 
 Enable the chart's optional Ingress only after selecting an Ingress controller
 and TLS strategy. The chart sets `CHEMBIENCE_RUNTIME_MODE=prod`; `chembience`

@@ -4,6 +4,10 @@ This directory is the self-hosted production runtime for this application.
 It uses the immutable application image and configuration prepared from the
 development workspace.
 
+Use this README for a self-hosted Docker Compose deployment. For a strictly
+Kubernetes-based deployment, read the sibling [k8s/README.md](k8s/README.md)
+instead; it covers Helm, private GHCR images, Kubernetes Secrets, and Ingress.
+
 Start or inspect the prepared stack:
 
 ```bash
@@ -26,4 +30,5 @@ Available self-hosted database tools:
 ```
 
 For an externally managed PostgreSQL database, use `compose.external.yaml` and
-let its operator manage backups, connectivity, and migrations.
+manage backups, connectivity, and migrations through that database's own
+operational procedures.

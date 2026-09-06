@@ -57,8 +57,9 @@ for app in django fastapi jupyter rdkit; do
   rg -q "APP_NAME=${app}-fallback" "$fallback_dir/PROD/.env"
 
   ghcr_dir="$scratch_dir/${app}-ghcr"
-  mkdir -p "$ghcr_dir"
+  mkdir -p "$ghcr_dir/PROD/k8s"
   cp "$root_dir/$app/app/$app-prepare-prod" "$ghcr_dir/prepare"
+  cp "$root_dir/$app/app/k8s/README.md" "$ghcr_dir/PROD/k8s/README.md"
   write_env "$ghcr_dir/.env" "${app}-ghcr"
   printf '%s\n' 'PROD/.env' > "$ghcr_dir/.gitignore"
   git -C "$ghcr_dir" init -q
@@ -77,6 +78,8 @@ for app in django fastapi jupyter rdkit; do
   rg -q "CHEMBIENCE_CORE_IMAGE=chembience/core-${app}:9.9.9" "$ghcr_dir/chembience-ghcr.env"
   rg -q 'docker buildx build --platform linux/amd64' "$ghcr_dir/.github/workflows/chembience-ghcr.yml"
   rg -q 'PROD/k8s/values.generated.yaml' "$ghcr_dir/.gitignore"
+  rg -q "helm upgrade --install \"${app}-ghcr\"" "$ghcr_dir/PROD/k8s/README.md"
+  ! rg -q 'YOUR_APP_NAME' "$ghcr_dir/PROD/k8s/README.md"
   test ! -s "$DOCKER_LOG"
 
   git -C "$ghcr_dir" add .
@@ -88,6 +91,7 @@ for app in django fastapi jupyter rdkit; do
   rg -q "tag: \"${expected_sha}\"" "$ghcr_dir/PROD/k8s/values.generated.yaml"
   rg -q 'name: ghcr-pull-secret' "$ghcr_dir/PROD/k8s/values.generated.yaml"
   test ! -s "$DOCKER_LOG"
+  test -z "$(git -C "$ghcr_dir" status --porcelain)"
 
   touch "$ghcr_dir/dirty-file"
   ! (cd "$ghcr_dir" && PATH="$scratch_dir/bin:$PATH" bash ./prepare --target ghcr-k8s >/dev/null 2>&1)

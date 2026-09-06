@@ -75,6 +75,21 @@ helm upgrade --install "YOUR_APP_NAME" ./chart \
   -f values.generated.yaml -f values.override.yaml
 ```
 
+## Accessing the bundled PostgreSQL database
+
+When `postgres.enabled=true`, find the PostgreSQL Pod and open `psql` inside
+it. This uses the credentials already configured in the Pod:
+
+```bash
+kubectl -n chembience get pods
+kubectl -n chembience exec -it YOUR_APP_NAME-chembience-postgres-0 -- \
+  sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" psql -U "$POSTGRES_USER" -d "$POSTGRES_NAME"'
+```
+
+The second command uses the default Helm resource name; use the name shown by
+`kubectl get pods` if you configured a Helm name override. Exit `psql` with
+`\q`.
+
 ## Django migrations
 
 Run migrations during the first deployment and again only for a release that

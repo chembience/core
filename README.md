@@ -1,6 +1,8 @@
 # Chembience
 
-Chembience is a Docker-based chemoinformatics platform with prewired RDKit and RDKit-enabled PostgreSQL components. 
+Chembience is a Docker Compose development platform with self-hosted Docker
+Compose and Kubernetes production deployment options, prewired with RDKit and
+RDKit-enabled PostgreSQL components.
 It provides ready-to-use Django, FastAPI, JupyterLab, RDKit, and PostgreSQL services for building chemical informatics 
 applications. This repository supersedes the original
 [Chembience implementation](https://github.com/chembience/chembience) (versions
@@ -147,6 +149,10 @@ creates test-only credentials, and removes generated apps, containers, and
 volumes afterward. It retains Docker image cache and may take substantial time
 and disk space.
 
+Both test modes also require `CONDA_PY` and `RDKIT_VERSION` to have identical
+values in `.env` and `.env.template`. Update the two files together whenever a
+core Python or RDKit version changes.
+
 ## Kubernetes
 
 Each generated application receives its Kubernetes Helm bundle in
@@ -163,6 +169,10 @@ application image to GitHub Container Registry; rerun it after that commit has
 been pushed and built to create a Docker-free Helm deployment bundle. The
 generated app's `PROD/k8s/README.md` documents the required Kubernetes image
 pull Secret and deployment steps.
+
+For a public HTTPS deployment, install an Ingress controller and configure TLS
+before enabling a chart's Ingress. See [Kubernetes Ingress and TLS](K8S_INGRESS.md)
+for the controller, cert-manager, and deployment sequence.
 
 ## Major Software Components
 
@@ -198,12 +208,12 @@ images receive only their exact version tag.
 ## Releases
 
 | Release | Date       | Notes                                                               |
-|---------|------------|---------------------------------------------------------------------|
-| 0.6.2   | 2026‑08‑26 | Updated RDKit to 2026.03.5 |
-| 0.6.1   | 2026‑08‑25 | Added Docker Hub-backed installation and centralized release versioning |
-| 0.6.0   | 2026‑08‑01 | Renamed environment template to `.env.template` and updated project references |
-| 0.5.1   | 2026‑06‑03 | Smaller Docker images, switch to mamba as build system, many minor improvements and bug fixes |
-| 0.5.0   | 2026‑05‑27 | Initial release of the re-implemented core architecture |
+|-------|------------|---------------------------------------------------------------------|
+| 0.6.2 | 2026‑09‑06 | RDKit 2026.03.5; isolated `PROD/` bundles; Kubernetes Helm deployments, Ingress guidance, and optional private GHCR publishing |
+| 0.6.1 | 2026‑08‑25 | Added Docker Hub-backed installation and centralized release versioning |
+| 0.6.0 | 2026‑08‑01 | Renamed environment template to `.env.template` and updated project references |
+| 0.5.1 | 2026‑06‑03 | Smaller Docker images, switch to mamba as build system, many minor improvements and bug fixes |
+| 0.5.0 | 2026‑05‑27 | Initial release of the re-implemented core architecture |
 
 Release older than 0.5.0 are no longer supported but are still available in the [archive](https://github.com/chembience/chembience/releases).
 
@@ -395,7 +405,8 @@ dir(db)
 - `build`: Script to bootstrap a new project.
 - `remove`: Script to tear down a project and optionally remove images.
 - `psql`: Helper script to open a `psql` shell.
-- `test-build-all`: Script to verify all application types.
+- `test`: Fast validation suite; pass `--integration` for the full Docker suite.
+- `test-build-all`: Compatibility alias for `./test --integration`.
 - `django/`, `fastapi/`, `jupyter/`, `rdkit/`, `postgres/`: Service-specific Dockerfiles and initialization scripts.
 
 ## Helper Scripts
@@ -407,6 +418,7 @@ Thin Bash wrappers around `docker compose` and the per-service entrypoints.
 - `./core-build` — shared implementation used by `install` and `build`.
 - `./remove <target> [-d <parent_dir>] [-i|--images] [--silent|-s]` — tear it down. It aborts after production preparation has created `PROD/.env`; handle that deployment and its data manually first. Use `--force-prod` only to confirm that its production Compose stack should be brought down before removal; its named volume is retained.
 - `./psql` — open a `psql` shell on the Postgres container.
+- `./test [--integration]` — run the fast validation suite or the complete Docker integration suite.
 - `./test-build-all` — Compatibility alias for `./test --integration`.
 
 The paths below are the source templates in this repository. During `./install` or `./build`,
@@ -434,4 +446,4 @@ This project is licensed under the BSD 3-Clause License - see the [LICENSE](LICE
 ## Bugs, Comments and anything else
 For any bug reports, comments or suggestion please use the tools here at Github or contact me by email.
 
-Markus Sitzmann, 2026-08-26
+Markus Sitzmann, 2026-09-06

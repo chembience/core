@@ -29,6 +29,25 @@ require_command docker
 
 cd "$root_dir"
 export CHEMBIENCE_VERSION="$(tr -d '[:space:]' < VERSION)"
+
+get_env_value() {
+  local file="$1" key="$2"
+  sed -n "s/^${key}=//p" "$file" | tail -n 1
+}
+
+for key in CONDA_PY RDKIT_VERSION; do
+  template_value="$(get_env_value .env.template "$key")"
+  env_value="$(get_env_value .env "$key")"
+  [[ -n "$template_value" && -n "$env_value" ]] || {
+    echo "${key} must be set in both .env and .env.template" >&2
+    exit 1
+  }
+  [[ "$env_value" == "$template_value" ]] || {
+    echo "${key} differs: .env=${env_value}, .env.template=${template_value}" >&2
+    exit 1
+  }
+done
+
 bash -n django/app/*-configure django/app/*-prepare-prod \
   fastapi/app/*-configure fastapi/app/*-prepare-prod \
   jupyter/app/*-configure jupyter/app/*-prepare-prod \

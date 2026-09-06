@@ -98,20 +98,28 @@ To maintain separate production settings, run `./rdkit-configure --prod`, edit
 the generated `.env.prod`, then run `./rdkit-prepare-prod`. `.env.prod` is
 copied on each preparation run unless `--keep-env-prod` is supplied.
 
+For a strictly Kubernetes-based deployment, use
+`./rdkit-prepare-prod --target ghcr-k8s`. This does not run Docker locally: on
+its first use it creates the GitHub Actions configuration that publishes a
+private image to GHCR. Commit and push that configuration, wait for the Action,
+then rerun the command from the clean pushed commit to generate the SHA-pinned
+Helm values file. See [PROD/k8s/README.md](PROD/k8s/README.md) for the complete
+workflow.
+
 Examples:
 
 ```bash
 # Repeatable release image build
-./rdkit-prepare-prod --image-tag 0.6.1-rdkit.1
+./rdkit-prepare-prod --image-tag 0.6.2-pre1-rdkit.1
 
 # Custom production image repository/name
-./rdkit-prepare-prod --image-name registry.example.com/chem/rdkit-prod --image-tag 0.6.1-rdkit.1
+./rdkit-prepare-prod --image-name registry.example.com/chem/rdkit-prod --image-tag 0.6.2-pre1-rdkit.1
 ```
 
 Run the produced image (example):
 
 ```bash
-docker run --rm --entrypoint /opt/conda/envs/chembience/bin/python chembience/app-prod:0.6.1-rdkit.1 - <<'PY'
+docker run --rm --entrypoint /opt/conda/envs/chembience/bin/python chembience/app-prod:0.6.2-pre1-rdkit.1 - <<'PY'
 from rdkit import Chem
 print(bool(Chem.MolFromSmiles('CCO')))
 PY
@@ -151,20 +159,12 @@ application with self-hosted Docker Compose.
 ## Kubernetes deployment
 
 Chembience's Helm chart is the Kubernetes alternative to this application's
-self-hosted `PROD/` Compose bundle. After `rdkit-prepare-prod`, the complete
-chart and deployment documentation live in `PROD/k8s/`; no core checkout
-is required. Publish the immutable image, then deploy the long-running RDKit
-workload from that directory:
-
-```bash
-kubectl -n chembience create secret generic chembience-secrets \
-  --from-literal=postgres-password='replace-me'
-
-cd PROD/k8s
-cp values.override.yaml.example values.override.yaml
-helm upgrade --install rdkit-tools ./chart -n chembience \
-  -f values.generated.yaml -f values.override.yaml
-```
+self-hosted `PROD/` Compose bundle. Prepare it with
+`rdkit-prepare-prod --target ghcr-k8s`; the generated `PROD/k8s/` directory is
+self-contained and can be copied to a Kubernetes-only host. Create the
+namespace and Secrets before Helm, adapt `values.override.yaml`, then deploy
+the SHA-pinned values with Helm. The app-specific Kubernetes README gives the
+complete ordered commands.
 
 The RDKit workload has no public Service or Ingress; run scripts with
 `kubectl exec` or add a purpose-built worker/API separately. The chart uses
