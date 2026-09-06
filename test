@@ -28,7 +28,8 @@ require_command helm
 require_command docker
 
 cd "$root_dir"
-export CHEMBIENCE_VERSION="$(tr -d '[:space:]' < VERSION)"
+CHEMBIENCE_VERSION="$(tr -d '[:space:]' < VERSION)"
+export CHEMBIENCE_VERSION
 
 get_env_value() {
   local file="$1" key="$2"
