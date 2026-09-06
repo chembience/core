@@ -25,6 +25,8 @@ COPY django/app/Dockerfile.prod /django/Dockerfile.prod
 COPY django/app/PROD /django/PROD
 COPY django/app/requirements.txt /django/requirements.txt
 COPY django/app/README.md /django/README.md
+COPY django/app/AGENTS.md /django/AGENTS.md
+COPY django/app/CLAUDE.md /django/CLAUDE.md
 COPY django/psql /django/psql
 COPY django/app/django-rdkit-test-app /django/django-rdkit-test-app/
 COPY VERSION /opt/VERSION

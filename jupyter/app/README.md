@@ -35,6 +35,7 @@ one yourself.
 - `notebooks/`: Your notebooks and supporting Python files. `notebooks/check_env.py` verifies RDKit and database connectivity.
 - `app-requirements.txt`: Add Python dependencies for notebooks and scripts. The generated app also has `requirements.txt`, which contains the core Jupyter dependencies.
 - `Dockerfile`: Development image extension that installs `app-requirements.txt`; `Dockerfile.prod` bakes notebooks into the production image.
+- `AGENTS.md`, `CLAUDE.md`: App-specific guidance for coding agents and development assistants.
 - `PROD/compose.yaml`: Self-hosted production stack, including the bundled RDKit PostgreSQL image.
 - `PROD/compose.external.yaml`: Production deployment for an external RDKit-enabled PostgreSQL database.
 - `jupyter-init`: Starts JupyterLab if necessary, validates the environment, and prints the access URL/token.

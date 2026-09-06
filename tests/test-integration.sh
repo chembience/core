@@ -64,6 +64,8 @@ for app in "${apps[@]}"; do
   echo "🧪 Integration testing $app"
   (cd "$copy_dir" && ./build "$app" "$app" -d "$apps_dir" --no-prompt)
   app_dir="$apps_dir/$app"
+  test -f "$app_dir/AGENTS.md"
+  test -f "$app_dir/CLAUDE.md"
   (cd "$app_dir" && "./$app-init")
 
   if [[ "$app" == fastapi ]]; then

@@ -8,6 +8,7 @@ This is the RDKit service for your Chembience project. It provides specialized c
 - `docker-compose.yml`: Defines the RDKit sidecar and PostgreSQL services for this app.
 - `requirements.txt`: Add Python dependencies for RDKit scripts.
 - `Dockerfile`: Development image extension that installs `requirements.txt`; `Dockerfile.prod` creates a source-baked production image.
+- `AGENTS.md`, `CLAUDE.md`: App-specific guidance for coding agents and development assistants.
 - `PROD/compose.yaml`: Self-hosted production stack, including the bundled RDKit PostgreSQL image.
 - `PROD/compose.external.yaml`: Production deployment for an external RDKit-enabled PostgreSQL database.
 - `run`: Runs a Python script inside the RDKit container: `./run your_script.py`.

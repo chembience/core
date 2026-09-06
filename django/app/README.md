@@ -10,6 +10,7 @@ This is the web service for your Chembience project. It is built using Django an
 - `requirements.txt`: Add Python dependencies for this Django app.
 - `Dockerfile`: Development image extension that installs `requirements.txt`.
 - `Dockerfile.prod`: Production image recipe that bakes `src/` into an immutable image.
+- `AGENTS.md`, `CLAUDE.md`: App-specific guidance for coding agents and development assistants.
 - `PROD/compose.yaml`: Self-hosted production stack, including the bundled RDKit PostgreSQL image.
 - `PROD/compose.external.yaml`: Production deployment for an external RDKit-enabled PostgreSQL database.
 - `django-init`: Runs migrations, creates the configured superuser, collects static files, and runs the test suite.

@@ -84,6 +84,8 @@ if [ "${CHEMBIENCE_RUNTIME_MODE}" != "prod" ] && { [ ! -f "/home/app/.rdkit-init
         [ ! -f "/home/app/PROD/k8s/README.md" ] && cp /opt/rdkit/k8s/README.md /home/app/PROD/k8s/README.md
         [ ! -f "/home/app/PROD/k8s/values.override.yaml.example" ] && cp /opt/rdkit/k8s/values.override.yaml.example /home/app/PROD/k8s/values.override.yaml.example
         [ ! -f "/home/app/README.md" ] && cp /opt/rdkit/README.md /home/app/README.md
+        [ ! -f "/home/app/AGENTS.md" ] && cp /opt/rdkit/AGENTS.md /home/app/AGENTS.md
+        [ ! -f "/home/app/CLAUDE.md" ] && cp /opt/rdkit/CLAUDE.md /home/app/CLAUDE.md
         [ -f "/.gitignore" ] && [ ! -f "/home/app/.gitignore" ] && cp "/.gitignore" "/home/app/.gitignore"
         [ -f "/.dockerignore" ] && [ ! -f "/home/app/.dockerignore" ] && cp "/.dockerignore" "/home/app/.dockerignore"
         [ -f "/.gitattributes" ] && [ ! -f "/home/app/.gitattributes" ] && cp "/.gitattributes" "/home/app/.gitattributes"

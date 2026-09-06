@@ -109,6 +109,8 @@ if [ "${CHEMBIENCE_RUNTIME_MODE}" != "prod" ]; then
     sync_config "/jupyter/requirements.txt"      "/home/app/requirements.txt"
     sync_config "/jupyter/app-requirements.txt"  "/home/app/app-requirements.txt"
     sync_config "/jupyter/README.md"             "/home/app/README.md"
+    sync_config "/jupyter/AGENTS.md"             "/home/app/AGENTS.md"
+    sync_config "/jupyter/CLAUDE.md"             "/home/app/CLAUDE.md"
     sync_script "/jupyter/psql"                  "/home/app/psql"
     sync_script "/jupyter/jupyter-init"          "/home/app/jupyter-init"
     sync_script "/jupyter/jupyter-configure"     "/home/app/jupyter-configure"

@@ -12,6 +12,7 @@ This is the async REST API service for your Chembience project. It is built usin
 - `src/tests/`: API and RDKit integration tests; `pytest.ini` configures pytest.
 - `requirements.txt`: Add Python dependencies for this FastAPI app.
 - `Dockerfile`: Development image extension that installs `requirements.txt`; `Dockerfile.prod` bakes `src/` into the production image.
+- `AGENTS.md`, `CLAUDE.md`: App-specific guidance for coding agents and development assistants.
 - `PROD/compose.yaml`: Self-hosted production stack, including the bundled RDKit PostgreSQL image.
 - `PROD/compose.external.yaml`: Production deployment for an external RDKit-enabled PostgreSQL database.
 - `fastapi-init`: Starts the service if needed and applies migrations.

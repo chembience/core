@@ -108,6 +108,8 @@ if [ "${CHEMBIENCE_RUNTIME_MODE}" != "prod" ]; then
     sync_config "/fastapi/k8s/values.override.yaml.example" "/home/app/PROD/k8s/values.override.yaml.example"
     sync_config "/fastapi/requirements.txt"            "/home/app/requirements.txt"
     sync_config "/fastapi/README.md"                   "/home/app/README.md"
+    sync_config "/fastapi/AGENTS.md"                   "/home/app/AGENTS.md"
+    sync_config "/fastapi/CLAUDE.md"                   "/home/app/CLAUDE.md"
     sync_script "/fastapi/psql"                        "/home/app/psql"
     sync_script "/fastapi/db-backup"                   "/home/app/db-backup"
     sync_script "/fastapi/db-restore"                  "/home/app/db-restore"

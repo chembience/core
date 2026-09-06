@@ -26,6 +26,8 @@ COPY jupyter/app/jupyter-init /jupyter/jupyter-init
 COPY jupyter/app/jupyter-configure /jupyter/jupyter-configure
 COPY jupyter/app/jupyter-prepare-prod /jupyter/jupyter-prepare-prod
 COPY jupyter/app/notebooks /jupyter/app/notebooks
+COPY jupyter/app/AGENTS.md /jupyter/AGENTS.md
+COPY jupyter/app/CLAUDE.md /jupyter/CLAUDE.md
 COPY psql /jupyter/psql
 COPY VERSION /opt/VERSION
 COPY share /opt/share

@@ -47,8 +47,9 @@ optional cross-stack wiring.
 - `share/chembience/`: Shared Python module imported by services
   (`from chembience import db`) to access a pre-configured SQLAlchemy
   engine and Postgres connection settings.
-- `install`, `build`, `core-build`, `remove`, `psql`, `test-build-all`: Top-level
-  helper scripts (run from the project root).
+- `install`, `build`, `core-build`, `remove`, `psql`, `test`, `test-build-all`:
+  Top-level helper scripts (run from the project root). `test-build-all` is the
+  compatibility alias for `test --integration`.
 - `*/app/`: Templates copied into the root of generated applications by the
   corresponding service entrypoint. When editing a template helper or README,
   keep its commands relative to a generated application directory.
@@ -83,6 +84,9 @@ optional cross-stack wiring.
 - **Install vs. build**: `./install` pulls the exact published core images for
   `VERSION`; `./build` builds those core images from the local checkout and is
   the required path for source changes and CI smoke tests.
+- **Testing**: Run `./test` for shell, Python, Helm, and Compose validation;
+  run `./test --integration` for the complete Docker workflow. `CONDA_PY` and
+  `RDKIT_VERSION` must remain identical in `.env` and `.env.template`.
 - **Generated application context**: The core repository and a generated app
   use different compose files. For generated-app work, `cd` into the generated
   directory before running `docker compose`; its copied helper scripts live at
@@ -99,6 +103,15 @@ optional cross-stack wiring.
   migrations:
   `docker compose exec django python manage.py makemigrations`
   `docker compose exec django python manage.py migrate`
+- **Production targets**: `*-prepare-prod --target compose` is the default
+  self-hosted Docker Compose route. `--target ghcr-k8s` bootstraps a GitHub
+  Actions workflow on its first run, then generates a SHA-pinned Helm bundle
+  after that commit is pushed and built. The generated app's
+  `PROD/k8s/README.md` is the deployment authority; preserve
+  `values.override.yaml` and Kubernetes Secrets as host-owned configuration.
+- **Kubernetes database access**: For the bundled database, use `kubectl exec`
+  against the generated PostgreSQL Pod rather than publishing a database port.
+  The app-specific `PROD/k8s/README.md` contains the exact command.
 - **Cheminformatics domain**: Data often involves SMILES strings, InChI, and
   complex molecular representations. Be careful with encoding, normalization,
   and database round-trips.
@@ -107,3 +120,6 @@ optional cross-stack wiring.
 - **Secrets**: `DJANGO_SECRET_KEY` is auto-generated on first `./install` or `./build` and
   persisted in the per-project `.env`. Treat that file as a secret. See
   README §Secrets.
+- **App-context guidance**: `*/app/AGENTS.md` and `*/app/CLAUDE.md` are copied
+  into generated applications. Keep these templates scoped to the corresponding
+  app type and update them when a generated-app workflow changes.

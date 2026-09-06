@@ -23,6 +23,8 @@ COPY fastapi/app/Dockerfile.prod /fastapi/Dockerfile.prod
 COPY fastapi/app/PROD /fastapi/PROD
 COPY fastapi/app/requirements.txt /fastapi/requirements.txt
 COPY fastapi/app/README.md /fastapi/README.md
+COPY fastapi/app/AGENTS.md /fastapi/AGENTS.md
+COPY fastapi/app/CLAUDE.md /fastapi/CLAUDE.md
 COPY fastapi/app/db-backup /fastapi/db-backup
 COPY fastapi/app/db-restore /fastapi/db-restore
 COPY fastapi/app/db-cleanup /fastapi/db-cleanup
