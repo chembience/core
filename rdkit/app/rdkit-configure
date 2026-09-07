@@ -2,27 +2,47 @@
 set -euo pipefail
 
 # Usage:
-#   ./rdkit-configure [--rebuild] [NEW_ENV_FILE]
+#   ./rdkit-configure [--prod] | [--rebuild] [NEW_ENV_FILE]
 
 APP_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$APP_DIR"
 
 REBUILD=0
+PROD_MODE=0
 NEW_ENV_FILE=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --prod) PROD_MODE=1; shift ;;
     --rebuild) REBUILD=1; shift ;;
     -*) echo "Unknown option: $1" >&2; exit 2 ;;
     *) NEW_ENV_FILE="$1"; shift ;;
   esac
 done
 
-[[ -z "${NEW_ENV_FILE}" ]] && NEW_ENV_FILE=".env.new"
+[[ $PROD_MODE -eq 0 && -z "${NEW_ENV_FILE}" ]] && NEW_ENV_FILE=".env.new"
 
 if [[ ! -f .env ]]; then
   echo "Missing ./.env in $APP_DIR. Aborting." >&2
   exit 1
+fi
+
+if [[ $PROD_MODE -eq 1 ]]; then
+  if [[ $REBUILD -eq 1 || -n "$NEW_ENV_FILE" ]]; then
+    echo "--prod cannot be combined with --rebuild or a proposed environment file." >&2
+    exit 2
+  fi
+  if [[ -f .env.prod ]]; then
+    read -r -p "Overwrite .env.prod from .env? [y/N] " CONFIRM || true
+    case "$CONFIRM" in
+      y|Y|yes|YES) ;;
+      *) echo "ℹ️  Kept existing .env.prod."; exit 0 ;;
+    esac
+  fi
+  cp -p .env .env.prod
+  chmod 600 .env.prod
+  echo "✅ Created .env.prod from .env. Edit it before running rdkit-prepare-prod."
+  exit 0
 fi
 
 mtime_epoch() { local f="$1"; if stat --version >/dev/null 2>&1; then stat -c %Y "$f"; else stat -f %m "$f"; fi; }

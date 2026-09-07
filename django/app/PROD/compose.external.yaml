@@ -1,9 +1,12 @@
+name: ${COMPOSE_PROJECT_NAME:?Run django-prepare-prod first}
+
 services:
   django:
-    image: ${CHEMBIENCE_PROD_IMAGE_NAME:?Run django-prepare-prod first}:${CHEMBIENCE_IMAGE_TAG:?Set CHEMBIENCE_IMAGE_TAG in .env.prod}
-    env_file: .env.prod
+    image: ${CHEMBIENCE_PROD_IMAGE_NAME:?Run django-prepare-prod first}:${CHEMBIENCE_IMAGE_TAG:?Set CHEMBIENCE_IMAGE_TAG in .env}
+    env_file: .env
     environment:
       CHEMBIENCE_RUNTIME_MODE: prod
+      DJANGO_SETTINGS_MODULE: chembience.django_prod_settings
     ports:
       - "${DJANGO_CONNECTION_PORT:-8001}:8000"
     restart: unless-stopped
@@ -16,9 +19,10 @@ services:
       start_period: 45s
 
   migrate:
-    image: ${CHEMBIENCE_PROD_IMAGE_NAME:?Run django-prepare-prod first}:${CHEMBIENCE_IMAGE_TAG:?Set CHEMBIENCE_IMAGE_TAG in .env.prod}
-    env_file: .env.prod
+    image: ${CHEMBIENCE_PROD_IMAGE_NAME:?Run django-prepare-prod first}:${CHEMBIENCE_IMAGE_TAG:?Set CHEMBIENCE_IMAGE_TAG in .env}
+    env_file: .env
     environment:
       CHEMBIENCE_RUNTIME_MODE: prod
+      DJANGO_SETTINGS_MODULE: chembience.django_prod_settings
     profiles: ["migration"]
     command: ["python", "manage.py", "migrate", "--noinput"]

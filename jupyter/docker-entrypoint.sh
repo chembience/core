@@ -90,16 +90,31 @@ if [ "${CHEMBIENCE_RUNTIME_MODE}" != "prod" ]; then
     sync_config "/jupyter/docker-compose.yml"    "/home/app/docker-compose.yml"
     sync_config "/jupyter/Dockerfile"            "/home/app/Dockerfile"
     sync_config "/jupyter/Dockerfile.prod"       "/home/app/Dockerfile.prod"
-    sync_config "/jupyter/docker-compose.prod.yml" "/home/app/docker-compose.prod.yml"
-    sync_config "/jupyter/docker-compose.prod.self-hosted.yml" "/home/app/docker-compose.prod.self-hosted.yml"
+    if [ ! -d "/home/app/prod" ]; then
+        mkdir -p "/home/app/PROD"
+        sync_config "/jupyter/PROD/compose.yaml" "/home/app/PROD/compose.yaml"
+        sync_config "/jupyter/PROD/compose.external.yaml" "/home/app/PROD/compose.external.yaml"
+        sync_script "/jupyter/prod-tools/psql" "/home/app/PROD/psql"
+        sync_script "/jupyter/prod-tools/db-backup" "/home/app/PROD/db-backup"
+        sync_script "/jupyter/prod-tools/db-restore" "/home/app/PROD/db-restore"
+        sync_script "/jupyter/prod-tools/db-cleanup" "/home/app/PROD/db-cleanup"
+        sync_config "/jupyter/prod-tools/README.md" "/home/app/PROD/README.md"
+    fi
+    mkdir -p "/home/app/PROD/k8s"
+    if [ ! -d "/home/app/PROD/k8s/chart" ]; then
+        cp -a "/jupyter/k8s" "/home/app/PROD/k8s/chart"
+    fi
+    sync_config "/jupyter/k8s/README.md" "/home/app/PROD/k8s/README.md"
+    sync_config "/jupyter/k8s/values.override.yaml.example" "/home/app/PROD/k8s/values.override.yaml.example"
     sync_config "/jupyter/requirements.txt"      "/home/app/requirements.txt"
     sync_config "/jupyter/app-requirements.txt"  "/home/app/app-requirements.txt"
     sync_config "/jupyter/README.md"             "/home/app/README.md"
+    sync_config "/jupyter/AGENTS.md"             "/home/app/AGENTS.md"
+    sync_config "/jupyter/CLAUDE.md"             "/home/app/CLAUDE.md"
     sync_script "/jupyter/psql"                  "/home/app/psql"
     sync_script "/jupyter/jupyter-init"          "/home/app/jupyter-init"
     sync_script "/jupyter/jupyter-configure"     "/home/app/jupyter-configure"
     sync_script "/jupyter/jupyter-prepare-prod"  "/home/app/jupyter-prepare-prod"
-    sync_script "/jupyter/jupyter-prod-self-hosted" "/home/app/jupyter-prod-self-hosted"
     [ -f "/.gitignore" ] && [ ! -f "/home/app/.gitignore" ] && cp "/.gitignore" "/home/app/.gitignore"
     [ -f "/.dockerignore" ] && [ ! -f "/home/app/.dockerignore" ] && cp "/.dockerignore" "/home/app/.dockerignore"
     [ -f "/.gitattributes" ] && [ ! -f "/home/app/.gitattributes" ] && cp "/.gitattributes" "/home/app/.gitattributes"
@@ -108,6 +123,10 @@ if [ "${CHEMBIENCE_RUNTIME_MODE}" != "prod" ]; then
             echo "" >> "/home/app/.gitignore"
             echo "# Added by entrypoint" >> "/home/app/.gitignore"
             echo "postgres/postgres_data" >> "/home/app/.gitignore"
+        fi
+        if ! grep -Eq "^PROD/k8s/values\.generated\.yaml([[:space:]]|#|$)" "/home/app/.gitignore"; then
+            echo "PROD/k8s/values.generated.yaml" >> "/home/app/.gitignore"
+            echo "PROD/k8s/values.override.yaml" >> "/home/app/.gitignore"
         fi
     fi
     if [ -f "/home/app/.dockerignore" ]; then

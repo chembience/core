@@ -1,7 +1,9 @@
+name: ${COMPOSE_PROJECT_NAME:?Run jupyter-prepare-prod first}
+
 services:
   jupyter:
-    image: ${CHEMBIENCE_PROD_IMAGE_NAME:?Run jupyter-prepare-prod first}:${CHEMBIENCE_IMAGE_TAG:?Set CHEMBIENCE_IMAGE_TAG in .env.prod}
-    env_file: .env.prod
+    image: ${CHEMBIENCE_PROD_IMAGE_NAME:?Run jupyter-prepare-prod first}:${CHEMBIENCE_IMAGE_TAG:?Set CHEMBIENCE_IMAGE_TAG in .env}
+    env_file: .env
     environment:
       CHEMBIENCE_RUNTIME_MODE: prod
     ports:

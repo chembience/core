@@ -17,16 +17,16 @@ COPY django/django-init /django/django-init
 COPY django/django-manage-py /django/django-manage-py
 COPY django/app/django-configure /django/django-configure
 COPY django/app/django-prepare-prod /django/django-prepare-prod
-COPY django/app/django-prod-self-hosted /django/django-prod-self-hosted
 COPY .gitignore /
 COPY .dockerignore /
 COPY django/docker-compose.yml /django/docker-compose.yml
 COPY django/app/Dockerfile /django/Dockerfile
 COPY django/app/Dockerfile.prod /django/Dockerfile.prod
-COPY django/app/docker-compose.prod.yml /django/docker-compose.prod.yml
-COPY django/app/docker-compose.prod.self-hosted.yml /django/docker-compose.prod.self-hosted.yml
+COPY django/app/PROD /django/PROD
 COPY django/app/requirements.txt /django/requirements.txt
 COPY django/app/README.md /django/README.md
+COPY django/app/AGENTS.md /django/AGENTS.md
+COPY django/app/CLAUDE.md /django/CLAUDE.md
 COPY django/psql /django/psql
 COPY django/app/django-rdkit-test-app /django/django-rdkit-test-app/
 COPY VERSION /opt/VERSION
@@ -50,5 +50,11 @@ RUN if grep -qE '^\s*[^#\s]' /opt/django/requirements.txt; then \
     find /opt/conda/ -follow -type f -name '*.a' -delete && \
     find /opt/conda/ -follow -type f -name '*.pyc' -delete && \
     find /opt/conda/ -follow -type f -name '*.js.map' -delete
+
+# Runtime deployment tooling is intentionally copied after dependencies so
+# chart and documentation edits do not invalidate the Python dependency layer.
+COPY prod-tools /django/prod-tools
+COPY prod-tools/k8s/chart-base /django/k8s
+COPY django/app/k8s /django/k8s
 
 WORKDIR /home/app/src

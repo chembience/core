@@ -1,6 +1,8 @@
 # Chembience
 
-Chembience is a Docker-based chemoinformatics platform with prewired RDKit and RDKit-enabled PostgreSQL components. 
+Chembience is a Docker Compose development platform with self-hosted Docker
+Compose and Kubernetes production deployment options, prewired with RDKit and
+RDKit-enabled PostgreSQL components.
 It provides ready-to-use Django, FastAPI, JupyterLab, RDKit, and PostgreSQL services for building chemical informatics 
 applications. This repository supersedes the original
 [Chembience implementation](https://github.com/chembience/chembience) (versions
@@ -73,12 +75,15 @@ docker compose up -d
 docker compose exec fastapi pytest
 ```
 
-When the development source is ready, create an isolated self-hosted production
-stack. The helper pulls the matching published core image, bakes your `src/`
-source into a production image, applies Alembic migrations, and starts the API:
+When the development source is ready, prepare an isolated self-hosted production
+bundle. The helper bakes your `src/` source into a production image, initializes
+the production database, and applies Alembic migrations:
 
 ```bash
-./fastapi-prod-self-hosted
+./fastapi-prepare-prod
+
+cd PROD
+docker compose up -d
 # Production API: http://localhost:9002/docs
 ```
 
@@ -103,21 +108,73 @@ docker compose up -d
 ./django-manage-py test
 ```
 
-When ready to deploy the current development source, create an isolated
-self-hosted production stack. The helper pulls the matching published core
-image, bakes `src/` into a production image, applies migrations, and starts
-Django:
+When ready to deploy the current development source, prepare an isolated
+self-hosted production bundle. The helper bakes `src/` into a production image,
+initializes the production database, and applies migrations:
 
 ```bash
-./django-prod-self-hosted
+./django-prepare-prod
+
+cd PROD
+docker compose up -d
 # Production admin: http://localhost:9001/admin/
 ```
+
+`django-prepare-prod` writes matching local CSRF origins to `PROD/.env`. For a
+public hostname or HTTPS reverse proxy, set `DJANGO_CSRF_TRUSTED_ORIGINS` to the
+full public origin (for example, `https://chem.example.org`) before starting it.
 
 ## Prerequisites
 
 - **Docker**: Version 20.10.0 or higher
 - **Docker Compose**: Version 2.0.0 or higher
 - **Bash**: Linux (on WSL2) [tested], macOS [not tested yet]
+
+## Testing
+
+Run the fast local suite from the repository root:
+
+```bash
+./test
+```
+
+It validates shell workflows, shared Python checks, Helm rendering, and Compose
+configuration without building images. For the full Docker suite, including
+development and self-hosted `PROD` flows for all app types, run:
+
+```bash
+./test --integration
+```
+
+The integration suite copies the current working tree to a temporary directory,
+creates test-only credentials, and removes generated apps, containers, and
+volumes afterward. It retains Docker image cache and may take substantial time
+and disk space.
+
+Both test modes also require `CONDA_PY` and `RDKIT_VERSION` to have identical
+values in `.env` and `.env.template`. Update the two files together whenever a
+core Python or RDKit version changes.
+
+## Kubernetes
+
+Each generated application receives its Kubernetes Helm bundle in
+`PROD/k8s/`. Run its `*-prepare-prod` helper to bind the bundle to the
+frozen application image, then deploy from that directory; a core checkout is
+not required. The bundle supports Django, FastAPI, Jupyter, and RDKit workloads
+plus the bundled single-node RDKit PostgreSQL StatefulSet. `PROD/` also remains
+the self-hosted Docker Compose deployment path.
+
+`*-prepare-prod --target compose` is the default and builds the application
+locally with Docker. `--target ghcr-k8s` is an opt-in alternative: it creates a
+GitHub Actions workflow on its first run, which publishes a private immutable
+application image to GitHub Container Registry; rerun it after that commit has
+been pushed and built to create a Docker-free Helm deployment bundle. The
+generated app's `PROD/k8s/README.md` documents the required Kubernetes image
+pull Secret and deployment steps.
+
+For a public HTTPS deployment, install an Ingress controller and configure TLS
+before enabling a chart's Ingress. See [Kubernetes Ingress and TLS](K8S_INGRESS.md)
+for the controller, cert-manager, and deployment sequence.
 
 ## Major Software Components
 
@@ -126,7 +183,7 @@ The root [`VERSION`](VERSION) file is the release-version source of truth.
 continues to hold user-specific runtime configuration and secrets.
 
 - **Python**: 3.14 (configurable via `CONDA_PY`)
-- **[RDKit](https://github.com/rdkit/rdkit)**: 2026.03.4 (configurable via `RDKIT_VERSION`)
+- **[RDKit](https://github.com/rdkit/rdkit)**: 2026.03.5 (configurable via `RDKIT_VERSION`)
 - **PostgreSQL**: 18 (RDKit-cartridge-enabled)
 - **Django**: 5.x-compatible
 - **FastAPI**: 0.115+-compatible
@@ -146,18 +203,19 @@ the [`chembience`](https://hub.docker.com/u/chembience) namespace:
 - `chembience/core-jupyter`
 
 Use an exact release tag in deployments (for example,
-`chembience/core-rdkit:0.6.1`). Stable releases also update `latest`; prerelease
+`chembience/core-rdkit:0.6.2`). Stable releases also update `latest`; prerelease
 images receive only their exact version tag.
 
 
 ## Releases
 
 | Release | Date       | Notes                                                               |
-|---------|------------|---------------------------------------------------------------------|
-| 0.6.1   | 2026‑08‑25 | Added Docker Hub-backed installation and centralized release versioning |
-| 0.6.0   | 2026‑08‑01 | Renamed environment template to `.env.template` and updated project references |
-| 0.5.1   | 2026‑06‑03 | Smaller Docker images, switch to mamba as build system, many minor improvements and bug fixes |
-| 0.5.0   | 2026‑05‑27 | Initial release of the re-implemented core architecture |
+|-------|------------|---------------------------------------------------------------------|
+| 0.6.2 | 2026‑09‑06 | RDKit 2026.03.5; isolated `PROD/` bundles; Kubernetes Helm deployments, Ingress guidance, and optional private GHCR publishing |
+| 0.6.1 | 2026‑08‑25 | Added Docker Hub-backed installation and centralized release versioning |
+| 0.6.0 | 2026‑08‑01 | Renamed environment template to `.env.template` and updated project references |
+| 0.5.1 | 2026‑06‑03 | Smaller Docker images, switch to mamba as build system, many minor improvements and bug fixes |
+| 0.5.0 | 2026‑05‑27 | Initial release of the re-implemented core architecture |
 
 Release older than 0.5.0 are no longer supported but are still available in the [archive](https://github.com/chembience/chembience/releases).
 
@@ -262,6 +320,15 @@ The configure script follows a safe two-phase workflow:
 
 The script automatically handles the Postgres `ALTER USER` statement with the old credentials before switching to the new ones, so no manual SQL is needed.
 
+### Production configuration
+
+Each generated app can maintain a separate ignored `.env.prod` file. Run
+`./<app>-configure --prod` to copy the current `.env` into it (with an
+interactive overwrite confirmation), edit the production values, then run
+`./<app>-prepare-prod`. Preparation copies `.env.prod` to `PROD/.env`; when no
+such file exists, it retains the current `.env` fallback. Pass `--keep-env-prod`
+to keep an already prepared `PROD/.env` unchanged.
+
 ### Django Superuser Password
 
 `DJANGO_SUPERUSER_PASSWORD` (together with `DJANGO_SUPERUSER_USERNAME` and
@@ -270,6 +337,10 @@ Django init flow to create the initial admin user. Treat it as a secret:
 set it in `.env` before running `./install`, never commit it, and rotate it
 via `python manage.py changepassword` inside the `django` container if
 needed.
+
+For a self-hosted Django `PROD` bundle, all three variables must be set and the
+password must not be a placeholder. `django-prepare-prod` creates or updates
+that administrator in the separate production database.
 
 ### JupyterLab Token
 
@@ -336,7 +407,8 @@ dir(db)
 - `build`: Script to bootstrap a new project.
 - `remove`: Script to tear down a project and optionally remove images.
 - `psql`: Helper script to open a `psql` shell.
-- `test-build-all`: Script to verify all application types.
+- `test`: Fast validation suite; pass `--integration` for the full Docker suite.
+- `test-build-all`: Compatibility alias for `./test --integration`.
 - `django/`, `fastapi/`, `jupyter/`, `rdkit/`, `postgres/`: Service-specific Dockerfiles and initialization scripts.
 
 ## Helper Scripts
@@ -346,9 +418,10 @@ Thin Bash wrappers around `docker compose` and the per-service entrypoints.
 - `./install <type> <target> [-d <parent_dir>]` — bootstrap a project with published core images.
 - `./build <type> <target> [-d <parent_dir>]` — bootstrap a project with locally built core images.
 - `./core-build` — shared implementation used by `install` and `build`.
-- `./remove <target> [-d <parent_dir>] [-i|--images] [--silent|-s]` — tear it down.
+- `./remove <target> [-d <parent_dir>] [-i|--images] [--silent|-s]` — tear it down. It aborts after production preparation has created `PROD/.env`; handle that deployment and its data manually first. Use `--force-prod` only to confirm that its production Compose stack should be brought down before removal; its named volume is retained.
 - `./psql` — open a `psql` shell on the Postgres container.
-- `./test-build-all` — Test script to build and init all app types.
+- `./test [--integration]` — run the fast validation suite or the complete Docker integration suite.
+- `./test-build-all` — Compatibility alias for `./test --integration`.
 
 The paths below are the source templates in this repository. During `./install` or `./build`,
 the relevant helpers are copied to the root of the generated application
@@ -375,4 +448,4 @@ This project is licensed under the BSD 3-Clause License - see the [LICENSE](LICE
 ## Bugs, Comments and anything else
 For any bug reports, comments or suggestion please use the tools here at Github or contact me by email.
 
-Markus Sitzmann, 2026-08-23
+Markus Sitzmann, 2026-09-06

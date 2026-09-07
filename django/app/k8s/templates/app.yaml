@@ -1,0 +1,116 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "chembience.appConfigName" . }}
+  labels: {{- include "chembience.labels" . | nindent 4 }}
+data:
+  CHEMBIENCE_RUNTIME_MODE: "prod"
+  POSTGRES_HOST: {{ include "chembience.postgresHost" . | quote }}
+  POSTGRES_PORT: "5432"
+  POSTGRES_INTERNAL_PORT: "5432"
+  POSTGRES_USER: {{ .Values.postgres.user | quote }}
+  POSTGRES_NAME: {{ .Values.postgres.database | quote }}
+  DJANGO_SETTINGS_MODULE: "chembience.django_prod_settings"
+  DJANGO_VIRTUAL_HOSTNAME: {{ .Values.django.virtualHostname | quote }}
+  DJANGO_CSRF_TRUSTED_ORIGINS: {{ .Values.django.csrfTrustedOrigins | quote }}
+  DJANGO_TRUST_X_FORWARDED_PROTO: {{ .Values.django.trustXForwardedProto | quote }}
+  {{- range $key, $value := .Values.app.env }}
+  {{ $key }}: {{ $value | quote }}
+  {{- end }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "chembience.appName" . }}
+  labels: {{- include "chembience.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.app.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "chembience.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: app
+  template:
+    metadata:
+      labels:
+        {{- include "chembience.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: app
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.postgres.enabled }}
+      initContainers:
+        - name: wait-for-postgres
+          image: {{ include "chembience.image" .Values.postgres.image | quote }}
+          imagePullPolicy: {{ .Values.postgres.image.pullPolicy }}
+          command: ["sh", "-c", "until pg_isready -h $POSTGRES_HOST -U $POSTGRES_USER -d $POSTGRES_NAME -p 5432; do sleep 2; done"]
+          envFrom: [{configMapRef: {name: {{ include "chembience.appConfigName" . }}}}]
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom: {secretKeyRef: {name: {{ .Values.app.existingSecret }}, key: {{ .Values.postgres.passwordKey }}}}
+      {{- end }}
+      containers:
+        - name: django
+          image: {{ include "chembience.image" .Values.app.image | quote }}
+          imagePullPolicy: {{ .Values.app.image.pullPolicy }}
+          command: ["python", "-m", "gunicorn", "src.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "8"]
+          envFrom: [{configMapRef: {name: {{ include "chembience.appConfigName" . }}}}]
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom: {secretKeyRef: {name: {{ .Values.app.existingSecret }}, key: {{ .Values.postgres.passwordKey }}}}
+            - name: DJANGO_SECRET_KEY
+              valueFrom: {secretKeyRef: {name: {{ .Values.app.existingSecret }}, key: {{ .Values.django.secretKeyKey }}}}
+          ports: [{name: http, containerPort: 8000}]
+          readinessProbe: {httpGet: {path: /healthz/, port: http}, initialDelaySeconds: 10, periodSeconds: 10}
+          livenessProbe: {httpGet: {path: /healthz/, port: http}, initialDelaySeconds: 30, periodSeconds: 10}
+          resources: {{- toYaml .Values.app.resources | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "chembience.appName" . }}
+  labels: {{- include "chembience.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports: [{name: http, port: 80, targetPort: http}]
+  selector:
+    {{- include "chembience.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: app
+{{- if .Values.ingress.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "chembience.appName" . }}
+  labels: {{- include "chembience.labels" . | nindent 4 }}
+spec:
+  rules:
+    - host: {{ required "ingress.host is required when ingress.enabled=true" .Values.ingress.host | quote }}
+      http: {paths: [{path: /, pathType: Prefix, backend: {service: {name: {{ include "chembience.appName" . }}, port: {name: http}}}}]}
+{{- end }}
+{{- if .Values.migration.enabled }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "chembience.migrationName" . }}
+  annotations: {"helm.sh/hook": "post-install,pre-upgrade", "helm.sh/hook-delete-policy": before-hook-creation}
+  labels: {{- include "chembience.labels" . | nindent 4 }}
+spec:
+  backoffLimit: {{ .Values.migration.backoffLimit }}
+  ttlSecondsAfterFinished: {{ .Values.migration.ttlSecondsAfterFinished }}
+  template:
+    metadata: {labels: {app.kubernetes.io/component: migration}}
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: migrate
+          image: {{ include "chembience.image" .Values.app.image | quote }}
+          command: ["python", "manage.py", "migrate", "--noinput"]
+          envFrom: [{configMapRef: {name: {{ include "chembience.appConfigName" . }}}}]
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom: {secretKeyRef: {name: {{ .Values.app.existingSecret }}, key: {{ .Values.postgres.passwordKey }}}}
+            - name: DJANGO_SECRET_KEY
+              valueFrom: {secretKeyRef: {name: {{ .Values.app.existingSecret }}, key: {{ .Values.django.secretKeyKey }}}}
+{{- end }}

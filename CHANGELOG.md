@@ -5,6 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.2] - 2026-09-06
+
+### Added
+- Added isolated `PROD/` self-hosted Docker Compose bundles for Django,
+  FastAPI, JupyterLab, and RDKit applications, including external-database
+  Compose profiles and database maintenance helpers (`psql`, backup, restore,
+  and cleanup).
+- Added self-contained `PROD/k8s/` Helm bundles for all generated application
+  types, with optional bundled RDKit PostgreSQL storage, Secrets, Ingress, and
+  migration Jobs for Django and FastAPI.
+- Added the `ghcr-k8s` production target. It bootstraps a GitHub Actions image
+  publisher, publishes immutable private GitHub Container Registry images, and
+  generates Helm values pinned to the pushed Git commit SHA.
+- Added [Kubernetes Ingress and TLS](K8S_INGRESS.md) guidance for installing an
+  Ingress controller, cert-manager, and Let's Encrypt certificates.
+- Added a unified `./test` command and `./test --integration` Docker workflow;
+  retained `test-build-all` as an integration-test compatibility alias.
+- Added app-specific `AGENTS.md` and `CLAUDE.md` guidance files to generated
+  Django, FastAPI, JupyterLab, and RDKit application roots.
+
+### Changed
+- Replaced legacy self-hosted production scripts with the per-app
+  `*-configure --prod` and `*-prepare-prod` workflow. Production configuration
+  is prepared in ignored `.env.prod` and copied to `PROD/.env`.
+- Renamed generated application Kubernetes directories from `kubernetes` to
+  `k8s` and standardized the documented Kubernetes namespace as `chembience`.
+- Production helpers now derive the project name from `.env` `APP_NAME` or the
+  generated app directory, and substitute it into generated deployment docs.
+- Updated core RDKit to 2026.03.5 and require `CONDA_PY` and `RDKIT_VERSION` to
+  match between `.env` and `.env.template` during testing.
+- Refreshed root, production-bundle, application, and Kubernetes documentation
+  for the current Docker Compose, GHCR, Kubernetes, TLS, migration, and
+  database-access workflows.
+
+### Fixed
+- Fixed generated Kubernetes README substitution so GHCR preparation does not
+  leave an otherwise clean generated application Git working tree modified.
+- Added explicit namespace creation before namespaced Kubernetes Secret commands.
+
 ## [0.6.1] - 2026-08-25
 
 ### Added

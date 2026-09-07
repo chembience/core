@@ -12,7 +12,10 @@ Run from the project root (where `docker-compose.yml` lives) unless noted.
   - Both commands accept `-d /path/to/dir` for a custom parent directory.
   - The default setup run exits after initialization; work with the generated
     app from its own directory. Use `--no-quit` to keep that setup run attached.
-- Tear down an app: `./remove <target>` (or `./remove <target> -d /path/to/dir`)
+- Tear down an app: `./remove <target>` (or `./remove <target> -d /path/to/dir`). It aborts once production preparation creates `PROD/.env`; use `--force-prod` only after confirming that the production stack may be brought down.
+- Validate the checkout: `./test`; run the full Docker integration suite with
+  `./test --integration` (`test-build-all` is a compatibility alias for the
+  latter).
 - Start services: `docker compose up -d`
 - Stop services: `docker compose down`
 - Tail logs: `docker compose logs -f [<service>]`
@@ -85,6 +88,14 @@ Run from the project root (where `docker-compose.yml` lives) unless noted.
   README files into the project directory during development-mode bootstrap.
 - **Release version**: `VERSION` is the single source of truth. `install` and
   `build` derive `CHEMBIENCE_VERSION` in `.env`; do not edit that key manually.
+- **Core build versions**: Keep `CONDA_PY` and `RDKIT_VERSION` identical in
+  `.env` and `.env.template`; `./test` enforces this.
+- **Production delivery**: Use `*-prepare-prod --target compose` for a
+  self-hosted Docker Compose bundle. For a Docker-free Kubernetes host use
+  `--target ghcr-k8s`: the first run creates a GitHub Actions workflow; commit
+  and push it, wait for the image build, then rerun from the clean commit to
+  write SHA-pinned Helm values. Treat `PROD/k8s/values.override.yaml` and
+  Kubernetes Secrets as host-owned and do not commit them.
 
 ## Project Architecture
 - Project root: top-level of the Chembience platform (contains
@@ -102,3 +113,7 @@ Run from the project root (where `docker-compose.yml` lives) unless noted.
 - `.env`: Global environment configuration (see `.env.template`).
 - `docker-compose.yml`: Authoritative service wiring.
 - `docker-compose.dev.yml`: Optional development overlay.
+- `K8S_INGRESS.md`: Ingress-controller, TLS, and cert-manager guide for public
+  Kubernetes deployments.
+- `*/app/AGENTS.md`, `*/app/CLAUDE.md`: Guidance copied to generated app roots;
+  keep these app-specific templates aligned with generated workflows.

@@ -90,10 +90,26 @@ if [ "${CHEMBIENCE_RUNTIME_MODE}" != "prod" ]; then
     sync_config "/fastapi/docker-compose.override.yml" "/home/app/docker-compose.override.yml"
     sync_config "/fastapi/Dockerfile"                  "/home/app/Dockerfile"
     sync_config "/fastapi/Dockerfile.prod"             "/home/app/Dockerfile.prod"
-    sync_config "/fastapi/docker-compose.prod.yml"     "/home/app/docker-compose.prod.yml"
-    sync_config "/fastapi/docker-compose.prod.self-hosted.yml" "/home/app/docker-compose.prod.self-hosted.yml"
+    if [ ! -d "/home/app/prod" ]; then
+        mkdir -p "/home/app/PROD"
+        sync_config "/fastapi/PROD/compose.yaml"           "/home/app/PROD/compose.yaml"
+        sync_config "/fastapi/PROD/compose.external.yaml"  "/home/app/PROD/compose.external.yaml"
+        sync_script "/fastapi/prod-tools/psql" "/home/app/PROD/psql"
+        sync_script "/fastapi/prod-tools/db-backup" "/home/app/PROD/db-backup"
+        sync_script "/fastapi/prod-tools/db-restore" "/home/app/PROD/db-restore"
+        sync_script "/fastapi/prod-tools/db-cleanup" "/home/app/PROD/db-cleanup"
+        sync_config "/fastapi/prod-tools/README.md" "/home/app/PROD/README.md"
+    fi
+    mkdir -p "/home/app/PROD/k8s"
+    if [ ! -d "/home/app/PROD/k8s/chart" ]; then
+    cp -a "/fastapi/k8s" "/home/app/PROD/k8s/chart"
+    fi
+    sync_config "/fastapi/k8s/README.md" "/home/app/PROD/k8s/README.md"
+    sync_config "/fastapi/k8s/values.override.yaml.example" "/home/app/PROD/k8s/values.override.yaml.example"
     sync_config "/fastapi/requirements.txt"            "/home/app/requirements.txt"
     sync_config "/fastapi/README.md"                   "/home/app/README.md"
+    sync_config "/fastapi/AGENTS.md"                   "/home/app/AGENTS.md"
+    sync_config "/fastapi/CLAUDE.md"                   "/home/app/CLAUDE.md"
     sync_script "/fastapi/psql"                        "/home/app/psql"
     sync_script "/fastapi/db-backup"                   "/home/app/db-backup"
     sync_script "/fastapi/db-restore"                  "/home/app/db-restore"
@@ -104,7 +120,6 @@ if [ "${CHEMBIENCE_RUNTIME_MODE}" != "prod" ]; then
     sync_script "/fastapi/fastapi-makemigrations"      "/home/app/fastapi-makemigrations"
     sync_script "/fastapi/fastapi-configure"           "/home/app/fastapi-configure"
     sync_script "/fastapi/fastapi-prepare-prod"        "/home/app/fastapi-prepare-prod"
-    sync_script "/fastapi/fastapi-prod-self-hosted"    "/home/app/fastapi-prod-self-hosted"
     [ -f "/.gitignore" ] && [ ! -f "/home/app/.gitignore" ] && cp "/.gitignore" "/home/app/.gitignore"
     [ -f "/.dockerignore" ] && [ ! -f "/home/app/.dockerignore" ] && cp "/.dockerignore" "/home/app/.dockerignore"
     [ -f "/.gitattributes" ] && [ ! -f "/home/app/.gitattributes" ] && cp "/.gitattributes" "/home/app/.gitattributes"
@@ -113,6 +128,10 @@ if [ "${CHEMBIENCE_RUNTIME_MODE}" != "prod" ]; then
             echo "" >> "/home/app/.gitignore"
             echo "# Added by entrypoint" >> "/home/app/.gitignore"
             echo "postgres/postgres_data" >> "/home/app/.gitignore"
+        fi
+        if ! grep -Eq "^PROD/k8s/values\.generated\.yaml([[:space:]]|#|$)" "/home/app/.gitignore"; then
+            echo "PROD/k8s/values.generated.yaml" >> "/home/app/.gitignore"
+            echo "PROD/k8s/values.override.yaml" >> "/home/app/.gitignore"
         fi
     fi
     if [ -f "/home/app/.dockerignore" ]; then

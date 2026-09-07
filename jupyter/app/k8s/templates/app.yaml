@@ -1,0 +1,93 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "chembience.appConfigName" . }}
+  labels: {{- include "chembience.labels" . | nindent 4 }}
+data:
+  CHEMBIENCE_RUNTIME_MODE: "prod"
+  POSTGRES_HOST: {{ include "chembience.postgresHost" . | quote }}
+  POSTGRES_PORT: "5432"
+  POSTGRES_INTERNAL_PORT: "5432"
+  POSTGRES_USER: {{ .Values.postgres.user | quote }}
+  POSTGRES_NAME: {{ .Values.postgres.database | quote }}
+  {{- range $key, $value := .Values.app.env }}
+  {{ $key }}: {{ $value | quote }}
+  {{- end }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "chembience.appName" . }}
+  labels: {{- include "chembience.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.app.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "chembience.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: app
+  template:
+    metadata:
+      labels:
+        {{- include "chembience.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: app
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.postgres.enabled }}
+      initContainers:
+        - name: wait-for-postgres
+          image: {{ include "chembience.image" .Values.postgres.image | quote }}
+          imagePullPolicy: {{ .Values.postgres.image.pullPolicy }}
+          command: ["sh", "-c", "until pg_isready -h $POSTGRES_HOST -U $POSTGRES_USER -d $POSTGRES_NAME -p 5432; do sleep 2; done"]
+          envFrom: [{configMapRef: {name: {{ include "chembience.appConfigName" . }}}}]
+          env: [{name: POSTGRES_PASSWORD, valueFrom: {secretKeyRef: {name: {{ .Values.app.existingSecret }}, key: {{ .Values.postgres.passwordKey }}}}}]
+      {{- end }}
+      containers:
+        - name: jupyter
+          image: {{ include "chembience.image" .Values.app.image | quote }}
+          imagePullPolicy: {{ .Values.app.image.pullPolicy }}
+          command: ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root"]
+          envFrom: [{configMapRef: {name: {{ include "chembience.appConfigName" . }}}}]
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom: {secretKeyRef: {name: {{ .Values.app.existingSecret }}, key: {{ .Values.postgres.passwordKey }}}}
+            - name: JUPYTER_TOKEN
+              valueFrom: {secretKeyRef: {name: {{ .Values.app.existingSecret }}, key: {{ .Values.jupyter.tokenKey }}}}
+          ports: [{name: http, containerPort: 8888}]
+          readinessProbe: {httpGet: {path: /api, port: http}, initialDelaySeconds: 10, periodSeconds: 10}
+          livenessProbe: {httpGet: {path: /api, port: http}, initialDelaySeconds: 30, periodSeconds: 10}
+          resources: {{- toYaml .Values.app.resources | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "chembience.appName" . }}
+  labels: {{- include "chembience.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports: [{name: http, port: 80, targetPort: http}]
+  selector:
+    {{- include "chembience.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: app
+{{- if .Values.ingress.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "chembience.appName" . }}
+  labels: {{- include "chembience.labels" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with .Values.ingress.className }}
+  ingressClassName: {{ . | quote }}
+  {{- end }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls: [{hosts: [{{ .Values.ingress.host | quote }}], secretName: {{ required "ingress.tls.secretName is required when TLS is enabled" .Values.ingress.tls.secretName | quote }}}]
+  {{- end }}
+  rules:
+    - host: {{ required "ingress.host is required when ingress.enabled=true" .Values.ingress.host | quote }}
+      http: {paths: [{path: /, pathType: Prefix, backend: {service: {name: {{ include "chembience.appName" . }}, port: {name: http}}}}]}
+{{- end }}

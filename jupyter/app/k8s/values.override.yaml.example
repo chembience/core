@@ -1,0 +1,27 @@
+# Copy to values.override.yaml and customize. This file is intentionally not
+# generated so it remains under application-owner control.
+
+# app:
+#   existingSecret: chembience-secrets
+#   replicaCount: 2
+#   resources:
+#     requests:
+#       cpu: 250m
+#       memory: 512Mi
+
+# ingress:
+#   enabled: true
+#   className: nginx
+#   host: notebooks.example.org
+#   tls:
+#     enabled: true
+#     secretName: notebooks-example-org-tls
+
+# postgres:
+#   persistence:
+#     storageClass: fast-rwo
+#     size: 100Gi
+# To use an externally managed RDKit PostgreSQL database:
+# postgres:
+#   enabled: false
+#   host: rdkit-postgres.database.svc.cluster.local

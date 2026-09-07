@@ -1,0 +1,21 @@
+app:
+  replicaCount: 1
+  image: {repository: chembience/example-prod, tag: "replace-with-an-immutable-tag", pullPolicy: IfNotPresent}
+  existingSecret: chembience-secrets
+  env: {}
+  resources: {}
+postgres:
+  enabled: true
+  host: ""
+  image: {repository: chembience/core-rdkit-postgres, tag: "0.6.2", pullPolicy: IfNotPresent}
+  existingSecret: chembience-secrets
+  user: chembience
+  database: chembience
+  passwordKey: postgres-password
+  persistence: {storageClass: "", accessModes: [ReadWriteOnce], size: 20Gi}
+  resources: {}
+migration: {enabled: false, backoffLimit: 3, ttlSecondsAfterFinished: 86400}
+ingress: {enabled: false}
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""

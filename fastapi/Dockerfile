@@ -20,10 +20,11 @@ COPY fastapi/docker-compose.yml /fastapi/docker-compose.yml
 COPY fastapi/app/docker-compose.override.yml /fastapi/docker-compose.override.yml
 COPY fastapi/app/Dockerfile /fastapi/Dockerfile
 COPY fastapi/app/Dockerfile.prod /fastapi/Dockerfile.prod
-COPY fastapi/app/docker-compose.prod.yml /fastapi/docker-compose.prod.yml
-COPY fastapi/app/docker-compose.prod.self-hosted.yml /fastapi/docker-compose.prod.self-hosted.yml
+COPY fastapi/app/PROD /fastapi/PROD
 COPY fastapi/app/requirements.txt /fastapi/requirements.txt
 COPY fastapi/app/README.md /fastapi/README.md
+COPY fastapi/app/AGENTS.md /fastapi/AGENTS.md
+COPY fastapi/app/CLAUDE.md /fastapi/CLAUDE.md
 COPY fastapi/app/db-backup /fastapi/db-backup
 COPY fastapi/app/db-restore /fastapi/db-restore
 COPY fastapi/app/db-cleanup /fastapi/db-cleanup
@@ -32,7 +33,6 @@ COPY fastapi/app/fastapi-migrate /fastapi/fastapi-migrate
 COPY fastapi/app/fastapi-makemigrations /fastapi/fastapi-makemigrations
 COPY fastapi/app/fastapi-configure /fastapi/fastapi-configure
 COPY fastapi/app/fastapi-prepare-prod /fastapi/fastapi-prepare-prod
-COPY fastapi/app/fastapi-prod-self-hosted /fastapi/fastapi-prod-self-hosted
 COPY psql /fastapi/psql
 COPY VERSION /opt/VERSION
 COPY share /opt/share
@@ -54,6 +54,12 @@ RUN if grep -qE '^\s*[^#\s]' /opt/fastapi/requirements.txt; then \
     find /opt/conda/ -follow -type f -name '*.a' -delete && \
     find /opt/conda/ -follow -type f -name '*.pyc' -delete && \
     find /opt/conda/ -follow -type f -name '*.js.map' -delete
+
+# Runtime deployment tooling is intentionally copied after dependencies so
+# chart and documentation edits do not invalidate the Python dependency layer.
+COPY prod-tools /fastapi/prod-tools
+COPY prod-tools/k8s/chart-base /fastapi/k8s
+COPY fastapi/app/k8s /fastapi/k8s
 
 COPY fastapi/app/src /fastapi/src
 

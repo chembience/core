@@ -38,14 +38,14 @@ COPY rdkit/app/shell /opt/rdkit/shell
 COPY rdkit/app/Dockerfile /opt/rdkit/Dockerfile
 COPY rdkit/app/Dockerfile.prod /opt/rdkit/Dockerfile.prod
 COPY rdkit/app/docker-compose.yml /opt/rdkit/docker-compose.yml
-COPY rdkit/app/docker-compose.prod.yml /opt/rdkit/docker-compose.prod.yml
-COPY rdkit/app/docker-compose.prod.self-hosted.yml /opt/rdkit/docker-compose.prod.self-hosted.yml
+COPY rdkit/app/PROD /opt/rdkit/PROD
 COPY rdkit/app/requirements.txt /opt/rdkit/app-requirements.txt
 COPY rdkit/app/rdkit-init /opt/rdkit/rdkit-init
 COPY rdkit/app/rdkit-configure /opt/rdkit/rdkit-configure
 COPY rdkit/app/rdkit-prepare-prod /opt/rdkit/rdkit-prepare-prod
-COPY rdkit/app/rdkit-prod-self-hosted /opt/rdkit/rdkit-prod-self-hosted
 COPY rdkit/app/README.md /opt/rdkit/README.md
+COPY rdkit/app/AGENTS.md /opt/rdkit/AGENTS.md
+COPY rdkit/app/CLAUDE.md /opt/rdkit/CLAUDE.md
 COPY rdkit/environment.yml /opt/rdkit/environment.yml
 COPY psql /opt/rdkit/psql
 COPY .gitignore /
@@ -79,6 +79,12 @@ RUN micromamba config append channels conda-forge && \
     find /opt/conda/ -follow -type f -name '*.a' -delete && \
     find /opt/conda/ -follow -type f -name '*.pyc' -delete && \
     find /opt/conda/ -follow -type f -name '*.js.map' -delete
+
+# Runtime deployment tooling is intentionally copied after dependencies so
+# chart and documentation edits do not invalidate the environment layer.
+COPY prod-tools /opt/rdkit/prod-tools
+COPY prod-tools/k8s/chart-base /opt/rdkit/k8s
+COPY rdkit/app/k8s /opt/rdkit/k8s
 
 ## Ensure the runtime entrypoint runs with necessary privileges
 USER root

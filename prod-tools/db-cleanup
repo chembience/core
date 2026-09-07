@@ -1,0 +1,21 @@
+#!/bin/bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR"
+
+[[ -f .env ]] || { echo "Missing PROD/.env." >&2; exit 1; }
+set -o allexport
+source .env
+set +o allexport
+
+POSTGRES_NAME="${POSTGRES_NAME:-chembience}"
+read -r -p "Drop and recreate production database '${POSTGRES_NAME}'? (y/N): " CONFIRM
+[[ "$CONFIRM" =~ ^[Yy]$ ]] || { echo "Cancelled."; exit 0; }
+
+COMMON_ARGS=(-T -e "PGPASSWORD=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}" postgres psql -p "${POSTGRES_INTERNAL_PORT:-5432}" -U "${POSTGRES_USER:-chembience}" -d postgres)
+docker compose exec "${COMMON_ARGS[@]}" -c "DROP DATABASE IF EXISTS \"${POSTGRES_NAME}\" WITH (FORCE);"
+docker compose exec "${COMMON_ARGS[@]}" -c "CREATE DATABASE \"${POSTGRES_NAME}\";"
+docker compose exec -T -e "PGPASSWORD=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}" postgres \
+  psql -p "${POSTGRES_INTERNAL_PORT:-5432}" -U "${POSTGRES_USER:-chembience}" -d "$POSTGRES_NAME" -c "CREATE EXTENSION IF NOT EXISTS rdkit;"
+echo "✅ Database '${POSTGRES_NAME}' was recreated."

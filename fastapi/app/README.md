@@ -12,12 +12,13 @@ This is the async REST API service for your Chembience project. It is built usin
 - `src/tests/`: API and RDKit integration tests; `pytest.ini` configures pytest.
 - `requirements.txt`: Add Python dependencies for this FastAPI app.
 - `Dockerfile`: Development image extension that installs `requirements.txt`; `Dockerfile.prod` bakes `src/` into the production image.
-- `docker-compose.prod.yml`: Production deployment for an external RDKit-enabled PostgreSQL database.
-- `docker-compose.prod.self-hosted.yml`: Overlay that runs the bundled RDKit PostgreSQL image with a named persistent volume.
+- `AGENTS.md`, `CLAUDE.md`: App-specific guidance for coding agents and development assistants.
+- `PROD/compose.yaml`: Self-hosted production stack, including the bundled RDKit PostgreSQL image.
+- `PROD/compose.external.yaml`: Production deployment for an external RDKit-enabled PostgreSQL database.
 - `fastapi-init`: Starts the service if needed and applies migrations.
 - `fastapi-makemigrations`, `fastapi-migrate`: Generate/review and apply Alembic migrations.
-- `fastapi-configure`, `fastapi-prepare-prod`: Safely apply configuration changes or create a production image.
-- `fastapi-prod-self-hosted`: Builds (or refreshes) the production image, applies Alembic migrations, and starts the isolated self-hosted production stack.
+- `fastapi-configure`, `fastapi-prepare-prod`: Safely apply configuration changes or create a production image and `PROD/.env`.
+- `PROD/psql`, `PROD/db-backup`, `PROD/db-restore`, `PROD/db-cleanup`: Self-contained database tools for the prepared self-hosted production bundle.
 - `db-backup`, `db-restore`, `db-cleanup`, `psql`: Database maintenance and access helpers.
 
 ## Getting Started
@@ -66,7 +67,8 @@ For platform documentation, see the [Chembience core README](https://github.com/
 
 ## Configuration
 
-- Use `./fastapi-configure [--rebuild] [NEW_ENV_FILE]` to manage environment updates safely.
+- Use `./fastapi-configure [--rebuild] [NEW_ENV_FILE]` to manage development environment updates safely.
+- Use `./fastapi-configure --prod` to create or deliberately refresh `.env.prod` from `.env` before editing production settings.
   - First run creates `./.env.new` from the current `./.env` and prints edit instructions.
   - After editing, rerun with the same file to apply changes.
   - Add `--rebuild` to force a rebuild/restart after applying changes.
@@ -83,44 +85,58 @@ application image. No local core-image build is required.
 ./fastapi-prepare-prod
 ```
 
-For the complete self-hosted deployment, use:
+Prepare the self-hosted production bundle from the development workspace:
 
 ```bash
-./fastapi-prod-self-hosted
+./fastapi-prepare-prod
+cd PROD
+docker compose up -d
 ```
 
-It uses the Compose project name `<app_name>-prod`, applies Alembic migrations
-before starting the API, and assigns a newly created `.env.prod` the development
-port plus 1000 (normally `9002`). Use `--skip-prepare` to start an already
-prepared image without rebuilding it.
+It uses the Compose project name `<app_name>-prod`, initializes the named
+PostgreSQL volume, applies Alembic migrations, then stops the prepared stage.
+`docker compose up -d` from `PROD/` starts it later.
 
 What the script does:
-- Creates/reuses `./.env.prod` from `./.env` and forces `CHEMBIENCE_RUNTIME_MODE=prod` there.
+- Copies `./.env.prod` to `PROD/.env` when it exists; otherwise copies `./.env`, then forces `CHEMBIENCE_RUNTIME_MODE=prod`.
 - Builds a dedicated source-baked production image via `Dockerfile.prod`.
+- Initializes self-hosted PostgreSQL and applies Alembic migrations, then stops the stack without removing its volume.
 - Uses the production image name: `chembience/<app_name>-prod:<tag>`.
 - Verifies the image contains `/home/app/src/main.py`.
 - Does **not** run `fastapi-configure`, does **not** restart compose services, and does **not** mutate your active dev `.env`.
 
 Optional flags:
-- `--keep-env-prod` → reuses existing `./.env.prod`.
+- `--keep-env-prod` → reuses existing `PROD/.env`.
 - `--image-tag <tag>` → release tag for the produced image.
 - `--image-name <name>` → override default production image repository/name.
 - `--skip-build` → skip the build step (metadata prep only).
+
+To maintain separate production settings, run `./fastapi-configure --prod`, edit
+the generated `.env.prod`, then run `./fastapi-prepare-prod`. `.env.prod` is
+copied on each preparation run unless `--keep-env-prod` is supplied.
+
+For a strictly Kubernetes-based deployment, use
+`./fastapi-prepare-prod --target ghcr-k8s`. This does not run Docker locally:
+on its first use it creates the GitHub Actions configuration that publishes a
+private image to GHCR. Commit and push that configuration, wait for the Action,
+then rerun the command from the clean pushed commit to generate the SHA-pinned
+Helm values file. See [PROD/k8s/README.md](PROD/k8s/README.md) for the complete
+workflow.
 
 Examples:
 
 ```bash
 # Repeatable release image build
-./fastapi-prepare-prod --image-tag 0.6.1-fastapi.1
+./fastapi-prepare-prod --image-tag 0.6.2-pre1-fastapi.1
 
 # Custom production image repository/name
-./fastapi-prepare-prod --image-name registry.example.com/chem/fastapi-prod --image-tag 0.6.1-fastapi.1
+./fastapi-prepare-prod --image-name registry.example.com/chem/fastapi-prod --image-tag 0.6.2-pre1-fastapi.1
 ```
 
 Run the produced image (example):
 
 ```bash
-docker run --rm -p 8002:8000 chembience/app-prod:0.6.1-fastapi.1 \
+docker run --rm -p 8002:8000 chembience/app-prod:0.6.2-pre1-fastapi.1 \
   sh -c "alembic upgrade head && exec uvicorn main:app --host 0.0.0.0 --port 8000 --workers 2"
 ```
 
@@ -130,30 +146,31 @@ step before starting or replacing API workers, rather than once per replica.
 ## Production deployment
 
 `fastapi-prepare-prod` writes the immutable application image reference and the
-matching `CHEMBIENCE_POSTGRES_IMAGE` to `.env.prod`. Deploy with one of the
+matching `CHEMBIENCE_POSTGRES_IMAGE` to `PROD/.env`. Deploy with one of the
 following profiles.
 
 ### External database
 
 Set `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, and
-`POSTGRES_NAME` in `.env.prod` for a reachable PostgreSQL database that already
+`POSTGRES_NAME` in `PROD/.env` for a reachable PostgreSQL database that already
 has the RDKit extension installed. Apply migrations before starting workers:
 
 ```bash
-docker compose --env-file .env.prod -f docker-compose.prod.yml run --rm migrate
-docker compose --env-file .env.prod -f docker-compose.prod.yml up -d fastapi
+cd PROD
+docker compose -f compose.external.yaml run --rm migrate
+docker compose -f compose.external.yaml up -d fastapi
 ```
 
 ### Self-hosted RDKit PostgreSQL
 
-Leave `POSTGRES_HOST=postgres` in `.env.prod`. The overlay starts the bundled
+Leave `POSTGRES_HOST=postgres` in `PROD/.env`. `compose.yaml` starts the bundled
 RDKit PostgreSQL image with a named `postgres-data` volume and keeps its port
 private to the Compose network:
 
 ```bash
-docker compose --env-file .env.prod -f docker-compose.prod.yml -f docker-compose.prod.self-hosted.yml up -d postgres
-docker compose --env-file .env.prod -f docker-compose.prod.yml -f docker-compose.prod.self-hosted.yml run --rm migrate
-docker compose --env-file .env.prod -f docker-compose.prod.yml -f docker-compose.prod.self-hosted.yml up -d fastapi
+cd PROD
+docker compose up -d postgres
+docker compose up -d
 ```
 
 For an external database, backups, TLS, and network access are managed by its
@@ -162,3 +179,25 @@ settings without adding TLS-specific options.
 
 Repeatability note:
 - Running the script again with the same `--image-name` and `--image-tag` rebuilds/replaces the same image tag deterministically from the current source state.
+
+Read [PROD/README.md](PROD/README.md) when preparing or operating this FastAPI
+application with self-hosted Docker Compose.
+
+## Kubernetes deployment
+
+Chembience's Helm chart is the Kubernetes alternative to this application's
+self-hosted `PROD/` Compose bundle. Prepare it with
+`fastapi-prepare-prod --target ghcr-k8s`; the generated `PROD/k8s/` directory
+is self-contained and can be copied to a Kubernetes-only host. Create the
+namespace and Secrets before Helm, adapt `values.override.yaml`, then deploy
+the SHA-pinned values with Helm. The app-specific Kubernetes README gives the
+complete ordered commands.
+
+For schema changes, run the release with `--set migration.enabled=true --wait`.
+The chart runs Alembic as a pre-upgrade hook before API pods use the new image;
+follow with the normal chart upgrade with migrations disabled. Enable optional
+Ingress only after selecting its controller and TLS configuration. The runtime
+mode remains `prod`; use `chembience` for the namespace/environment name.
+
+Read [PROD/k8s/README.md](PROD/k8s/README.md) when deploying this FastAPI
+application to a strictly Kubernetes-based environment setup.

@@ -6,6 +6,8 @@
 venv
 .env
 .env.prod
+PROD/.env
+PROD/backups/
 .env.new
 *.env
 *.ipynb_checkpoints
