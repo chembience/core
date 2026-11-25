@@ -19,8 +19,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Python 3.16 `asyncio.get_event_loop_policy` deprecation warning.
 - Reduced `postgres/postgresql.conf` to the 16 settings Chembience sets; all
   other parameters keep PostgreSQL defaults as before.
+- Moved the duplicated entrypoint logic (runtime-mode normalization, app
+  user/group setup, ownership fixes, file sync, PROD bundle sync, and ignore
+  file seeding) into a shared `share/entrypoint/helpers.sh` sourced by all four
+  core images.
+- **Behavior change:** shipped helper scripts (`*-configure`,
+  `*-prepare-prod`, `*-init`, `psql`, `PROD/db-*`, RDKit `run`/`shell`) are now
+  refreshed from the image on every development start for all app types, as
+  FastAPI already did. Upgrading `CHEMBIENCE_VERSION` now delivers script
+  fixes to existing Django, JupyterLab, and RDKit apps; local edits to these
+  scripts are overwritten. Configuration and documentation files are still
+  copied only when missing.
 
 ### Fixed
+- RDKit apps now restore missing shipped files on each development start
+  instead of only during first initialization.
 - Removed unused loop variables flagged by ShellCheck in the FastAPI, Jupyter,
   and RDKit `*-configure` scripts.
 

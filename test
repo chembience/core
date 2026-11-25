@@ -79,6 +79,7 @@ bash -n django/app/*-configure django/app/*-prepare-prod \
   fastapi/app/*-configure fastapi/app/*-prepare-prod \
   jupyter/app/*-configure jupyter/app/*-prepare-prod \
   rdkit/app/*-configure rdkit/app/*-prepare-prod \
+  share/entrypoint/helpers.sh */docker-entrypoint.sh \
   tests/test-prod-env-workflow.sh
 if command -v shellcheck >/dev/null 2>&1; then
   mapfile -t shell_files < <(
