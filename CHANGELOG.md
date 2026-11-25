@@ -30,6 +30,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   fixes to existing Django, JupyterLab, and RDKit apps; local edits to these
   scripts are overwritten. Configuration and documentation files are still
   copied only when missing.
+- Moved the shared `*-prepare-prod` implementation into
+  `prod-tools/lib/prepare-prod.sh`, shipped to generated apps as
+  `PROD/lib/prepare-prod.sh` (`prod/lib/` for a legacy `prod/` directory) and
+  refreshed with the scripts. The four per-app scripts shrink from about 300
+  lines to 40-70 lines of settings and hooks; generated bundles, Compose
+  commands, and messages are unchanged. Commit `PROD/lib/` with the app; the
+  shipped `.gitignore` now re-includes it despite its Python `lib/` rule, and
+  the entrypoint adds `!PROD/lib/` to existing app `.gitignore` files.
+- JupyterLab and RDKit production preparation now stop the bundled stack
+  when the PostgreSQL readiness check fails, as Django and FastAPI already did.
 
 ### Fixed
 - RDKit apps now restore missing shipped files on each development start

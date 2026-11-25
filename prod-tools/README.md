@@ -29,6 +29,10 @@ Available self-hosted database tools:
 ./db-cleanup
 ```
 
+`lib/prepare-prod.sh` is the shared implementation of the app's
+`*-prepare-prod` command. The development container refreshes it together with
+that script; keep it committed, and do not edit it.
+
 For an externally managed PostgreSQL database, use `compose.external.yaml` and
 manage backups, connectivity, and migrations through that database's own
 operational procedures.

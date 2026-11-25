@@ -110,6 +110,14 @@ Run from the project root (where `docker-compose.yml` lives) unless noted.
 - `share/chembience/`: Shared Python module imported by services
   (`from chembience import db`) providing a pre-configured SQLAlchemy
   engine, session factory, and Postgres connection settings.
+- `share/entrypoint/helpers.sh`: Shell helpers sourced by every core
+  `docker-entrypoint.sh` (app user setup, ownership, file sync into generated
+  apps). Config/doc files are copied only if missing; helper scripts and
+  `PROD/lib/` are refreshed on every development start.
+- `prod-tools/`: Files shipped into generated apps' `PROD/` (database tools,
+  Helm chart base). `prod-tools/lib/prepare-prod.sh` implements all
+  `*-prepare-prod` commands; the per-app scripts only set app-specific
+  variables and hooks.
 - `.env`: Global environment configuration (see `.env.template`).
 - `docker-compose.yml`: Authoritative service wiring.
 - `docker-compose.dev.yml`: Optional development overlay.

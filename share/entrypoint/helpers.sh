@@ -113,10 +113,17 @@ ensure_kv() {
 
 # sync_prod_bundle SRC_ROOT: sync the production Compose bundle, PROD tools,
 # and Helm chart from an image directory (e.g. /django, /opt/rdkit) into
-# /home/app/PROD. A legacy prod/ directory is left alone; *-prepare-prod
-# migrates it to PROD/.
+# /home/app/PROD. A legacy prod/ directory is left alone apart from its
+# library; *-prepare-prod migrates it to PROD/.
 sync_prod_bundle() {
-    local root="$1" tool
+    local root="$1" tool prod_dir="/home/app/PROD"
+    # The shared *-prepare-prod library must always match the (always
+    # refreshed) script, including in a legacy prod/ directory, where the
+    # script loads it from before migrating prod/ to PROD/.
+    [ -d "/home/app/prod" ] && prod_dir="/home/app/prod"
+    mkdir -p "$prod_dir/lib"
+    sync_file "$root/prod-tools/lib/prepare-prod.sh" "$prod_dir/lib/prepare-prod.sh"
+
     if [ ! -d "/home/app/prod" ]; then
         mkdir -p "/home/app/PROD"
         sync_config "$root/PROD/compose.yaml"          "/home/app/PROD/compose.yaml"
@@ -149,6 +156,13 @@ seed_ignore_files() {
                 echo "# Added by entrypoint"
                 echo "postgres/postgres_data"
             } >> "/home/app/.gitignore"
+        fi
+        # The shipped .gitignore ignores lib/ (Python build output); keep the
+        # shared prepare-prod library tracked so ghcr-k8s preparation works
+        # from a clean checkout.
+        if grep -Eq "^/?lib/?([[:space:]]|#|$)" "/home/app/.gitignore" \
+            && ! grep -Eq "^!/?PROD/lib/?([[:space:]]|#|$)" "/home/app/.gitignore"; then
+            echo "!PROD/lib/" >> "/home/app/.gitignore"
         fi
         if ! grep -Eq "^PROD/k8s/values\.generated\.yaml([[:space:]]|#|$)" "/home/app/.gitignore"; then
             {
