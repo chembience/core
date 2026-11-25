@@ -105,7 +105,7 @@ docker compose --env-file ./.env up -d postgres || true
 docker compose --env-file ./.env up -d rdkit || true
 
 echo "⏳ Waiting for Postgres to be healthy..."
-for i in {1..30}; do
+for _ in {1..30}; do
   if docker compose --env-file ./.env exec -T postgres pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_NAME" -p 5432 >/dev/null 2>&1; then break; fi; sleep 2
 done
 

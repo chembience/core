@@ -80,6 +80,19 @@ bash -n django/app/*-configure django/app/*-prepare-prod \
   jupyter/app/*-configure jupyter/app/*-prepare-prod \
   rdkit/app/*-configure rdkit/app/*-prepare-prod \
   tests/test-prod-env-workflow.sh
+if command -v shellcheck >/dev/null 2>&1; then
+  mapfile -t shell_files < <(
+    git ls-files -z | while IFS= read -r -d '' file; do
+      [[ -f "$file" && "$file" != test-builds/* ]] || continue
+      if [[ "$file" == *.sh ]] || head -n 1 "$file" | grep -qE '^#!.*\b(ba)?sh\b'; then
+        printf '%s\n' "$file"
+      fi
+    done
+  )
+  shellcheck -S warning -e SC1091 "${shell_files[@]}"
+else
+  echo "ℹ️  shellcheck not installed; skipping local shell lint (CI still runs it)."
+fi
 python3 -m unittest share.tests.test_django_superuser
 bash tests/test-prod-env-workflow.sh
 bash prod-tools/k8s/tests/render.sh

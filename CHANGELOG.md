@@ -11,6 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bumped release version to 0.6.3-pre1, including the Helm chart
   `appVersion` and default RDKit PostgreSQL image tags.
 - `./test` now verifies that Helm chart and values versions match `VERSION`.
+- Pinned the ShellCheck GitHub Action to release 2.0.0 by commit SHA, and run
+  the Lint and Compose Validate workflows on `dev/*` branches too.
+- `./test` runs ShellCheck (warning severity, matching CI) when `shellcheck`
+  is installed.
+
+### Fixed
+- Removed unused loop variables flagged by ShellCheck in the FastAPI, Jupyter,
+  and RDKit `*-configure` scripts.
 
 ## [0.6.2] - 2026-09-06
 
