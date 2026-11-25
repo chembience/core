@@ -65,6 +65,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   lints edited shell scripts with `bash -n` and ShellCheck.
 
 ### Fixed
+- Jupyter and RDKit `*-prepare-prod` now wait up to 120 seconds (was 30) for
+  the freshly initialized production PostgreSQL, matching its healthcheck
+  budget, and report a timeout explicitly; slow first starts no longer abort
+  preparation. Override with `PREPARE_PROD_POSTGRES_TIMEOUT`.
 - RDKit apps now restore missing shipped files on each development start
   instead of only during first initialization.
 - Removed unused loop variables flagged by ShellCheck in the FastAPI, Jupyter,

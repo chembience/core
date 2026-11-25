@@ -46,15 +46,22 @@ prepare_prod_verify_image() {
 # non-zero on failure (the stack is then stopped and preparation aborts).
 prepare_prod_init_database() { prepare_prod_wait_for_postgres; }
 
-# Wait up to ~30s for the bundled postgres service to accept connections.
+# Wait for the bundled postgres service to accept connections. The default of
+# 120 seconds matches the budget of the postgres healthcheck in PROD/compose.yaml
+# (a first start initializes the cluster and the RDKit extension, which can
+# take well over 30 seconds); override it with PREPARE_PROD_POSTGRES_TIMEOUT.
 prepare_prod_wait_for_postgres() {
   # shellcheck disable=SC2016 # expanded inside the postgres container
   local check='pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_NAME"'
-  for _ in {1..30}; do
-    docker compose exec -T postgres sh -c "$check" >/dev/null 2>&1 && break
+  local timeout="${PREPARE_PROD_POSTGRES_TIMEOUT:-120}" waited=0
+  until docker compose exec -T postgres sh -c "$check" >/dev/null 2>&1; do
+    if (( waited >= timeout )); then
+      echo "❌ PostgreSQL did not accept connections within ${timeout}s; see: docker compose logs postgres" >&2
+      return 1
+    fi
     sleep 1
+    waited=$((waited + 1))
   done
-  docker compose exec -T postgres sh -c "$check" >/dev/null
 }
 
 # --- Internal steps -------------------------------------------------------------
