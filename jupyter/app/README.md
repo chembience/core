@@ -133,16 +133,16 @@ Examples:
 
 ```bash
 # Repeatable release image build
-./jupyter-prepare-prod --image-tag 0.6.2-pre1-jupyter.1
+./jupyter-prepare-prod --image-tag 1.4.0
 
 # Custom production image repository/name
-./jupyter-prepare-prod --image-name registry.example.com/chem/jupyter-prod --image-tag 0.6.2-pre1-jupyter.1
+./jupyter-prepare-prod --image-name registry.example.com/chem/jupyter-prod --image-tag 1.4.0
 ```
 
 Run the produced image (example):
 
 ```bash
-docker run --rm -p 8888:8888 chembience/app-prod:0.6.2-pre1-jupyter.1 \
+docker run --rm -p 8888:8888 chembience/app-prod:1.4.0 \
   jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root
 ```
 

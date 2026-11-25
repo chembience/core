@@ -26,6 +26,7 @@ Python 3.14, RDKit (micromamba), PostgreSQL 18 + RDKit cartridge, Docker Compose
 - [share/entrypoint/helpers.sh](share/entrypoint/helpers.sh): Helpers sourced by every container entrypoint (template sync rules)
 - [prod-tools/](prod-tools/): Production bundle files: database tools, `lib/prepare-prod.sh`, Helm chart base
 - [test](test): Fast test entry point (`./test`, `--strict`, `--integration`)
+- [release](release): Release tooling (`check`, `prepare <version>`, `start <version>`); never publishes
 - [tests/](tests/): Production workflow, integration, and prepare-prod comparison tests
 
 ## Generated application guides

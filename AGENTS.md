@@ -93,8 +93,40 @@ Write template commands relative to the generated app directory.
 | Shell scripts, Helm charts, compose files, `.env.template` keys | `./test` |
 | `*-prepare-prod`, `prod-tools/lib/` | `./test` and `tests/compare-prepare-prod.sh <base-rev>` (identical unless the behavior change is intended) |
 | `*/Dockerfile`, `*/docker-entrypoint.sh`, `share/entrypoint/`, `*/app/*` templates, image `requirements.txt` / `environment.yml` | `./test --integration` |
-| Release version | `VERSION`, `prod-tools/k8s/chart-base/Chart.yaml` `appVersion`, and the `core-rdkit-postgres` tags in `*/app/k8s/values.yaml` (enforced by `./test`) |
+| Release version, CHANGELOG headings, README release table | never by hand: use `./release` (see Releases); `./release check` runs in `./test` |
 | `CONDA_PY` / `RDKIT_VERSION` | change `.env` and `.env.template` together (enforced by `./test`) |
+
+## Releases
+
+`./release` does all mechanical release work deterministically; it never tags,
+pushes, merges, or publishes.
+
+- During development, `CHANGELOG.md` starts with a bare `## [Unreleased]`
+  section and `VERSION` holds the target version (e.g. `X.Y.Z-pre1`).
+- `./release check` (read-only, part of `./test`) verifies that `VERSION`, the
+  Helm chart `appVersion`, and the `core-rdkit-postgres` values tags agree; that
+  CHANGELOG sections are well-formed, dated, and ordered; that the README
+  release table matches every stable CHANGELOG release; and that no other
+  tracked file still mentions a released version (use placeholders such as
+  `X.Y.Z` in docs, or derive the value from `VERSION`).
+- Cut a release from a clean tree on the development branch:
+  - stable: `./release prepare X.Y.Z --summary "One line for the README table"`
+  - pre-release: `./release prepare X.Y.Z-pre1` (no README row)
+
+  It creates `release/<version>`, renames `[Unreleased]` to
+  `[<version>] - <today>` (override with `--date`), updates every version
+  reference, adds the README row for stable versions, runs `./release check`
+  and `./test`, and commits `Release <version>`.
+- Begin the next cycle after the release is merged:
+  `./release start X.Y.Z-pre1` with the next version (bumps every version reference, opens an empty
+  `[Unreleased]` section, commits).
+
+**Agents stop after `prepare` (or `start`) and report.** Only a maintainer
+pushes the release branch, merges it into `main`, and publishes the GitHub
+Release `v<version>` (marked as pre-release for `-preN` versions). Publishing
+triggers `.github/workflows/publish-dockerhub.yml`, which pushes the Docker Hub
+images (stable releases also move `latest`), and mints the Zenodo DOI; neither
+can be undone.
 
 ## Definition of done
 
@@ -118,8 +150,8 @@ confirmation; they destroy data or affect running or published systems:
 - `./db-restore`, `./db-cleanup`, `PROD/db-restore`, `PROD/db-cleanup`.
 - Answering overwrite prompts of `*-configure --prod`; editing `.env`,
   `.env.prod`, or `PROD/.env` secrets.
-- Pushing images or tags, `helm upgrade`/`helm uninstall`, or `kubectl`
-  against real clusters; publishing releases.
+- Pushing branches, images, or tags; merging into `main`; publishing GitHub
+  Releases; `helm upgrade`/`helm uninstall` or `kubectl` against real clusters.
 
 ## Conventions
 
@@ -154,8 +186,9 @@ confirmation; they destroy data or affect running or published systems:
 - `prod-tools/`: files shipped into generated apps' `PROD/`: database tools,
   `lib/prepare-prod.sh`, the Helm `k8s/chart-base`, and its render test.
 - `tests/`: `test-prod-env-workflow.sh`, `test-integration.sh`,
-  `compare-prepare-prod.sh`.
-- `install`, `build`, `core-build`, `remove`, `psql`, `test`: top-level scripts.
+  `compare-prepare-prod.sh`, `test_release.py`.
+- `install`, `build`, `core-build`, `remove`, `psql`, `test`, `release`:
+  top-level scripts.
 - `.claude/`: shared Claude Code settings and a shell-lint hook.
 - `K8S_INGRESS.md`: Ingress controller, TLS, and cert-manager guide.
 - `llms.txt`: machine-readable project index.

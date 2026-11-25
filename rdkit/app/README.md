@@ -111,16 +111,16 @@ Examples:
 
 ```bash
 # Repeatable release image build
-./rdkit-prepare-prod --image-tag 0.6.2-pre1-rdkit.1
+./rdkit-prepare-prod --image-tag 1.4.0
 
 # Custom production image repository/name
-./rdkit-prepare-prod --image-name registry.example.com/chem/rdkit-prod --image-tag 0.6.2-pre1-rdkit.1
+./rdkit-prepare-prod --image-name registry.example.com/chem/rdkit-prod --image-tag 1.4.0
 ```
 
 Run the produced image (example):
 
 ```bash
-docker run --rm --entrypoint /opt/conda/envs/chembience/bin/python chembience/app-prod:0.6.2-pre1-rdkit.1 - <<'PY'
+docker run --rm --entrypoint /opt/conda/envs/chembience/bin/python chembience/app-prod:1.4.0 - <<'PY'
 from rdkit import Chem
 print(bool(Chem.MolFromSmiles('CCO')))
 PY

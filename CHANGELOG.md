@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - 0.6.3-pre1
+## [Unreleased]
 
 ### Changed
 - Bumped release version to 0.6.3-pre1, including the Helm chart
@@ -53,6 +53,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   longer need ripgrep.
 - Added `tests/compare-prepare-prod.sh <git-rev>` to prove that changes to
   `*-prepare-prod` or `prod-tools/lib/` preserve behavior.
+- Added `./release` (`check`, `prepare <version>`, `start <version>`), which
+  performs all mechanical release steps (version references, CHANGELOG
+  section, README release row, validation, commit) and never tags, pushes, or
+  publishes. `./release check` runs in `./test` and also rejects released
+  version strings left in docs; the generated-app README examples now use
+  app-owned image tags, and the CHANGELOG uses a bare `## [Unreleased]`
+  heading. The release procedure is documented in `AGENTS.md`.
 - Added shared Claude Code project settings (`.claude/settings.json`): allowed
   validation commands, denied destructive commands, and a PostToolUse hook that
   lints edited shell scripts with `bash -n` and ShellCheck.

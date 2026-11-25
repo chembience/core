@@ -127,16 +127,16 @@ Examples:
 
 ```bash
 # Repeatable release image build
-./fastapi-prepare-prod --image-tag 0.6.2-pre1-fastapi.1
+./fastapi-prepare-prod --image-tag 1.4.0
 
 # Custom production image repository/name
-./fastapi-prepare-prod --image-name registry.example.com/chem/fastapi-prod --image-tag 0.6.2-pre1-fastapi.1
+./fastapi-prepare-prod --image-name registry.example.com/chem/fastapi-prod --image-tag 1.4.0
 ```
 
 Run the produced image (example):
 
 ```bash
-docker run --rm -p 8002:8000 chembience/app-prod:0.6.2-pre1-fastapi.1 \
+docker run --rm -p 8002:8000 chembience/app-prod:1.4.0 \
   sh -c "alembic upgrade head && exec uvicorn main:app --host 0.0.0.0 --port 8000 --workers 2"
 ```
 

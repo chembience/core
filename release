@@ -1,0 +1,336 @@
+#!/usr/bin/env python3
+"""Chembience release tooling: deterministic, bot-friendly, never publishes.
+
+  ./release check
+      Read-only consistency check of all release metadata (also run by ./test).
+  ./release prepare <version> [--summary TEXT] [--date YYYY-MM-DD]
+                    [--no-branch] [--no-test]
+      Turn the [Unreleased] CHANGELOG section into <version>, bump every
+      version reference, add the README release row (stable versions; needs
+      --summary), validate, and commit on release/<version>.
+  ./release start <version> [--no-test]
+      Begin the next development cycle: bump every version reference to
+      <version> (e.g. X.Y.Z-pre1), open an empty [Unreleased] section, commit.
+
+The script never tags, pushes, merges, or publishes. Publishing a GitHub
+Release triggers the Docker Hub image push and the Zenodo DOI, which cannot
+be undone; that step stays with a maintainer (see AGENTS.md, "Releases").
+"""
+
+from __future__ import annotations
+
+import argparse
+import datetime as dt
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent
+NB_HYPHEN = "‑"  # README release dates use non-breaking hyphens
+
+SEMVER = re.compile(r"^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?$")
+HEADING = re.compile(r"^## \[(?P<name>[^\]]+)\](?: - (?P<rest>.*))?$", re.M)
+ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+README_ROW = re.compile(r"^\| (?P<version>\d+\.\d+\.\d+) +\| (?P<date>[^|]+?) +\| (?P<notes>.*?) *\|$", re.M)
+TABLE_SEPARATOR = re.compile(r"^\|-+\|-+\|-+\|$", re.M)
+
+CHART = Path("prod-tools/k8s/chart-base/Chart.yaml")
+VALUES = [Path(f"{app}/app/k8s/values.yaml") for app in ("django", "fastapi", "jupyter", "rdkit")]
+VALUES_TAG = re.compile(r"(repository:\s*chembience/core-rdkit-postgres\s*,?\s*tag:\s*\")([^\"]+)(\")")
+APP_VERSION = re.compile(r'^(appVersion:\s*")([^"]*)(")', re.M)
+
+# Files allowed to mention released Chembience versions (README.md only in
+# its release-table rows).
+HISTORY_FILES = {"CHANGELOG.md", "release"}
+# Files that carry the current VERSION by design (validated separately).
+MANAGED_FILES = {"VERSION", str(CHART), *(str(v) for v in VALUES)}
+
+
+class ReleaseError(Exception):
+    pass
+
+
+# --- helpers -----------------------------------------------------------------
+
+def read(rel: Path | str) -> str:
+    return (ROOT / rel).read_text(encoding="utf-8")
+
+
+def write(rel: Path | str, text: str) -> None:
+    (ROOT / rel).write_text(text, encoding="utf-8")
+
+
+def git(*args: str, check: bool = True) -> str:
+    result = subprocess.run(["git", "-C", str(ROOT), *args], capture_output=True, text=True)
+    if check and result.returncode != 0:
+        raise ReleaseError(f"git {' '.join(args)} failed: {result.stderr.strip()}")
+    return result.stdout
+
+
+def semver_key(version: str) -> tuple:
+    match = SEMVER.match(version)
+    if not match:
+        raise ReleaseError(f"Not a semantic version: {version!r} (expected X.Y.Z or X.Y.Z-pre)")
+    major, minor, patch, pre = match.groups()
+    # A final release sorts after all its pre-releases.
+    return (int(major), int(minor), int(patch), pre is None, pre or "")
+
+
+def is_prerelease(version: str) -> bool:
+    return "-" in version
+
+
+def changelog_sections(text: str) -> list[tuple[str, str | None]]:
+    return [(m["name"], m["rest"]) for m in HEADING.finditer(text)]
+
+
+def released_versions(text: str) -> list[str]:
+    return [name for name, _ in changelog_sections(text) if name != "Unreleased"]
+
+
+def unreleased_body(text: str) -> str:
+    match = re.search(r"^## \[Unreleased\][^\n]*\n(?P<body>.*?)(?=^## \[|\Z)", text, re.M | re.S)
+    return match["body"] if match else ""
+
+
+# --- check -------------------------------------------------------------------
+
+def check() -> list[str]:
+    errors: list[str] = []
+    version = read("VERSION").strip()
+    try:
+        semver_key(version)
+    except ReleaseError as exc:
+        errors.append(f"VERSION: {exc}")
+
+    app_version = APP_VERSION.search(read(CHART))
+    if not app_version or app_version[2] != version:
+        errors.append(f"{CHART}: appVersion is {app_version[2] if app_version else '<unset>'}, VERSION is {version}")
+    for values in VALUES:
+        tag = VALUES_TAG.search(read(values))
+        if not tag or tag[2] != version:
+            errors.append(f"{values}: core-rdkit-postgres tag is {tag[2] if tag else '<unset>'}, VERSION is {version}")
+
+    changelog = read("CHANGELOG.md")
+    sections = changelog_sections(changelog)
+    names = [name for name, _ in sections]
+    if not sections:
+        errors.append("CHANGELOG.md: no '## [...]' sections found")
+        return errors
+    for name in {n for n in names if names.count(n) > 1}:
+        errors.append(f"CHANGELOG.md: duplicate section [{name}]")
+    if names.count("Unreleased") and names[0] != "Unreleased":
+        errors.append("CHANGELOG.md: [Unreleased] must be the first section")
+    for name, rest in sections:
+        if name == "Unreleased":
+            if rest:
+                errors.append("CHANGELOG.md: use a bare '## [Unreleased]' heading (the target version is in VERSION)")
+            continue
+        try:
+            semver_key(name)
+        except ReleaseError as exc:
+            errors.append(f"CHANGELOG.md: {exc}")
+        if not rest or not ISO_DATE.match(rest):
+            errors.append(f"CHANGELOG.md: [{name}] needs a ' - YYYY-MM-DD' release date")
+    released = [n for n in names if n != "Unreleased"]
+    if released and names[0] != "Unreleased" and released[0] != version:
+        errors.append(
+            f"CHANGELOG.md: latest section is [{released[0]}] but VERSION is {version}; "
+            "run ./release start <next-version> to begin a new cycle")
+    if names[0] == "Unreleased" and version in released:
+        errors.append(f"VERSION {version} is already released; run ./release start <next-version>")
+    ordered = sorted(released, key=semver_key, reverse=True)
+    if released != ordered:
+        errors.append("CHANGELOG.md: release sections are not in descending version order")
+
+    # README release table: one row per stable release, same date.
+    readme = read("README.md")
+    rows = {m["version"]: m["date"].replace(NB_HYPHEN, "-") for m in README_ROW.finditer(readme)}
+    dates = dict((name, rest) for name, rest in sections if name != "Unreleased")
+    for name in released:
+        if is_prerelease(name):
+            continue
+        if name not in rows:
+            errors.append(f"README.md: release table has no row for {name}")
+        elif rows[name] != dates.get(name):
+            errors.append(f"README.md: release {name} is dated {rows[name]}, CHANGELOG.md says {dates.get(name)}")
+    for name in rows:
+        if name not in dates:
+            errors.append(f"README.md: release table lists {name}, which has no CHANGELOG.md section")
+
+    # Released versions must not linger in docs or code (examples go stale).
+    for name in released:
+        pattern = re.compile(rf"(?<![\w.]){re.escape(name)}(?:-[0-9A-Za-z.]+)?(?![\w.])")
+        for path in git("ls-files", "-z").split("\0"):
+            if not path or path in HISTORY_FILES or path.startswith("test-builds/"):
+                continue
+            if name == version and path in MANAGED_FILES:
+                continue  # checked against VERSION above
+            try:
+                text = read(path)
+            except (UnicodeDecodeError, IsADirectoryError, FileNotFoundError):
+                continue
+            for lineno, line in enumerate(text.splitlines(), 1):
+                if path == "README.md" and README_ROW.match(line):
+                    continue
+                if pattern.search(line):
+                    errors.append(
+                        f"{path}:{lineno}: mentions released version {name}; use a placeholder "
+                        "or derive it from VERSION")
+    return errors
+
+
+def require_check() -> None:
+    errors = check()
+    if errors:
+        raise ReleaseError("Release metadata is inconsistent:\n  " + "\n  ".join(errors))
+
+
+# --- mutations ---------------------------------------------------------------
+
+def set_version(version: str) -> None:
+    write("VERSION", version + "\n")
+    chart = read(CHART)
+    if not APP_VERSION.search(chart):
+        raise ReleaseError(f"{CHART}: appVersion not found")
+    write(CHART, APP_VERSION.sub(lambda m: f"{m[1]}{version}{m[3]}", chart, count=1))
+    for values in VALUES:
+        text = read(values)
+        if not VALUES_TAG.search(text):
+            raise ReleaseError(f"{values}: core-rdkit-postgres tag not found")
+        write(values, VALUES_TAG.sub(lambda m: f"{m[1]}{version}{m[3]}", text, count=1))
+
+
+def require_clean_tree() -> None:
+    status = git("status", "--porcelain")
+    if status.strip():
+        raise ReleaseError("The working tree is not clean; commit or stash first:\n" + status)
+
+
+def latest_release(changelog: str) -> str | None:
+    released = released_versions(changelog)
+    return max(released, key=semver_key) if released else None
+
+
+def require_newer(version: str, changelog: str) -> None:
+    semver_key(version)
+    latest = latest_release(changelog)
+    if latest and semver_key(version) <= semver_key(latest):
+        raise ReleaseError(f"{version} is not newer than the latest release {latest}")
+
+
+def run_tests(skip: bool) -> None:
+    if skip:
+        print("ℹ️  Skipping ./test (--no-test).")
+        return
+    print("==> ./test")
+    if subprocess.run([str(ROOT / "test")], cwd=ROOT).returncode != 0:
+        raise ReleaseError("./test failed; the changes are left uncommitted for inspection")
+
+
+def commit(message: str) -> None:
+    git("commit", "-q", "-a", "-m", message)
+    print(f"✅ Committed: {message.splitlines()[0]}")
+
+
+def prepare(version: str, summary: str | None, date: str, branch: bool, skip_tests: bool) -> None:
+    require_clean_tree()
+    changelog = read("CHANGELOG.md")
+    require_newer(version, changelog)
+    if not ISO_DATE.match(date):
+        raise ReleaseError(f"--date must be YYYY-MM-DD, got {date!r}")
+    if changelog_sections(changelog)[:1] != [("Unreleased", None)]:
+        raise ReleaseError("CHANGELOG.md must start with a bare '## [Unreleased]' section")
+    if not re.search(r"^\s*- \S", unreleased_body(changelog), re.M):
+        raise ReleaseError("The [Unreleased] CHANGELOG section has no entries to release")
+    stable = not is_prerelease(version)
+    if stable and not summary:
+        raise ReleaseError("A stable release needs --summary (one line for the README release table)")
+    if summary and "|" in summary:
+        raise ReleaseError("--summary must not contain '|'")
+
+    if branch:
+        target = f"release/{version}"
+        current = git("rev-parse", "--abbrev-ref", "HEAD").strip()
+        if current != target:
+            if git("rev-parse", "--verify", "--quiet", target, check=False).strip():
+                raise ReleaseError(f"Branch {target} already exists")
+            git("switch", "-q", "-c", target)
+            print(f"ℹ️  Created branch {target}")
+
+    set_version(version)
+    write("CHANGELOG.md", re.sub(r"^## \[Unreleased\]$", f"## [{version}] - {date}",
+                                 changelog, count=1, flags=re.M))
+    if stable:
+        readme = read("README.md")
+        separator = TABLE_SEPARATOR.search(readme)
+        if not separator:
+            raise ReleaseError("README.md: release table separator row not found")
+        row = f"| {version} | {date.replace('-', NB_HYPHEN)} | {summary} |\n"
+        write("README.md", readme[:separator.end() + 1] + row + readme[separator.end() + 1:])
+
+    require_check()
+    run_tests(skip_tests)
+    body = f"\n\n{summary}" if summary else ""
+    commit(f"Release {version}{body}")
+    kind = "pre-release" if not stable else "release"
+    print(f"""
+Next steps (maintainer only; these publish and cannot be undone):
+  1. Push release/{version} and open a pull request into main; let CI pass.
+  2. After merging, create the GitHub {kind} 'v{version}' from main{' (mark it as a pre-release)' if not stable else ''}.
+     Publishing it pushes the Docker Hub images{' and moves latest' if stable else ''} and mints the Zenodo DOI.
+  3. Merge main back into develop, then run: ./release start <next-version>""")
+
+
+def start(version: str, skip_tests: bool) -> None:
+    require_clean_tree()
+    changelog = read("CHANGELOG.md")
+    require_newer(version, changelog)
+    set_version(version)
+    if changelog_sections(changelog)[:1] != [("Unreleased", None)]:
+        first = HEADING.search(changelog)
+        insert_at = first.start() if first else len(changelog)
+        changelog = changelog[:insert_at] + "## [Unreleased]\n\n" + changelog[insert_at:]
+        write("CHANGELOG.md", changelog)
+    require_check()
+    run_tests(skip_tests)
+    commit(f"Start {version} development")
+
+
+# --- CLI ---------------------------------------------------------------------
+
+def main(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(prog="./release", description=__doc__.split("\n\n")[0])
+    sub = parser.add_subparsers(dest="command", required=True)
+    sub.add_parser("check", help="validate release metadata (read-only)")
+    p_prepare = sub.add_parser("prepare", help="prepare and commit a release")
+    p_prepare.add_argument("version")
+    p_prepare.add_argument("--summary", help="one-line README release-table note (required for stable releases)")
+    p_prepare.add_argument("--date", default=dt.date.today().isoformat(), help="release date, YYYY-MM-DD (default: today)")
+    p_prepare.add_argument("--no-branch", action="store_true", help="commit on the current branch")
+    p_prepare.add_argument("--no-test", action="store_true", help="skip ./test (the consistency check still runs)")
+    p_start = sub.add_parser("start", help="begin the next development cycle")
+    p_start.add_argument("version")
+    p_start.add_argument("--no-test", action="store_true", help="skip ./test (the consistency check still runs)")
+    args = parser.parse_args(argv)
+
+    try:
+        if args.command == "check":
+            errors = check()
+            if errors:
+                print("❌ Release metadata is inconsistent:", *errors, sep="\n  ", file=sys.stderr)
+                return 1
+            print(f"✅ Release metadata is consistent (VERSION {read('VERSION').strip()}).")
+        elif args.command == "prepare":
+            prepare(args.version, args.summary, args.date, not args.no_branch, args.no_test)
+        else:
+            start(args.version, args.no_test)
+    except ReleaseError as exc:
+        print(f"❌ {exc}", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

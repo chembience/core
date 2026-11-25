@@ -23,7 +23,7 @@ render() {
   helm lint "$chart_dir"
   helm template chemistry "$chart_dir" \
     --set app.image.repository=registry.example/chemistry-prod \
-    --set "app.image.tag=0.6.2-$app.1" "$@" >"$scratch_dir/$app.yaml"
+    --set "app.image.tag=1.4.0-$app.1" "$@" >"$scratch_dir/$app.yaml"
 }
 
 render django

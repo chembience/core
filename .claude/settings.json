@@ -4,6 +4,7 @@
     "allow": [
       "Bash(./test)",
       "Bash(./test *)",
+      "Bash(./release check)",
       "Bash(tests/compare-prepare-prod.sh)",
       "Bash(tests/compare-prepare-prod.sh *)",
       "Bash(bash -n *)",

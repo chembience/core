@@ -84,35 +84,6 @@ check_env_versions() {
   done
 }
 
-check_helm_versions() {
-  local chart_app_version values_file postgres_tag
-  chart_app_version="$(sed -n 's/^appVersion:[[:space:]]*"\{0,1\}\([^"]*\)"\{0,1\}[[:space:]]*$/\1/p' \
-    prod-tools/k8s/chart-base/Chart.yaml)"
-  [[ "$chart_app_version" == "$CHEMBIENCE_VERSION" ]] || {
-    echo "prod-tools/k8s/chart-base/Chart.yaml appVersion differs: ${chart_app_version:-<unset>}, VERSION=${CHEMBIENCE_VERSION}" >&2
-    return 1
-  }
-  for values_file in django/app/k8s/values.yaml fastapi/app/k8s/values.yaml \
-    jupyter/app/k8s/values.yaml rdkit/app/k8s/values.yaml; do
-    postgres_tag="$(python3 - "$values_file" <<'PY'
-import re
-import sys
-
-text = open(sys.argv[1], encoding="utf-8").read()
-match = re.search(
-    r"repository:\s*chembience/core-rdkit-postgres\s*,?\s*tag:\s*\"?([^\",}\s]+)",
-    text,
-)
-print(match.group(1) if match else "")
-PY
-)"
-    [[ "$postgres_tag" == "$CHEMBIENCE_VERSION" ]] || {
-      echo "${values_file} core-rdkit-postgres tag differs: ${postgres_tag:-<unset>}, VERSION=${CHEMBIENCE_VERSION}" >&2
-      return 1
-    }
-  done
-}
-
 # Each CLAUDE.md must import its sibling AGENTS.md (the single source of
 # agent guidance) instead of duplicating it.
 check_agent_guides() {
@@ -153,7 +124,8 @@ check_compose_config() {
 }
 
 run_check "VERSION-pinned build settings (.env vs .env.template)" check_env_versions
-run_check "Helm chart and values versions match VERSION" check_helm_versions
+run_check "Release metadata (./release check)" ./release check
+run_check "Release tooling tests" python3 tests/test_release.py
 run_check "CLAUDE.md files import AGENTS.md" check_agent_guides
 run_check "Shell syntax (bash -n)" check_shell_syntax
 if have shellcheck; then

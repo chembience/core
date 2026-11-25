@@ -128,16 +128,16 @@ Examples:
 
 ```bash
 # Repeatable release image build
-./django-prepare-prod --image-tag 0.6.2-pre1-django.1
+./django-prepare-prod --image-tag 1.4.0
 
 # Custom production image repository/name
-./django-prepare-prod --image-name registry.example.com/chem/django-prod --image-tag 0.6.2-pre1-django.1
+./django-prepare-prod --image-name registry.example.com/chem/django-prod --image-tag 1.4.0
 ```
 
 Run the produced image (example):
 
 ```bash
-docker run --rm -p 8001:8000 chembience/app-prod:0.6.2-pre1-django.1 \
+docker run --rm -p 8001:8000 chembience/app-prod:1.4.0 \
   python -m gunicorn src.wsgi:application --bind 0.0.0.0:8000 --workers 8
 ```
 
