@@ -44,26 +44,26 @@ for app in django fastapi jupyter rdkit; do
 
   write_env "$app_dir/.env" "${app}-updated"
   (cd "$app_dir" && printf 'n\n' | bash ./configure --prod >/dev/null)
-  rg -q "APP_NAME=${app}-development" "$app_dir/.env.prod"
+  grep -Eq "APP_NAME=${app}-development" "$app_dir/.env.prod"
   (cd "$app_dir" && printf 'y\n' | bash ./configure --prod >/dev/null)
-  rg -q "APP_NAME=${app}-updated" "$app_dir/.env.prod"
+  grep -Eq "APP_NAME=${app}-updated" "$app_dir/.env.prod"
   ! (cd "$app_dir" && bash ./configure --prod --rebuild >/dev/null 2>&1)
 
   install_prepare "$app" "$app_dir"
   (cd "$app_dir" && PATH="$scratch_dir/bin:$PATH" bash ./prepare --skip-build >/dev/null)
-  rg -q "APP_NAME=${app}-updated" "$app_dir/PROD/.env"
+  grep -Eq "APP_NAME=${app}-updated" "$app_dir/PROD/.env"
   test -f "$app_dir/.env.prod"
 
   write_env "$app_dir/PROD/.env" "${app}-kept"
   (cd "$app_dir" && PATH="$scratch_dir/bin:$PATH" bash ./prepare --skip-build --keep-env-prod >/dev/null)
-  rg -q "APP_NAME=${app}-kept" "$app_dir/PROD/.env"
+  grep -Eq "APP_NAME=${app}-kept" "$app_dir/PROD/.env"
 
   fallback_dir="$scratch_dir/${app}-fallback"
   mkdir -p "$fallback_dir"
   install_prepare "$app" "$fallback_dir"
   write_env "$fallback_dir/.env" "${app}-fallback"
   (cd "$fallback_dir" && PATH="$scratch_dir/bin:$PATH" bash ./prepare --skip-build >/dev/null)
-  rg -q "APP_NAME=${app}-fallback" "$fallback_dir/PROD/.env"
+  grep -Eq "APP_NAME=${app}-fallback" "$fallback_dir/PROD/.env"
 
   ghcr_dir="$scratch_dir/${app}-ghcr"
   mkdir -p "$ghcr_dir/PROD/k8s"
@@ -87,11 +87,11 @@ for app in django fastapi jupyter rdkit; do
   (cd "$ghcr_dir" && PATH="$scratch_dir/bin:$PATH" bash ./prepare --target ghcr-k8s >/dev/null)
   test -f "$ghcr_dir/chembience-ghcr.env"
   test -f "$ghcr_dir/.github/workflows/chembience-ghcr.yml"
-  rg -q "CHEMBIENCE_CORE_IMAGE=chembience/core-${app}:9.9.9" "$ghcr_dir/chembience-ghcr.env"
-  rg -q 'docker buildx build --platform linux/amd64' "$ghcr_dir/.github/workflows/chembience-ghcr.yml"
-  rg -q 'PROD/k8s/values.generated.yaml' "$ghcr_dir/.gitignore"
-  rg -q "helm upgrade --install \"${app}-ghcr\"" "$ghcr_dir/PROD/k8s/README.md"
-  ! rg -q 'YOUR_APP_NAME' "$ghcr_dir/PROD/k8s/README.md"
+  grep -Eq "CHEMBIENCE_CORE_IMAGE=chembience/core-${app}:9.9.9" "$ghcr_dir/chembience-ghcr.env"
+  grep -Eq 'docker buildx build --platform linux/amd64' "$ghcr_dir/.github/workflows/chembience-ghcr.yml"
+  grep -Eq 'PROD/k8s/values.generated.yaml' "$ghcr_dir/.gitignore"
+  grep -Eq "helm upgrade --install \"${app}-ghcr\"" "$ghcr_dir/PROD/k8s/README.md"
+  ! grep -Eq 'YOUR_APP_NAME' "$ghcr_dir/PROD/k8s/README.md"
   test ! -s "$DOCKER_LOG"
 
   git -C "$ghcr_dir" add .
@@ -99,9 +99,9 @@ for app in django fastapi jupyter rdkit; do
   expected_sha="$(git -C "$ghcr_dir" rev-parse HEAD)"
   : > "$DOCKER_LOG"
   (cd "$ghcr_dir" && PATH="$scratch_dir/bin:$PATH" bash ./prepare --target ghcr-k8s >/dev/null)
-  rg -q "repository: \"ghcr.io/chembience-test/${app}-example\"" "$ghcr_dir/PROD/k8s/values.generated.yaml"
-  rg -q "tag: \"${expected_sha}\"" "$ghcr_dir/PROD/k8s/values.generated.yaml"
-  rg -q 'name: ghcr-pull-secret' "$ghcr_dir/PROD/k8s/values.generated.yaml"
+  grep -Eq "repository: \"ghcr.io/chembience-test/${app}-example\"" "$ghcr_dir/PROD/k8s/values.generated.yaml"
+  grep -Eq "tag: \"${expected_sha}\"" "$ghcr_dir/PROD/k8s/values.generated.yaml"
+  grep -Eq 'name: ghcr-pull-secret' "$ghcr_dir/PROD/k8s/values.generated.yaml"
   test ! -s "$DOCKER_LOG"
   test -z "$(git -C "$ghcr_dir" status --porcelain)"
 
@@ -118,7 +118,7 @@ for app in django fastapi jupyter rdkit; do
   (cd "$legacy_dir" && PATH="$scratch_dir/bin:$PATH" bash ./prepare --skip-build >/dev/null)
   test ! -e "$legacy_dir/prod"
   test -f "$legacy_dir/PROD/lib/prepare-prod.sh"
-  rg -q "APP_NAME=${app}-legacy" "$legacy_dir/PROD/.env"
+  grep -Eq "APP_NAME=${app}-legacy" "$legacy_dir/PROD/.env"
 
   # Without the library the script fails with a hint instead of a bash error.
   missing_dir="$scratch_dir/${app}-missing-lib"
@@ -126,7 +126,7 @@ for app in django fastapi jupyter rdkit; do
   cp "$root_dir/$app/app/$app-prepare-prod" "$missing_dir/prepare"
   write_env "$missing_dir/.env" "${app}-missing"
   ! (cd "$missing_dir" && bash ./prepare --skip-build >/dev/null 2>"$scratch_dir/missing.err")
-  rg -q 'Missing PROD/lib/prepare-prod.sh' "$scratch_dir/missing.err"
+  grep -Eq 'Missing PROD/lib/prepare-prod.sh' "$scratch_dir/missing.err"
 done
 
 echo "Production environment workflow validated for all app types."

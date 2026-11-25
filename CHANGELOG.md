@@ -42,6 +42,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - JupyterLab and RDKit production preparation now stop the bundled stack
   when the PostgreSQL readiness check fails, as Django and FastAPI already did.
 
+- Made `AGENTS.md` the single, tool-neutral agent guide for the repository and
+  each generated app type; `CLAUDE.md` files now import it (`@AGENTS.md`), and
+  `./test` enforces that. The guides add working contexts, a change-to-
+  verification table, a definition of done, and guardrails for destructive
+  commands. Rewrote the outdated `llms.txt`.
+- `./test` reports checks whose tools are missing (`helm`, `docker`,
+  `shellcheck`, PyYAML) as SKIPPED with a closing summary instead of aborting;
+  the new `--strict` flag (used in CI) fails on skips. The test scripts no
+  longer need ripgrep.
+- Added `tests/compare-prepare-prod.sh <git-rev>` to prove that changes to
+  `*-prepare-prod` or `prod-tools/lib/` preserve behavior.
+- Added shared Claude Code project settings (`.claude/settings.json`): allowed
+  validation commands, denied destructive commands, and a PostToolUse hook that
+  lints edited shell scripts with `bash -n` and ShellCheck.
+
 ### Fixed
 - RDKit apps now restore missing shipped files on each development start
   instead of only during first initialization.

@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(./test)",
+      "Bash(./test *)",
+      "Bash(tests/compare-prepare-prod.sh)",
+      "Bash(tests/compare-prepare-prod.sh *)",
+      "Bash(bash -n *)",
+      "Bash(shellcheck *)",
+      "Bash(helm lint *)",
+      "Bash(helm template *)",
+      "Bash(docker compose config *)",
+      "Bash(docker images *)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git show *)"
+    ],
+    "deny": [
+      "Bash(./remove *--force-prod*)",
+      "Bash(docker volume rm *)",
+      "Bash(docker compose down -v*)",
+      "Bash(docker compose down --volumes*)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/lint-shell.sh",
+            "timeout": 60
+          }
+        ]
+      }
+    ]
+  }
+}

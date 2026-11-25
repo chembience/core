@@ -1,133 +1,161 @@
-# Information for AI Agents
+# Chembience Core: Guide for AI Agents and Contributors
 
-Welcome, AI agent. This document provides a high-level overview of the Chembience
-project to help you navigate and contribute effectively.
+This is the single, tool-neutral source of agent guidance for this repository
+(`CLAUDE.md` imports it). Keep it accurate: every command and path below must
+exist.
 
-## Project Context
-Chembience is a specialized platform for chemical informatics. It bundles a
-Django web app, a FastAPI service, a JupyterLab environment, an RDKit shell,
-and a PostgreSQL database with the RDKit cartridge — all wired together via a
-single `docker-compose.yml`.
+Chembience bundles a containerized cheminformatics stack: Django, FastAPI,
+JupyterLab, and RDKit services plus PostgreSQL 18 with the RDKit cartridge.
+This repository builds the **core images** and the **templates** from which
+`./install` and `./build` generate standalone applications.
 
-## Service Overview
-All services are defined in `docker-compose.yml` (at the project root) and
-share the `app-network` Docker network. The compose file also declares an
-external `chembience-network` (currently not attached to any service) for
-optional cross-stack wiring.
+## Two working contexts
 
-- **Django (`django/`)**: Main web service. Runs `gunicorn src.wsgi:application`.
-  Container `working_dir` is `/home/app/src/`. Host app code lives under
-  `${APP_HOME}/src/` (bind-mounted into the container).
-- **FastAPI (`fastapi/`)**: Async REST API. Container `working_dir` is
-  `/home/app/src/` and the entrypoint runs `uvicorn main:app` from there
-  (i.e. `src/main.py`). Same `src/` layout convention as Django.
-- **Jupyter (`jupyter/`)**: JupyterLab pre-wired with RDKit + Postgres.
-- **RDKit (`rdkit/`)**: Micromamba-based RDKit image. Two compose services use it:
-  - `rdkit`: interactive one-shot Python shell (`tty: true`, `command: python`).
-  - `rdkit-app`: long-running sidecar (`tail -f /dev/null`) that keeps an
-    RDKit environment alive with `${APP_HOME}` mounted, for ad-hoc scripts.
-- **Postgres (`postgres/`)**: PostgreSQL 18 with the RDKit cartridge.
-- **Test App (`django/app/django-rdkit-test-app`)**: A reference Django
-  application integrated during initialization to verify RDKit functionality.
-  It is a valid, intentionally retained smoke-test app — do not remove it.
+Decide first which one you are in; commands differ.
 
-## Navigation Map
-- `docker-compose.yml`: Authoritative definition of all services and how
-  they interact.
-- `docker-compose.dev.yml`: Development overlay applied on top of the
-  main compose file.
-- `llms.txt`: Project metadata for LLM-based tooling.
-- `VERSION`: Single source of truth for the Chembience release version.
-- `.env` (and `.env.template`): Central runtime configuration. Check these
-  for environment variables (`DJANGO_*`, `FASTAPI_*`, `JUPYTER_*`,
-  `POSTGRES_*`, `CHEMBIENCE_*`, `APP_HOME`, etc.). Additional build-time
-  args used by `docker-compose.yml` include `CONDA_PY`, `RDKIT_VERSION`,
-  `APT_MIRROR`, `CONDA_MIRROR`, `CHEMBIENCE_UID`/`CHEMBIENCE_GID`,
-  `GUNICORN_WORKERS`, and `UVICORN_WORKERS`.
-- `share/chembience/`: Shared Python module imported by services
-  (`from chembience import db`) to access a pre-configured SQLAlchemy
-  engine and Postgres connection settings.
-- `share/entrypoint/helpers.sh`: Shell helpers sourced by every core
-  `docker-entrypoint.sh` (app user setup, ownership, file sync into generated
-  apps). Config/doc files are copied only if missing; helper scripts and
-  `PROD/lib/` are refreshed on every development start.
-- `prod-tools/`: Files shipped into generated apps' `PROD/` (database tools,
-  Helm chart base). `prod-tools/lib/prepare-prod.sh` implements all
-  `*-prepare-prod` commands; the per-app scripts only set app-specific
-  variables and hooks.
-- `install`, `build`, `core-build`, `remove`, `psql`, `test`, `test-build-all`:
-  Top-level helper scripts (run from the project root). `test-build-all` is the
-  compatibility alias for `test --integration`.
-- `*/app/`: Templates copied into the root of generated applications by the
-  corresponding service entrypoint. When editing a template helper or README,
-  keep its commands relative to a generated application directory.
-- Per-service init helpers:
-  - `django/django-init`, `django/django-manage-py`, `django/psql`
-  - `fastapi/app/fastapi-init`, `fastapi/app/db-backup`,
-    `fastapi/app/db-cleanup`, `fastapi/app/db-restore`
-  - `jupyter/app/jupyter-init`
-  - `rdkit/app/rdkit-init`, `rdkit/app/run`, `rdkit/app/shell`
-- Per-app `*-configure` scripts (used for password rotation and other
-  per-project configuration; see README §Secrets):
-  - `django/app/django-configure`
-  - `fastapi/app/fastapi-configure`
-  - `jupyter/app/jupyter-configure`
-  - `rdkit/app/rdkit-configure`
-- Dependencies:
-  - Django/FastAPI: pip-based, declared inside their respective images and the
-    per-project `src/` directory.
-  - RDKit and Postgres images: dependencies are **mamba-driven** via
-    `mambaorg/micromamba` and the `rdkit_version` build arg in
-    `docker-compose.yml`, not a pip `requirements.txt`.
-- `django/Dockerfile`: Django container image. The host entrypoint
-  source lives at `django/docker-entrypoint.sh` and is installed in
-  the image as `/docker-entrypoint.sh`.
+| | Core repository (this checkout) | Generated application |
+|---|---|---|
+| Location | directory with `VERSION` and `core-build` | `$HOME/<target>` by default, or `-d <dir>` gives `<dir>/<target>` |
+| Compose file | root `docker-compose.yml` (builds core images) | the app's own `docker-compose.yml` |
+| Typical work | images, entrypoints, templates in `*/app/`, prod tooling, tests | application code, migrations, notebooks, production preparation |
+| Guidance | this file | the app's `AGENTS.md` (from `*/app/AGENTS.md`) |
 
-## Interaction Guidelines
-- **Line Endings**: All files MUST use Linux line endings (`LF`). This is
-  enforced by `.gitattributes` (`* text eol=lf`). Windows line endings (`CRLF`)
-  can cause issues in Docker containers and shell scripts.
-- **Docker is the primary execution environment.** Assume commands should be
-  run via `docker compose exec <service> ...` from the project root.
-- **Install vs. build**: `./install` pulls the exact published core images for
-  `VERSION`; `./build` builds those core images from the local checkout and is
-  the required path for source changes and CI smoke tests.
-- **Testing**: Run `./test` for shell, Python, Helm, and Compose validation;
-  run `./test --integration` for the complete Docker workflow. `CONDA_PY` and
-  `RDKIT_VERSION` must remain identical in `.env` and `.env.template`.
-- **Generated application context**: The core repository and a generated app
-  use different compose files. For generated-app work, `cd` into the generated
-  directory before running `docker compose`; its copied helper scripts live at
-  that directory's root.
-- **Jupyter token behavior**: Token auth is enabled by default. A generated
-  Jupyter app persists `JUPYTER_TOKEN` in its `.env` when none is supplied;
-  `jupyter-init` prints the access URL. Set that variable directly to choose a
-  stable token. Use the provided `docker-compose.dev.yml` overlay to disable
-  the token in development (`--ServerApp.token=''`).
-- **Postgres networking**: The Postgres service is not published on a host
-  port by default. All services connect over the internal Docker network at
-  `postgres:5432`. Use your own compose override if host access is needed.
-- **Django migrations**: When modifying Django models, generate and commit
-  migrations:
-  `docker compose exec django python manage.py makemigrations`
-  `docker compose exec django python manage.py migrate`
-- **Production targets**: `*-prepare-prod --target compose` is the default
-  self-hosted Docker Compose route. `--target ghcr-k8s` bootstraps a GitHub
-  Actions workflow on its first run, then generates a SHA-pinned Helm bundle
-  after that commit is pushed and built. The generated app's
-  `PROD/k8s/README.md` is the deployment authority; preserve
-  `values.override.yaml` and Kubernetes Secrets as host-owned configuration.
-- **Kubernetes database access**: For the bundled database, use `kubectl exec`
-  against the generated PostgreSQL Pod rather than publishing a database port.
-  The app-specific `PROD/k8s/README.md` contains the exact command.
-- **Cheminformatics domain**: Data often involves SMILES strings, InChI, and
-  complex molecular representations. Be careful with encoding, normalization,
-  and database round-trips.
-- **Do not commit runtime artifacts**: `test-builds/` and Postgres data
-  directories must stay out of version control (already in `.gitignore`).
-- **Secrets**: `DJANGO_SECRET_KEY` is auto-generated on first `./install` or `./build` and
-  persisted in the per-project `.env`. Treat that file as a secret. See
-  README §Secrets.
-- **App-context guidance**: `*/app/AGENTS.md` and `*/app/CLAUDE.md` are copied
-  into generated applications. Keep these templates scoped to the corresponding
-  app type and update them when a generated-app workflow changes.
+Root-level `docker compose exec <service>` only works while a bootstrap run is
+attached (`./build ... --no-quit`). For application work, `cd` into the
+generated app and use its compose file and helper scripts.
+
+## Commands (core repository)
+
+- Validate the checkout: `./test` (fast; checks whose tools are missing are
+  reported as SKIPPED), `./test --strict` (fails on any skip; used by CI), and
+  `./test --integration` (builds every image and runs dev and production flows
+  for all app types; slow, run it in the background). `test-build-all` is a
+  compatibility alias for `./test --integration`.
+- Prove a prepare-prod refactor preserves behavior:
+  `tests/compare-prepare-prod.sh <base-git-rev>`.
+- Build core images: `docker compose build`.
+- Generate an app from local images: `./build <type> <target>`; from the
+  published images for `VERSION`: `./install <type> <target>`. `<type>` is
+  `django`, `fastapi`, `jupyter`, or `rdkit`; `-d /path/to/dir` sets the parent
+  directory; `--no-quit` keeps the setup run attached. Source changes require
+  `./build`.
+- Remove a generated app: `./remove <target> [-d /path/to/dir]` (see
+  Guardrails).
+- Postgres publishes no host port; services reach it at `postgres:5432` on the
+  internal network. `./psql` (copied into every app) opens a shell in the
+  running stack of the current directory.
+
+## Commands (generated application, run from its directory)
+
+- Django: `./django-init`; `./django-manage-py <command>` runs `manage.py` in
+  the container (e.g. `makemigrations`, `migrate`, `test <app_name>`); `./psql`.
+- FastAPI: `docker compose up -d && ./fastapi-init`; tests with
+  `docker compose exec fastapi pytest`; Alembic revisions with
+  `./fastapi-makemigrations "description"` and `./fastapi-migrate`; DB tools
+  `./psql`, `./db-backup`, `./db-restore`, `./db-cleanup`.
+- JupyterLab: `docker compose up -d`, then `./jupyter-init` prints the access
+  URL. Token auth is on by default (the token is persisted in `.env`; set
+  `JUPYTER_TOKEN` for a stable one). The core `docker-compose.dev.yml` overlay
+  disables the token for development.
+- RDKit: `./rdkit-init`, `./run script.py`, `./shell`, `./psql`.
+- Configuration and password rotation: `./<type>-configure` (README §Secrets);
+  `./<type>-configure --prod` creates `.env.prod`.
+- Production: `./<type>-prepare-prod --target compose` (self-hosted bundle in
+  `PROD/`) or `--target ghcr-k8s` (the first run writes a GitHub Actions
+  workflow; commit, push, wait for the image build, then rerun from the clean
+  commit to write SHA-pinned Helm values). `PROD/k8s/README.md` is the
+  deployment authority; `PROD/k8s/values.override.yaml` and Kubernetes Secrets
+  are host-owned and never committed.
+- Tuning: `GUNICORN_WORKERS` (Django) and `UVICORN_WORKERS` (FastAPI) in `.env`.
+
+## How template changes reach generated apps
+
+Each core image copies its `*/app/*` templates, and its `docker-entrypoint.sh`
+syncs them into the app on every development start
+(`share/entrypoint/helpers.sh`):
+
+- Config and documentation files (`docker-compose.yml`, `Dockerfile*`,
+  `README.md`, `AGENTS.md`, `CLAUDE.md`, `requirements.txt`, `PROD/compose*.yaml`)
+  are copied **only if missing**; user edits survive, so existing apps do not
+  receive template updates to these files.
+- Helper scripts (`*-configure`, `*-prepare-prod`, `*-init`, `psql`, `PROD/db-*`,
+  RDKit `run`/`shell`) and `PROD/lib/prepare-prod.sh` are **always refreshed**.
+  The per-app `*-prepare-prod` scripts are thin; the implementation is
+  `prod-tools/lib/prepare-prod.sh`, so change shared behavior there.
+
+Write template commands relative to the generated app directory.
+
+## Verification: what to run for which change
+
+| Change | Required verification |
+|---|---|
+| Documentation only | Check that every command and path you mention exists |
+| Shell scripts, Helm charts, compose files, `.env.template` keys | `./test` |
+| `*-prepare-prod`, `prod-tools/lib/` | `./test` and `tests/compare-prepare-prod.sh <base-rev>` (identical unless the behavior change is intended) |
+| `*/Dockerfile`, `*/docker-entrypoint.sh`, `share/entrypoint/`, `*/app/*` templates, image `requirements.txt` / `environment.yml` | `./test --integration` |
+| Release version | `VERSION`, `prod-tools/k8s/chart-base/Chart.yaml` `appVersion`, and the `core-rdkit-postgres` tags in `*/app/k8s/values.yaml` (enforced by `./test`) |
+| `CONDA_PY` / `RDKIT_VERSION` | change `.env` and `.env.template` together (enforced by `./test`) |
+
+## Definition of done
+
+- The verification above passed. A run that reports SKIPPED checks is not full
+  coverage; say which checks were skipped.
+- `CHANGELOG.md` has an entry under the open `[Unreleased]` section, with
+  behavior changes labeled as such.
+- Generated-app guidance (`*/app/AGENTS.md`, `*/app/README.md`) matches any
+  changed generated workflow.
+- LF line endings (`.gitattributes`), no secrets in files or images, and no
+  runtime artifacts (`test-builds/`, Postgres data) committed.
+
+## Guardrails: ask the user first
+
+Never run these to "clean up" or "fix" something without explicit
+confirmation; they destroy data or affect running or published systems:
+
+- `./remove` (it refuses once `PROD/.env` exists; `--force-prod` overrides that
+  and brings the production stack down).
+- `docker compose down -v` / `--volumes`, `docker volume rm` (database data).
+- `./db-restore`, `./db-cleanup`, `PROD/db-restore`, `PROD/db-cleanup`.
+- Answering overwrite prompts of `*-configure --prod`; editing `.env`,
+  `.env.prod`, or `PROD/.env` secrets.
+- Pushing images or tags, `helm upgrade`/`helm uninstall`, or `kubectl`
+  against real clusters; publishing releases.
+
+## Conventions
+
+- Python: PEP 8, 4-space indentation; `snake_case` functions and variables,
+  `PascalCase` classes.
+- Shell: Bash with `set -euo pipefail` in scripts; ShellCheck-clean at warning
+  severity with `-e SC1091` (the CI setting).
+- Docker: configuration through environment variables, never baked-in secrets;
+  Python images use micromamba; multi-stage builds where useful.
+- In a generated app, Django settings live at `src/src/settings.py`; the
+  FastAPI entry module is `src/main.py` (`app = FastAPI(...)`).
+- `VERSION` is the single source of the release version; `install` and `build`
+  derive `CHEMBIENCE_VERSION` in `.env` from it. Do not edit that key manually.
+- Cheminformatics data (SMILES, InChI, molfiles) is sensitive to encoding and
+  normalization; preserve exact strings across database round-trips.
+
+## Repository map
+
+- `docker-compose.yml`: core image builds and bootstrap services;
+  `docker-compose.dev.yml`: development overlay (e.g. Jupyter without token).
+- `django/`, `fastapi/`, `jupyter/`, `rdkit/`: core image `Dockerfile`,
+  `docker-entrypoint.sh`, and `app/` templates (the app's `AGENTS.md`,
+  `CLAUDE.md`, `k8s/` chart values, `PROD/` compose files). The RDKit image is
+  the base of the other three.
+- `django/app/django-rdkit-test-app`: intentionally retained RDKit smoke-test
+  Django app; do not remove it.
+- `postgres/`: PostgreSQL + RDKit cartridge image, `postgresql.conf`,
+  `pg_hba.conf`.
+- `share/chembience/`: shared Python package (`from chembience import db`:
+  SQLAlchemy engine, sessions, connection settings; Django superuser helper).
+- `share/entrypoint/helpers.sh`: shell helpers sourced by all entrypoints.
+- `prod-tools/`: files shipped into generated apps' `PROD/`: database tools,
+  `lib/prepare-prod.sh`, the Helm `k8s/chart-base`, and its render test.
+- `tests/`: `test-prod-env-workflow.sh`, `test-integration.sh`,
+  `compare-prepare-prod.sh`.
+- `install`, `build`, `core-build`, `remove`, `psql`, `test`: top-level scripts.
+- `.claude/`: shared Claude Code settings and a shell-lint hook.
+- `K8S_INGRESS.md`: Ingress controller, TLS, and cert-manager guide.
+- `llms.txt`: machine-readable project index.

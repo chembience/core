@@ -1,63 +1,100 @@
 #!/usr/bin/env bash
+# Validate the Chembience core checkout.
+#
+#   ./test                 fast checks; checks whose tools are missing (helm,
+#                          docker, shellcheck, PyYAML) are SKIPPED, not failed
+#   ./test --strict        fast checks; any skipped check fails the run (CI)
+#   ./test --integration   fast checks plus the full Docker build and
+#                          generated-app integration suite (needs Docker)
 set -euo pipefail
 
 root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 integration=false
+strict=false
 
-if [[ $# -gt 1 || ${1:-} == "--help" ]]; then
-  echo "Usage: ./test [--integration]" >&2
-  exit 2
+usage() { echo "Usage: ./test [--strict | --integration]" >&2; }
+if [[ $# -gt 1 ]]; then usage; exit 2; fi
+case "${1:-}" in
+  "") ;;
+  --strict) strict=true ;;
+  --integration) integration=true ;;
+  --help|-h) usage; exit 0 ;;
+  *) echo "Unknown option: $1" >&2; usage; exit 2 ;;
+esac
+
+for cmd in bash python3 git; do
+  command -v "$cmd" >/dev/null 2>&1 || { echo "Missing required command: $cmd" >&2; exit 1; }
+done
+if [[ "$integration" == true ]] && ! command -v docker >/dev/null 2>&1; then
+  echo "Missing required command for --integration: docker" >&2
+  exit 1
 fi
-if [[ ${1:-} == "--integration" ]]; then
-  integration=true
-elif [[ $# -eq 1 ]]; then
-  echo "Unknown option: $1" >&2
-  exit 2
-fi
-
-require_command() {
-  command -v "$1" >/dev/null 2>&1 || {
-    echo "Missing required command: $1" >&2
-    exit 1
-  }
-}
-
-require_command bash
-require_command python3
-require_command helm
-require_command docker
 
 cd "$root_dir"
 CHEMBIENCE_VERSION="$(tr -d '[:space:]' < VERSION)"
 export CHEMBIENCE_VERSION
 
+# --- check runner -------------------------------------------------------------
+results=()
+skipped=0
+failed=0
+
+# run_check NAME COMMAND...: run a check, record PASS/FAIL, keep going.
+run_check() {
+  local name="$1"; shift
+  echo "==> ${name}"
+  if "$@"; then
+    results+=("PASS  ${name}")
+  else
+    results+=("FAIL  ${name}")
+    failed=$((failed + 1))
+  fi
+}
+
+# skip_check NAME REASON
+skip_check() {
+  echo "==> ${1}: SKIPPED (${2})"
+  results+=("SKIP  ${1} (${2})")
+  skipped=$((skipped + 1))
+}
+
+have() { command -v "$1" >/dev/null 2>&1; }
+have_pyyaml() { python3 -c 'import yaml' >/dev/null 2>&1; }
+
+# --- checks -------------------------------------------------------------------
 get_env_value() {
   local file="$1" key="$2"
   sed -n "s/^${key}=//p" "$file" | tail -n 1
 }
 
-for key in CONDA_PY RDKIT_VERSION; do
-  template_value="$(get_env_value .env.template "$key")"
-  env_value="$(get_env_value .env "$key")"
-  [[ -n "$template_value" && -n "$env_value" ]] || {
-    echo "${key} must be set in both .env and .env.template" >&2
-    exit 1
-  }
-  [[ "$env_value" == "$template_value" ]] || {
-    echo "${key} differs: .env=${env_value}, .env.template=${template_value}" >&2
-    exit 1
-  }
-done
-
-chart_app_version="$(sed -n 's/^appVersion:[[:space:]]*"\{0,1\}\([^"]*\)"\{0,1\}[[:space:]]*$/\1/p' \
-  prod-tools/k8s/chart-base/Chart.yaml)"
-[[ "$chart_app_version" == "$CHEMBIENCE_VERSION" ]] || {
-  echo "prod-tools/k8s/chart-base/Chart.yaml appVersion differs: ${chart_app_version:-<unset>}, VERSION=${CHEMBIENCE_VERSION}" >&2
-  exit 1
+check_env_versions() {
+  local key template_value env_value
+  [[ -f .env ]] || { echo ".env is missing; create it with: cp .env.template .env" >&2; return 1; }
+  for key in CONDA_PY RDKIT_VERSION; do
+    template_value="$(get_env_value .env.template "$key")"
+    env_value="$(get_env_value .env "$key")"
+    [[ -n "$template_value" && -n "$env_value" ]] || {
+      echo "${key} must be set in both .env and .env.template" >&2
+      return 1
+    }
+    [[ "$env_value" == "$template_value" ]] || {
+      echo "${key} differs: .env=${env_value}, .env.template=${template_value}" >&2
+      return 1
+    }
+  done
 }
-for values_file in django/app/k8s/values.yaml fastapi/app/k8s/values.yaml \
-  jupyter/app/k8s/values.yaml rdkit/app/k8s/values.yaml; do
-  postgres_tag="$(python3 - "$values_file" <<'PY'
+
+check_helm_versions() {
+  local chart_app_version values_file postgres_tag
+  chart_app_version="$(sed -n 's/^appVersion:[[:space:]]*"\{0,1\}\([^"]*\)"\{0,1\}[[:space:]]*$/\1/p' \
+    prod-tools/k8s/chart-base/Chart.yaml)"
+  [[ "$chart_app_version" == "$CHEMBIENCE_VERSION" ]] || {
+    echo "prod-tools/k8s/chart-base/Chart.yaml appVersion differs: ${chart_app_version:-<unset>}, VERSION=${CHEMBIENCE_VERSION}" >&2
+    return 1
+  }
+  for values_file in django/app/k8s/values.yaml fastapi/app/k8s/values.yaml \
+    jupyter/app/k8s/values.yaml rdkit/app/k8s/values.yaml; do
+    postgres_tag="$(python3 - "$values_file" <<'PY'
 import re
 import sys
 
@@ -69,19 +106,36 @@ match = re.search(
 print(match.group(1) if match else "")
 PY
 )"
-  [[ "$postgres_tag" == "$CHEMBIENCE_VERSION" ]] || {
-    echo "${values_file} core-rdkit-postgres tag differs: ${postgres_tag:-<unset>}, VERSION=${CHEMBIENCE_VERSION}" >&2
-    exit 1
-  }
-done
+    [[ "$postgres_tag" == "$CHEMBIENCE_VERSION" ]] || {
+      echo "${values_file} core-rdkit-postgres tag differs: ${postgres_tag:-<unset>}, VERSION=${CHEMBIENCE_VERSION}" >&2
+      return 1
+    }
+  done
+}
 
-bash -n django/app/*-configure django/app/*-prepare-prod \
-  fastapi/app/*-configure fastapi/app/*-prepare-prod \
-  jupyter/app/*-configure jupyter/app/*-prepare-prod \
-  rdkit/app/*-configure rdkit/app/*-prepare-prod \
-  prod-tools/lib/prepare-prod.sh share/entrypoint/helpers.sh */docker-entrypoint.sh \
-  tests/test-prod-env-workflow.sh
-if command -v shellcheck >/dev/null 2>&1; then
+# Each CLAUDE.md must import its sibling AGENTS.md (the single source of
+# agent guidance) instead of duplicating it.
+check_agent_guides() {
+  local guide ok=0
+  for guide in CLAUDE.md django/app/CLAUDE.md fastapi/app/CLAUDE.md \
+    jupyter/app/CLAUDE.md rdkit/app/CLAUDE.md; do
+    [[ -f "$(dirname "$guide")/AGENTS.md" ]] || { echo "Missing $(dirname "$guide")/AGENTS.md" >&2; ok=1; }
+    grep -qx '@AGENTS.md' "$guide" || { echo "$guide must contain a line '@AGENTS.md'" >&2; ok=1; }
+  done
+  return "$ok"
+}
+
+check_shell_syntax() {
+  bash -n django/app/*-configure django/app/*-prepare-prod \
+    fastapi/app/*-configure fastapi/app/*-prepare-prod \
+    jupyter/app/*-configure jupyter/app/*-prepare-prod \
+    rdkit/app/*-configure rdkit/app/*-prepare-prod \
+    prod-tools/lib/prepare-prod.sh share/entrypoint/helpers.sh */docker-entrypoint.sh \
+    tests/*.sh .claude/hooks/*.sh
+}
+
+check_shellcheck() {
+  local -a shell_files
   mapfile -t shell_files < <(
     git ls-files -z | while IFS= read -r -d '' file; do
       [[ -f "$file" && "$file" != test-builds/* ]] || continue
@@ -91,17 +145,54 @@ if command -v shellcheck >/dev/null 2>&1; then
     done
   )
   shellcheck -S warning -e SC1091 "${shell_files[@]}"
+}
+
+check_compose_config() {
+  docker compose --env-file .env.template -f docker-compose.yml config --quiet \
+    && docker compose --env-file .env.template -f docker-compose.yml -f docker-compose.dev.yml config --quiet
+}
+
+run_check "VERSION-pinned build settings (.env vs .env.template)" check_env_versions
+run_check "Helm chart and values versions match VERSION" check_helm_versions
+run_check "CLAUDE.md files import AGENTS.md" check_agent_guides
+run_check "Shell syntax (bash -n)" check_shell_syntax
+if have shellcheck; then
+  run_check "ShellCheck (CI settings)" check_shellcheck
 else
-  echo "ℹ️  shellcheck not installed; skipping local shell lint (CI still runs it)."
+  skip_check "ShellCheck (CI settings)" "shellcheck not installed"
 fi
-python3 -m unittest share.tests.test_django_superuser
-bash tests/test-prod-env-workflow.sh
-bash prod-tools/k8s/tests/render.sh
-docker compose --env-file .env.template -f docker-compose.yml config --quiet
-docker compose --env-file .env.template -f docker-compose.yml -f docker-compose.dev.yml config --quiet
-
+run_check "Django superuser unit tests" python3 -m unittest share.tests.test_django_superuser
+run_check "Production env and prepare-prod workflow" bash tests/test-prod-env-workflow.sh
+if ! have helm; then
+  skip_check "Helm chart lint and render" "helm not installed"
+elif ! have_pyyaml; then
+  skip_check "Helm chart lint and render" "python3 PyYAML not installed"
+else
+  run_check "Helm chart lint and render" bash prod-tools/k8s/tests/render.sh
+fi
+if have docker; then
+  run_check "Docker Compose configuration" check_compose_config
+else
+  skip_check "Docker Compose configuration" "docker not installed"
+fi
 if [[ "$integration" == true ]]; then
-  bash tests/test-integration.sh
+  run_check "Docker integration suite" bash tests/test-integration.sh
 fi
 
+# --- summary ------------------------------------------------------------------
+echo
+echo "Summary:"
+printf '  %s\n' "${results[@]}"
+if [[ $failed -gt 0 ]]; then
+  echo "❌ ${failed} check(s) failed."
+  exit 1
+fi
+if [[ $skipped -gt 0 ]]; then
+  if [[ "$strict" == true ]]; then
+    echo "❌ ${skipped} check(s) skipped; --strict requires every check to run."
+    exit 1
+  fi
+  echo "⚠️  Chembience tests passed with ${skipped} skipped check(s); install the missing tools or rely on CI for full coverage."
+  exit 0
+fi
 echo "✅ Chembience tests passed."

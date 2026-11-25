@@ -1,23 +1,36 @@
 # Chembience Core
 
-> Fully reworked version of Chembience: a platform for cheminformatics and chemical data management.
+> Containerized cheminformatics platform: core Docker images for Django, FastAPI, JupyterLab, and RDKit plus PostgreSQL 18 with the RDKit cartridge, and templates from which `./install` / `./build` generate standalone applications with Docker Compose and Kubernetes (Helm, GHCR) production bundles.
 
-## Project Structure
+Python 3.14, RDKit (micromamba), PostgreSQL 18 + RDKit cartridge, Docker Compose, Helm. The release version is in `VERSION`.
 
-- `core/django`: Django web application service.
-- `core/rdkit`: RDKit informatics service.
-- `core/postgres`: PostgreSQL database service with cheminformatics extensions.
+## Guides
 
-## Key Technologies
+- [AGENTS.md](AGENTS.md): Guide for AI agents and contributors: working contexts, commands, verification per change type, definition of done, guardrails, repository map
+- [README.md](README.md): Overview, quick starts per app type, testing, secrets, releases
+- [K8S_INGRESS.md](K8S_INGRESS.md): Kubernetes Ingress controller, TLS, and cert-manager setup
+- [CHANGELOG.md](CHANGELOG.md): Release history
 
-- Python 3.14
-- Django
-- RDKit
-- Docker & Docker Compose
-- PostgreSQL
+## Core images and templates
 
-## Documentation
+- [django/](django/): Django core image; app templates in `django/app/` (includes the RDKit smoke-test app)
+- [fastapi/](fastapi/): FastAPI core image; app templates in `fastapi/app/` (Alembic migrations)
+- [jupyter/](jupyter/): JupyterLab core image; app templates in `jupyter/app/`
+- [rdkit/](rdkit/): RDKit base image (parent of the other three); app templates in `rdkit/app/`
+- [postgres/](postgres/): PostgreSQL 18 image with the RDKit cartridge
+- [docker-compose.yml](docker-compose.yml): Core image builds and bootstrap services
 
-- [AGENTS.md](AGENTS.md): Detailed project structure and agent-specific instructions.
-- [CLAUDE.md](CLAUDE.md): Development guide, build commands, and testing procedures.
-- [README.md](README.md): General project overview.
+## Shared code and tooling
+
+- [share/chembience/](share/chembience/): Shared Python package (`from chembience import db`)
+- [share/entrypoint/helpers.sh](share/entrypoint/helpers.sh): Helpers sourced by every container entrypoint (template sync rules)
+- [prod-tools/](prod-tools/): Production bundle files: database tools, `lib/prepare-prod.sh`, Helm chart base
+- [test](test): Fast test entry point (`./test`, `--strict`, `--integration`)
+- [tests/](tests/): Production workflow, integration, and prepare-prod comparison tests
+
+## Generated application guides
+
+- [django/app/AGENTS.md](django/app/AGENTS.md)
+- [fastapi/app/AGENTS.md](fastapi/app/AGENTS.md)
+- [jupyter/app/AGENTS.md](jupyter/app/AGENTS.md)
+- [rdkit/app/AGENTS.md](rdkit/app/AGENTS.md)

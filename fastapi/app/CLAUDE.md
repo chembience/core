@@ -1,14 +1,6 @@
-# FastAPI App Development Guide
+# FastAPI App
 
-Run commands from this generated app directory.
+All guidance for this generated app lives in AGENTS.md (shared with other
+agents).
 
-- Start and initialize: `docker compose up -d && ./fastapi-init`
-- Tests: `docker compose exec fastapi pytest`
-- New Alembic revision: `./fastapi-makemigrations "description"`
-- Apply revisions: `./fastapi-migrate`
-- Database shell: `./psql`
-
-Keep application code in `src/` and commit Alembic revisions from
-`src/alembic/versions/`. Do not commit `.env` or production secrets. For Docker
-Compose production read `PROD/README.md`; for Kubernetes/GHCR production read
-`PROD/k8s/README.md` and use `./fastapi-prepare-prod --target ghcr-k8s`.
+@AGENTS.md

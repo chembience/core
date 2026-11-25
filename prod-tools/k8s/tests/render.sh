@@ -41,8 +41,8 @@ for path in pathlib.Path(sys.argv[1]).glob("*.yaml"):
     list(yaml.safe_load_all(path.read_text()))
 PY
 
-rg -q '^kind: Job$' "$scratch_dir/fastapi.yaml"
-rg -q '^kind: Ingress$' "$scratch_dir/jupyter.yaml"
-! rg -q '^kind: Service$' "$scratch_dir/rdkit.yaml"
-rg -q '^kind: StatefulSet$' "$scratch_dir/django.yaml"
-! rg -q 'app.kind' "$scratch_dir"/*.yaml
+grep -Eq '^kind: Job$' "$scratch_dir/fastapi.yaml"
+grep -Eq '^kind: Ingress$' "$scratch_dir/jupyter.yaml"
+! grep -Eq '^kind: Service$' "$scratch_dir/rdkit.yaml"
+grep -Eq '^kind: StatefulSet$' "$scratch_dir/django.yaml"
+! grep -Eq 'app.kind' "$scratch_dir"/*.yaml

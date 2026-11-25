@@ -139,7 +139,12 @@ Run the fast local suite from the repository root:
 ```
 
 It validates shell workflows, shared Python checks, Helm rendering, and Compose
-configuration without building images. For the full Docker suite, including
+configuration without building images. Checks whose tools are missing
+(`helm`, `docker`, `shellcheck`, PyYAML) are reported as SKIPPED in the closing
+summary instead of failing; `./test --strict`, which CI uses, fails on any
+skipped check. After changing `*-prepare-prod` or `prod-tools/lib/`, run
+`tests/compare-prepare-prod.sh <git-rev>` to compare generated bundles, Docker
+calls, and output with an earlier revision. For the full Docker suite, including
 development and self-hosted `PROD` flows for all app types, run:
 
 ```bash

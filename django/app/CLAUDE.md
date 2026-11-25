@@ -1,15 +1,6 @@
-# Django App Development Guide
+# Django App
 
-Run commands from this generated app directory.
+All guidance for this generated app lives in AGENTS.md (shared with other
+agents).
 
-- Start: `docker compose up -d`
-- Initialize/test: `./django-init`
-- Management commands: `./django-manage-py <command>`
-- Migrations: `./django-manage-py makemigrations` then
-  `./django-manage-py migrate`
-- Database shell: `./psql`
-
-Application code and Django migrations belong in `src/`. Do not commit `.env`
-or production secrets. For Docker Compose production read `PROD/README.md`; for
-Kubernetes/GHCR production read `PROD/k8s/README.md` and use
-`./django-prepare-prod --target ghcr-k8s`.
+@AGENTS.md
