@@ -15,8 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the Lint and Compose Validate workflows on `dev/*` branches too.
 - `./test` runs ShellCheck (warning severity, matching CI) when `shellcheck`
   is installed.
-- Bumped `pytest-asyncio` to 1.5.0 in the FastAPI core image, removing the
-  Python 3.16 `asyncio.get_event_loop_policy` deprecation warning.
+- Bumped `pytest-asyncio` to 1.5.0 in the FastAPI core image. The upstream
+  `asyncio.get_event_loop_policy` deprecation warning (removal in Python 3.16)
+  remains until a pytest-asyncio release stops calling it.
 - Reduced `postgres/postgresql.conf` to the 16 settings Chembience sets; all
   other parameters keep PostgreSQL defaults as before.
 - Moved the duplicated entrypoint logic (runtime-mode normalization, app
