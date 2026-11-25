@@ -7,7 +7,7 @@ app:
 postgres:
   enabled: true
   host: ""
-  image: {repository: chembience/core-rdkit-postgres, tag: "0.6.2", pullPolicy: IfNotPresent}
+  image: {repository: chembience/core-rdkit-postgres, tag: "0.6.3-pre1", pullPolicy: IfNotPresent}
   existingSecret: chembience-secrets
   user: chembience
   database: chembience

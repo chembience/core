@@ -49,6 +49,32 @@ for key in CONDA_PY RDKIT_VERSION; do
   }
 done
 
+chart_app_version="$(sed -n 's/^appVersion:[[:space:]]*"\{0,1\}\([^"]*\)"\{0,1\}[[:space:]]*$/\1/p' \
+  prod-tools/k8s/chart-base/Chart.yaml)"
+[[ "$chart_app_version" == "$CHEMBIENCE_VERSION" ]] || {
+  echo "prod-tools/k8s/chart-base/Chart.yaml appVersion differs: ${chart_app_version:-<unset>}, VERSION=${CHEMBIENCE_VERSION}" >&2
+  exit 1
+}
+for values_file in django/app/k8s/values.yaml fastapi/app/k8s/values.yaml \
+  jupyter/app/k8s/values.yaml rdkit/app/k8s/values.yaml; do
+  postgres_tag="$(python3 - "$values_file" <<'PY'
+import re
+import sys
+
+text = open(sys.argv[1], encoding="utf-8").read()
+match = re.search(
+    r"repository:\s*chembience/core-rdkit-postgres\s*,?\s*tag:\s*\"?([^\",}\s]+)",
+    text,
+)
+print(match.group(1) if match else "")
+PY
+)"
+  [[ "$postgres_tag" == "$CHEMBIENCE_VERSION" ]] || {
+    echo "${values_file} core-rdkit-postgres tag differs: ${postgres_tag:-<unset>}, VERSION=${CHEMBIENCE_VERSION}" >&2
+    exit 1
+  }
+done
+
 bash -n django/app/*-configure django/app/*-prepare-prod \
   fastapi/app/*-configure fastapi/app/*-prepare-prod \
   jupyter/app/*-configure jupyter/app/*-prepare-prod \
