@@ -1,6 +1,6 @@
 # Exact pins make released core images reproducible. Bump intentionally.
 pytest==8.4.2
-pytest-asyncio==0.26.0
+pytest-asyncio==1.5.0
 alembic==1.18.5
 fastapi==0.141.1
 uvicorn[standard]==0.52.1
